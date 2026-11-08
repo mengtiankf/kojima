@@ -2,6 +2,7 @@
 
 Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://github.com/mengtiankf/kojima/releases)主进程只负责界面与调度，功能全部放在**按需启动的子进程**里；岛体材质、肩部曲线与主题文件沿用 [BrimDeck](https://github.com/MoFeng2223/BrimDeck) 的设计语言。
 
+![首页](docs/home.png)
 ![灵动岛](docs/notch.png)
 ![AI 用量](docs/usage.png)
 ![系统监控](docs/monitor.png)

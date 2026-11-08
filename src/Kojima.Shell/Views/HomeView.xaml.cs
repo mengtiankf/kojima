@@ -46,7 +46,7 @@ public partial class HomeView : UserControl
             return;
         }
 
-        WeatherCity.Text = string.IsNullOrWhiteSpace(info.City) ? "本地" : info.City;
+        WeatherCity.Text = "本地";
         WeatherGlyph.Text = info.Glyph;
         WeatherTemp.Text = info.TemperatureText;
         WeatherDesc.Text = string.IsNullOrWhiteSpace(info.Description) ? "等待天气数据" : info.Description;
