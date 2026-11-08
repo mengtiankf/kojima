@@ -39,21 +39,30 @@ public partial class HomeView : UserControl
     }
 
     /// <summary>天气卡：城市 / 温度 / 描述。</summary>
+    private bool _demo;
+
+    /// <summary>演示数据：截图用，之后的真实天气不再覆盖。</summary>
+    public void ApplyDemo(Kojima.Shell.Services.WeatherInfo info)
+    {
+        ApplyWeather(info);
+        _demo = true;
+    }
+
     private void ApplyWeather(Kojima.Shell.Services.WeatherInfo info)
     {
-        if (info is null)
+        if (info is null || _demo)
         {
             return;
         }
 
         WeatherCity.Text = "本地";
-        WeatherGlyph.Text = info.Glyph;
+        WeatherGlyph.Code = info.Code;
         WeatherTemp.Text = info.TemperatureText;
         WeatherDesc.Text = string.IsNullOrWhiteSpace(info.Description) ? "等待天气数据" : info.Description;
         WeatherTemp.Foreground = ThemeRuntime.Text;
         WeatherDesc.Foreground = ThemeRuntime.Text2;
         WeatherCity.Foreground = ThemeRuntime.Text3;
-        WeatherGlyph.Foreground = ThemeRuntime.Text2;
+        WeatherGlyph.Brush = ThemeRuntime.Text2;
     }
 
     private void UpdateClock()
@@ -89,7 +98,7 @@ public partial class HomeView : UserControl
         PlayGlyph.Foreground = ThemeRuntime.Text;
 
         WeatherCity.Foreground = ThemeRuntime.Text3;
-        WeatherGlyph.Foreground = ThemeRuntime.Text2;
+        WeatherGlyph.Brush = ThemeRuntime.Text2;
         WeatherTemp.Foreground = ThemeRuntime.Text;
         WeatherDesc.Foreground = ThemeRuntime.Text2;
 

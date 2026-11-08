@@ -2,7 +2,7 @@
 ; 由 build.ps1 在 publish 之后调用：ISCC.exe /DAppVersion=1.0.0 installer\kojima.iss
 
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 
 #define AppName "Kojima"

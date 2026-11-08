@@ -19,10 +19,14 @@ public sealed class AppRuntime
         Config = ConfigStore.Load();
         ThemeRuntime.Apply(Config.Island.Theme);
         Agents = new AgentSupervisor(Config.Feature("monitor").IdleExitSeconds);
-        Monitor = new MonitorService(Agents, dispatcher);
+        Monitor = new MonitorService(Agents, dispatcher, Config);
         Usage = new UsageService(Agents, dispatcher, Config);
         Weather = new WeatherService(dispatcher);
+        Notify = new NotifyCenter(dispatcher);
+        Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardService() : null;
         Agents.EventReceived += OnAgentEvent;
+        Weather.Updated += OnWeather;
+        Monitor.Sample += OnMonitorSample;
         _current = this;
     }
 
@@ -37,6 +41,10 @@ public sealed class AppRuntime
     public UsageService Usage { get; }
 
     public WeatherService Weather { get; }
+
+    public NotifyCenter Notify { get; }
+
+    public ClipboardService? Clipboard { get; }
 
     public event Action? ConfigChanged;
 
@@ -80,6 +88,58 @@ public sealed class AppRuntime
         }
     }
 
+    private DateTime _lastCpuAlert = DateTime.MinValue;
+    private DateTime _lastWeatherAlert = DateTime.MinValue;
+
+    private void OnMonitorSample(MonitorSample sample)
+    {
+        if (sample.Cpu.Percent < 90 || DateTime.Now - _lastCpuAlert < TimeSpan.FromMinutes(10))
+        {
+            return;
+        }
+
+        _lastCpuAlert = DateTime.Now;
+        Notify.Push("CPU 占用过高", $"当前 {sample.Cpu.Percent:0}% ，可打开监控页查看占用进程。", "warn");
+    }
+
+    private void OnWeather(WeatherInfo info)
+    {
+        if (DateTime.Now - _lastWeatherAlert < TimeSpan.FromHours(3))
+        {
+            return;
+        }
+
+        if (info.Description.Contains('雨') || info.Description.Contains('雪'))
+        {
+            _lastWeatherAlert = DateTime.Now;
+            Notify.Push("天气提醒", $"{info.Description}，{info.TemperatureText}，出门记得带伞。", "weather");
+        }
+    }
+
+    /// <summary>启动时探测外部监控软件并写回配置（设置页展示用）。</summary>
+    public async Task DetectMonitorSourcesAsync()
+    {
+        if (!Config.Feature("monitor").Enabled)
+        {
+            return;
+        }
+
+        var sources = await Monitor.DetectSourcesAsync().ConfigureAwait(false);
+        if (sources.Count != Config.Monitor.DetectedSources.Count || sources.Except(Config.Monitor.DetectedSources).Any())
+        {
+            Config.Monitor.DetectedSources = sources.ToList();
+            SaveConfig();
+        }
+    }
+
+    public void StartFeatures()
+    {
+        if (Config.Feature("clipboard").Enabled)
+        {
+            Clipboard?.Start();
+        }
+    }
+
     internal void OnAgentEvent(string feature, string name, JsonElement data)
     {
         if (feature == "monitor" && name == "sample")
@@ -93,6 +153,8 @@ public sealed class AppRuntime
     {
         try
         {
+            Clipboard?.Dispose();
+            Weather.Dispose();
             await Monitor.StopAsync().ConfigureAwait(false);
         }
         catch (Exception ex)

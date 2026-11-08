@@ -51,6 +51,8 @@ public sealed class TempReading
 {
     public double? Cpu { get; set; }
     public double? Gpu { get; set; }
+    /// <summary>整机/CPU 功耗（瓦），外部监控软件提供时才有。</summary>
+    public double? Power { get; set; }
     public string? Source { get; set; }
 }
 

@@ -3,7 +3,7 @@
   <Package
       Name="Kojima"
       Manufacturer="mengtiankf"
-      Version="1.0.0.0"
+      Version="1.1.0.0"
       UpgradeCode="4B7C1E52-8D3A-42F1-9A6C-E5D2B8F71C43"
       Scope="perUser"
       Compressed="yes">

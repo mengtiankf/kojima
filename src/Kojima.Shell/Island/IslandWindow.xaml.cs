@@ -39,6 +39,8 @@ public partial class IslandWindow : Window
     {
         _runtime = runtime;
         InitializeComponent();
+        _frameTimer.Tick += OnFrame;
+
         SourceInitialized += (_, _) => ApplyWindowStyles();
         Loaded += (_, _) => Initialise();
 
@@ -102,11 +104,13 @@ public partial class IslandWindow : Window
     private void BuildPages()
     {
         var home = new HomeView(_runtime);
+        _homeView = home;
         _pages.Add(new IslandPage("home", "\uE80F", "主页", home, 300));
 
         if (_runtime.FeatureEnabled("usage"))
         {
             var usage = new UsageView();
+            _usageView = usage;
             usage.PeriodChanged += period =>
             {
                 _ = _runtime.Usage.RefreshAsync(period);
@@ -123,9 +127,39 @@ public partial class IslandWindow : Window
             _pages.Add(new IslandPage("usage", "\uE9D9", "AI 用量", usage, 300));
         }
 
+        if (_runtime.FeatureEnabled("weather"))
+        {
+            var weather = new WeatherView(_runtime);
+            _weatherView = weather;
+            _pages.Add(new IslandPage("weather", "", "天气", weather, 292));
+        }
+
+        if (_runtime.FeatureEnabled("stocks"))
+        {
+            var stocks = new Views.StocksView(_runtime);
+            _pages.Add(new IslandPage("stocks", "", "股票", stocks, 300));
+        }
+
+        _pages.Add(new IslandPage("ctl", "", "控制", new ControlsView(), 236));
+
+        if (_runtime.FeatureEnabled("clipboard"))
+        {
+            var clipboard = new ClipboardView(_runtime);
+            _pages.Add(new IslandPage("clip", "", "剪贴板", clipboard, 268));
+        }
+
+        if (_runtime.FeatureEnabled("translate"))
+        {
+            var translate = new Views.TranslateView(_runtime);
+            _pages.Add(new IslandPage("translate", "", "翻译", translate, 300));
+        }
+
+        _pages.Add(new IslandPage("msg", "", "消息", new MessagesView(_runtime), 286));
+
         if (_runtime.FeatureEnabled("monitor"))
         {
             var monitor = new MonitorView();
+            _monitorView = monitor;
             _runtime.Monitor.Sample += sample => Dispatcher.BeginInvoke(() =>
             {
                 monitor.Update(sample);
@@ -136,6 +170,34 @@ public partial class IslandWindow : Window
             });
             _pages.Add(new IslandPage("monitor", "\uEC4A", "监控", monitor, 372));
         }
+    }
+
+    private UsageView? _usageView;
+    private MonitorView? _monitorView;
+    private WeatherView? _weatherView;
+    private HomeView? _homeView;
+
+    /// <summary>演示数据：生成 README 示例图时使用，不含真实数据。</summary>
+    private bool _demo;
+
+    public void ApplyDemoData()
+    {
+        _demo = true;
+        _usageView?.Update(DemoData.Usage(), DateTimeOffset.Now);
+        _monitorView?.Update(DemoData.Monitor());
+        _weatherView?.ApplyDemo(DemoData.Weather());
+        _homeView?.ApplyDemo(DemoData.Weather());
+
+        _runtime.Notify.Push("CPU 占用过高", "CPU 已持续 92% 超过 2 分钟，建议检查后台进程。", "warn");
+        _runtime.Notify.Push("天气提醒", "半小时后有小雨，出门记得带伞。", "weather");
+        _runtime.Notify.Push("持仓提醒", "贵州茅台 +0.07%，宁德时代 -3.73%。", "stock");
+        _runtime.Clipboard?.Seed(
+        [
+            "dotnet publish src/Kojima.Shell -c Release -r win-x64",
+            "https://github.com/mengtiankf/kojima",
+            "Kojima 1.0.0 发布清单：msi + exe + release notes",
+            "灵 动 岛 · 主 进 程 / 子 进 程 按 需 启 动",
+        ]);
     }
 
     private void BuildNav()
@@ -287,6 +349,11 @@ public partial class IslandWindow : Window
         UpdateNavVisuals(page.Key);
         EnsureExpanded();
 
+        if (_demo)
+        {
+            return;
+        }
+
         if (page.Key == "monitor")
         {
             _ = StartMonitorAsync();
@@ -382,7 +449,12 @@ public partial class IslandWindow : Window
         _current?.Hidden?.Invoke();
         _ = _runtime.Monitor.StopAsync();
 
-        Panel.Visibility = Visibility.Collapsed;
+        // 收起前先淡出内容
+        Panel.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(Panel.Opacity, 0, TimeSpan.FromMilliseconds(90))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn },
+            });
         Compact.Visibility = Visibility.Visible;
         Surface.Expanded = false;
 
@@ -418,7 +490,6 @@ public partial class IslandWindow : Window
 
         var (w, h) = ExpandedSize();
         AnimateTo(w, h, expanded: true);
-        Panel.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));
     }
 
     private (double Width, double Height) CollapsedSize()
@@ -438,31 +509,68 @@ public partial class IslandWindow : Window
         return (width, Math.Clamp(height, 160, 720));
     }
 
+    private const double AnimMs = 260;
+    private readonly DispatcherTimer _frameTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private DateTime _animStart;
+    private double _fromW;
+    private double _fromH;
+    private bool _fadeStarted;
+
     private void AnimateTo(double width, double height, bool expanded)
     {
         _targetW = Math.Max(1, width);
         _targetH = Math.Max(1, height);
+
+        // 目标变化时以当前尺寸为起点重新计时，避免跳变
+        _fromW = Width;
+        _fromH = Height;
+        _animStart = DateTime.UtcNow;
+        _fadeStarted = false;
+
         if (!_animating)
         {
             _animating = true;
-            CompositionTarget.Rendering += OnFrame;
+            _frameTimer.Start();
         }
     }
 
+    private static double EaseOutQuint(double t) => 1 - Math.Pow(1 - t, 5);
+
     private void OnFrame(object? sender, EventArgs e)
     {
-        var k = 0.28;
-        Width += (_targetW - Width) * k;
-        Height += (_targetH - Height) * k;
+        var raw = (DateTime.UtcNow - _animStart).TotalMilliseconds / AnimMs;
+        var t = Math.Clamp(raw, 0, 1);
+        var eased = EaseOutQuint(t);
+
+        Width = _fromW + (_targetW - _fromW) * eased;
+        Height = _fromH + (_targetH - _fromH) * eased;
         PositionWindow();
 
-        if (Math.Abs(_targetW - Width) < 0.6 && Math.Abs(_targetH - Height) < 0.6)
+        // 展开过半后再淡入内容，避免内容被窗口裁切
+        if (!_fadeStarted && t > 0.55 && Panel.Visibility == Visibility.Visible && Panel.Opacity < 1)
+        {
+            _fadeStarted = true;
+            Panel.BeginAnimation(OpacityProperty,
+                new DoubleAnimation(Panel.Opacity, 1, TimeSpan.FromMilliseconds(150))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                });
+        }
+
+        if (t >= 1)
         {
             Width = _targetW;
             Height = _targetH;
             PositionWindow();
             _animating = false;
-            CompositionTarget.Rendering -= OnFrame;
+            _frameTimer.Stop();
+
+            if (!_expanded)
+            {
+                Panel.Visibility = Visibility.Collapsed;
+                Panel.BeginAnimation(OpacityProperty, null);
+                Panel.Opacity = 1;
+            }
         }
     }
 
@@ -502,8 +610,7 @@ public partial class IslandWindow : Window
         Height = h;
         PositionWindow();
 
-        ClockText.Visibility = Settings.CompactView == "clock" ? Visibility.Visible : Visibility.Collapsed;
-        WeatherStack.Visibility = Settings.ShowWeather ? Visibility.Visible : Visibility.Collapsed;
+        ApplyCompactContent();
 
         ClockText.Foreground = ThemeRuntime.Text;
         WeatherText.Foreground = ThemeRuntime.Text;
@@ -521,6 +628,50 @@ public partial class IslandWindow : Window
         UpdateNavVisuals(_current?.Key ?? "home");
     }
 
+    /// <summary>收起态显示什么，由设置里的 CompactContent 决定。</summary>
+    private void ApplyCompactContent()
+    {
+        var content = Settings.CompactContent ?? "clockWeather";
+
+        var clock = Settings.CompactView == "clock";
+        var weather = Settings.ShowWeather;
+
+        switch (content)
+        {
+            case "clock":
+                weather = false;
+                break;
+            case "weather":
+                clock = false;
+                break;
+            case "media":
+                clock = false;
+                weather = false;
+                break;
+            case "none":
+                clock = false;
+                weather = false;
+                break;
+        }
+
+        if (Settings.Shape == IslandShape.Indicator)
+        {
+            clock = false;
+            weather = false;
+        }
+
+        ClockText.Visibility = clock ? Visibility.Visible : Visibility.Collapsed;
+        WeatherStack.Visibility = weather ? Visibility.Visible : Visibility.Collapsed;
+        MediaText.Visibility = content == "media" && Settings.Shape != IslandShape.Indicator
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+        if (content == "media")
+        {
+            MediaText.Text = "未在播放";
+        }
+    }
+
     private void UpdateClock()
     {
         if (Settings.CompactView != "clock" || Settings.Shape == IslandShape.Indicator)
@@ -534,7 +685,7 @@ public partial class IslandWindow : Window
     /// <summary>紧凑态右下角天气。</summary>
     private void ApplyWeather(Kojima.Shell.Services.WeatherInfo info)
     {
-        if (info is null)
+        if (info is null || _demo)
         {
             return;
         }

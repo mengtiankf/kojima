@@ -57,6 +57,11 @@ public partial class App : Application
     /// <summary>开发/截图钩子：KOJIMA_PREVIEW 指定页面，KOJIMA_SHOT 输出窗口 PNG。</summary>
     private void ApplyDevHooks()
     {
+        if (Environment.GetEnvironmentVariable("KOJIMA_DEMO") == "1" && _island is not null)
+        {
+            _island.ApplyDemoData();
+        }
+
         var preview = Environment.GetEnvironmentVariable("KOJIMA_PREVIEW");
         if (!string.IsNullOrWhiteSpace(preview) && _island is not null)
         {

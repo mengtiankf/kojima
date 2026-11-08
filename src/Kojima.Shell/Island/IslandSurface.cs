@@ -35,14 +35,7 @@ public sealed class IslandSurface : FrameworkElement
 
     public IslandSurface()
     {
-        Effect = new System.Windows.Media.Effects.DropShadowEffect
-        {
-            BlurRadius = 16,
-            ShadowDepth = 4,
-            Direction = 270,
-            Opacity = 0.34,
-            Color = Colors.Black,
-        };
+        // 不使用投影：阴影会在圆角处露出半透明直角，用户明确不要
     }
 
     public Geometry Geometry

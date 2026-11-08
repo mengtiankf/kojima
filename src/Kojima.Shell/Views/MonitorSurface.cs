@@ -258,6 +258,17 @@ public sealed class MonitorSurface : FrameworkElement
             footer.Add($"GPU {gpuTemp:0}°C");
         }
 
+        if (!string.IsNullOrWhiteSpace(sample.Temp.Source)
+            && sample.Temp.Source is not ("acpi" or "nvidia"))
+        {
+            footer.Add(sample.Temp.Source);
+        }
+
+        if (sample.Temp.Power is { } tempPower)
+        {
+            footer.Add($"{tempPower:0} W");
+        }
+
         footer.Add($"运行 {FormatUptime(sample.UptimeSeconds)}");
         DrawText(dc, string.Join(" · ", footer), 10, ThemeRuntime.Text3, new Point(x, height - 14));
     }

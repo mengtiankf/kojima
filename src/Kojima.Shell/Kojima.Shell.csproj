@@ -8,6 +8,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
+    <Version>1.1.0</Version>
     <RootNamespace>Kojima.Shell</RootNamespace>
     <AssemblyName>Kojima</AssemblyName>
     <ApplicationIcon>..\..\assets\kojima.ico</ApplicationIcon>
@@ -29,6 +30,10 @@
 
   <ItemGroup>
     <None Update="..\..\assets\kojima.ico" Link="assets\kojima.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="10.0.0" />
   </ItemGroup>
 
 </Project>

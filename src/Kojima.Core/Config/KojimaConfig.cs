@@ -56,6 +56,9 @@ public sealed class IslandSettings
     /// <summary>收起时显示：clock / pet。</summary>
     public string CompactView { get; set; } = "clock";
 
+    /// <summary>收起态内容：clock / weather / clockWeather / media / none。</summary>
+    public string CompactContent { get; set; } = "clockWeather";
+
     public bool ShowWeather { get; set; } = true;
 
     public double Opacity { get; set; } = 1.0;
@@ -114,6 +117,12 @@ public sealed class UsageSettings
 public sealed class MonitorSettings
 {
     public int IntervalMs { get; set; } = 1500;
+
+    /// <summary>温度/风扇/功耗数据源：auto / internal / lhm / ohm。</summary>
+    public string Source { get; set; } = "auto";
+
+    /// <summary>检测到的外部监控软件（只读，由子进程回填）。</summary>
+    public List<string> DetectedSources { get; set; } = [];
 }
 
 public sealed class KojimaConfig

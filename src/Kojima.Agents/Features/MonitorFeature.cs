@@ -11,6 +11,8 @@ namespace Kojima.Agents.Features;
 /// <summary>系统监控：CPU/内存/GPU/网络/磁盘/温度/电源/进程。</summary>
 public sealed class MonitorFeature : IAgentFeature
 {
+    private static string _tempSource = "auto";
+
     private readonly Sampler _sampler = new();
     private AgentPipeServer? _pipe;
     private CancellationTokenSource? _stream;
@@ -25,6 +27,7 @@ public sealed class MonitorFeature : IAgentFeature
         "ping" => Task.FromResult<object?>(new { pong = true, feature = "monitor" }),
         "sample" => Task.FromResult<object?>(_sampler.Sample()),
         "subscribe" => Task.FromResult<object?>(StartStream(args)),
+        "monitor.sources" => Task.FromResult<object?>(new { sources = HardwareSensors.Detect() }),
         "unsubscribe" => Task.FromResult<object?>(StopStream()),
         _ => Task.FromResult<object?>(new { error = "unknown method " + method }),
     };
@@ -37,6 +40,13 @@ public sealed class MonitorFeature : IAgentFeature
             && property.TryGetInt32(out var parsed))
         {
             interval = Math.Clamp(parsed, 400, 10000);
+        }
+
+        if (args is { ValueKind: JsonValueKind.Object } element2
+            && element2.TryGetProperty("tempSource", out var tempSource)
+            && tempSource.ValueKind == JsonValueKind.String)
+        {
+            _tempSource = tempSource.GetString() ?? "auto";
         }
 
         StopStream();
@@ -411,11 +421,34 @@ public sealed class MonitorFeature : IAgentFeature
             return list;
         }
 
+        private (double? Cpu, double? Gpu, double? Power, string? Source) _externalCache;
+        private DateTime _externalAt = DateTime.MinValue;
+
         private TempReading ReadTemps(List<GpuReading> gpus)
         {
             var reading = new TempReading();
             try
             {
+                // 先试用户选择的/自动检测的外部监控软件
+                if (_tempSource != "internal")
+                {
+                    if (_externalAt == DateTime.MinValue || (DateTime.UtcNow - _externalAt).TotalSeconds > 5)
+                    {
+                        _externalCache = HardwareSensors.Read(_tempSource);
+                        _externalAt = DateTime.UtcNow;
+                    }
+
+                    var (cpuExt, gpuExt, powerExt, source) = _externalCache;
+                    if (source is not null)
+                    {
+                        reading.Cpu = cpuExt;
+                        reading.Gpu = gpuExt ?? (gpus.Count > 0 ? gpus[0].Temp : null);
+                        reading.Power = powerExt;
+                        reading.Source = source;
+                        return reading;
+                    }
+                }
+
                 if (_tempAt == DateTime.MinValue || (DateTime.UtcNow - _tempAt).TotalSeconds > 30)
                 {
                     _tempCache = MonitorNative.ThermalCelsius();

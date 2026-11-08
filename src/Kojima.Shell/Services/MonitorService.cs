@@ -10,13 +10,39 @@ public sealed class MonitorService
 {
     private readonly AgentSupervisor _agents;
     private readonly Dispatcher _dispatcher;
+    private readonly KojimaConfig? _config;
     private int _subscribers;
     private int _streamId;
 
-    public MonitorService(AgentSupervisor agents, Dispatcher dispatcher)
+    public MonitorService(AgentSupervisor agents, Dispatcher dispatcher, KojimaConfig? config = null)
     {
         _agents = agents;
         _dispatcher = dispatcher;
+        _config = config;
+    }
+
+    /// <summary>让子进程返回它检测到的外部监控软件（lhm / ohm）。</summary>
+    public async Task<IReadOnlyList<string>> DetectSourcesAsync()
+    {
+        try
+        {
+            var result = await _agents.RequestAsync("monitor", "monitor.sources", null, 8000).ConfigureAwait(false);
+            if (result is { } element && element.TryGetProperty("sources", out var list)
+                && list.ValueKind == JsonValueKind.Array)
+            {
+                return list.EnumerateArray()
+                    .Select(item => item.GetString())
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .Select(item => item!)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Warn("检测外部监控软件失败：" + ex.Message);
+        }
+
+        return [];
     }
 
     /// <summary>每帧数据（已切回 UI 线程）。</summary>
@@ -36,7 +62,7 @@ public sealed class MonitorService
         try
         {
             var result = await _agents
-                .RequestAsync("monitor", "subscribe", new { intervalMs = 1500 }, 10000)
+                .RequestAsync("monitor", "subscribe", new { intervalMs = 1500, tempSource = _config?.Monitor.Source ?? "auto" }, 10000)
                 .ConfigureAwait(false);
             if (result is { } element && element.TryGetProperty("id", out var id) && id.TryGetInt32(out var parsed))
             {
