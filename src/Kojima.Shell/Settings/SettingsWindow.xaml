@@ -216,13 +216,13 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
-                                            <TextBlock Text="形态" Style="{StaticResource RowTitle}"/>
-                                            <TextBlock Text="缺口贴合屏幕顶部，胶囊更紧凑，指示条最简" Style="{StaticResource RowDesc}"/>
+                                            <TextBlock Text="收起形态" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="刘海贴合屏幕顶部，胶囊更紧凑，指示条最简" Style="{StaticResource RowDesc}"/>
                                         </StackPanel>
                                         <Border Grid.Column="1" Style="{StaticResource SegmentGroup}" Margin="24,0,0,0">
                                             <StackPanel Orientation="Horizontal">
                                                 <RadioButton x:Name="ShapeNotch" GroupName="Shape" Style="{StaticResource Segment}"
-                                                             Content="上凸缺口"/>
+                                                             Content="刘海"/>
                                                 <RadioButton x:Name="ShapeCapsule" GroupName="Shape" Style="{StaticResource Segment}"
                                                              Content="胶囊"/>
                                                 <RadioButton x:Name="ShapeIndicator" GroupName="Shape" Style="{StaticResource Segment}"
@@ -232,7 +232,7 @@
                                     </Grid>
                                     <Border Style="{StaticResource RowDivider}"/>
                                     <StackPanel Margin="0,12,0,14">
-                                        <TextBlock Text="收起时显示" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="收起状态" Style="{StaticResource RowTitle}"/>
                                         <TextBlock Text="灵动岛收起后在顶部显示的内容" Style="{StaticResource RowDesc}"/>
                                         <Border Style="{StaticResource SegmentGroup}" Margin="0,10,0,0">
                                             <StackPanel Orientation="Horizontal">

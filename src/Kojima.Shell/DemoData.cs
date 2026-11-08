@@ -115,6 +115,14 @@ internal static class DemoData
         };
     }
 
+    public static IReadOnlyList<Kojima.Shell.Services.MessageItem> Messages() =>
+    [
+        new("QQ", "qq", "设计组 · 阿岚", DateTime.Now.AddMinutes(-2), "toast"),
+        new("微信", "wechat", "妈妈", DateTime.Now.AddMinutes(-18), "toast"),
+        new("微信", "wechat", "项目群 · 6 条新消息", DateTime.Now.AddMinutes(-41), "toast"),
+        new("邮件", "mail", "", DateTime.Now.AddHours(-2), "toast"),
+    ];
+
     public static WeatherInfo Weather() => new()
     {
         Temperature = 21,

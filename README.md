@@ -48,8 +48,7 @@ Kojima.Shell (WPF, 主进程)             Kojima.Agents (子进程, 每个功能
 
 从 [Releases](https://github.com/mengtiankf/kojima/releases) 下载，或本地构建后从 `dist/` 取用：
 
-- `dist/KojimaSetup-1.1.0.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
-- `dist/Kojima-1.1.0-x64.msi`：WiX 安装包（per-user）
+- `dist/KojimaSetup-1.2.0.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
 - `publish/`：绿色版，直接运行 `Kojima.exe`
 
 配置与日志在 `%LOCALAPPDATA%\Kojima`：

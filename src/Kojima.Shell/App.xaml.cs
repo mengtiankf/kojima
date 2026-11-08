@@ -48,6 +48,7 @@ public partial class App : Application
         _island.Loaded += (_, _) => HookHotkeys();
         _island.Show();
         _runtime.Weather.Start();
+        _runtime.StartFeatures();
 
         CreateTray();
         ApplyDevHooks();

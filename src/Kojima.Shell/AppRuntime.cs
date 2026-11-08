@@ -24,6 +24,7 @@ public sealed class AppRuntime
         Weather = new WeatherService(dispatcher);
         Notify = new NotifyCenter(dispatcher);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardService() : null;
+        Messages = new MessageCenter(dispatcher, Config);
         Agents.EventReceived += OnAgentEvent;
         Weather.Updated += OnWeather;
         Monitor.Sample += OnMonitorSample;
@@ -45,6 +46,8 @@ public sealed class AppRuntime
     public NotifyCenter Notify { get; }
 
     public ClipboardService? Clipboard { get; }
+
+    public MessageCenter Messages { get; }
 
     public event Action? ConfigChanged;
 
@@ -138,6 +141,8 @@ public sealed class AppRuntime
         {
             Clipboard?.Start();
         }
+
+        Messages.Start();
     }
 
     internal void OnAgentEvent(string feature, string name, JsonElement data)
@@ -154,6 +159,7 @@ public sealed class AppRuntime
         try
         {
             Clipboard?.Dispose();
+            Messages.Dispose();
             Weather.Dispose();
             await Monitor.StopAsync().ConfigureAwait(false);
         }

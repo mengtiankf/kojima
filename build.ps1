@@ -2,7 +2,7 @@
 # Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.1.0]
 
 param(
-    [string]$Version = "1.1.0"
+    [string]$Version = "1.2.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,14 +43,6 @@ if (-not $iscc) { throw "ISCC.exe not found, install Inno Setup 6" }
 & $iscc "/DAppVersion=$Version" "installer\kojima.iss"
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 
-Write-Host "== WiX msi =="
-$wix = @(
-    "$env:USERPROFILE\.dotnet\tools\wix.exe",
-    "wix.exe"
-) | Where-Object { $_ -eq "wix.exe" -or (Test-Path $_) } | Select-Object -First 1
-if (-not $wix) { throw "wix.exe not found, run: dotnet tool install --global wix" }
-& $wix build "installer\kojima.wxs" -d "ProjectDir=$root/" -o "$dist\Kojima-$Version-x64.msi" -arch x64
-if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
+Write-Host "== done (仅 exe 安装包) =="
+Get-ChildItem $dist | Select-Object Name, Length | Format-Table
 
-Write-Host "== done =="
-Get-ChildItem $dist | Format-Table Name, Length

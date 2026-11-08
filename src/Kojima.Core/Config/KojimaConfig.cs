@@ -53,6 +53,9 @@ public sealed class IslandSettings
 
     public int CollapseDelayMs { get; set; } = 320;
 
+    /// <summary>展开 / 收起动画时长（毫秒）。</summary>
+    public int AnimationMs { get; set; } = 260;
+
     /// <summary>收起时显示：clock / pet。</summary>
     public string CompactView { get; set; } = "clock";
 
@@ -141,6 +144,9 @@ public sealed class KojimaConfig
 
     public MonitorSettings Monitor { get; set; } = new();
 
+    /// <summary>消息中心（QQ / 微信 / 邮件通知）。</summary>
+    public MessageSettings Messages { get; set; } = new();
+
     public Dictionary<string, FeatureSettings> Features { get; set; } = new()
     {
         ["usage"] = new FeatureSettings(),
@@ -163,4 +169,19 @@ public sealed class KojimaConfig
 
         return settings;
     }
+}
+
+/// <summary>消息中心设置。</summary>
+public sealed class MessageSettings
+{
+    /// <summary>toast 数据库轮询间隔（毫秒）。</summary>
+    public int PollMs { get; set; } = 1500;
+
+    /// <summary>点消息时打开的应用路径（qq / wechat / mail），留空则按进程名激活。</summary>
+    public Dictionary<string, string> Open { get; set; } = new()
+    {
+        ["qq"] = "",
+        ["wechat"] = "",
+        ["mail"] = "",
+    };
 }

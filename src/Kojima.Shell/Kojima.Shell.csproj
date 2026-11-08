@@ -8,7 +8,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <RootNamespace>Kojima.Shell</RootNamespace>
     <AssemblyName>Kojima</AssemblyName>
     <ApplicationIcon>..\..\assets\kojima.ico</ApplicationIcon>
@@ -33,6 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
     <PackageReference Include="System.Management" Version="10.0.0" />
   </ItemGroup>
 

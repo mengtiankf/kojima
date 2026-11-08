@@ -191,6 +191,7 @@ public partial class IslandWindow : Window
         _runtime.Notify.Push("CPU 占用过高", "CPU 已持续 92% 超过 2 分钟，建议检查后台进程。", "warn");
         _runtime.Notify.Push("天气提醒", "半小时后有小雨，出门记得带伞。", "weather");
         _runtime.Notify.Push("持仓提醒", "贵州茅台 +0.07%，宁德时代 -3.73%。", "stock");
+        _runtime.Messages.Seed(DemoData.Messages());
         _runtime.Clipboard?.Seed(
         [
             "dotnet publish src/Kojima.Shell -c Release -r win-x64",
@@ -509,8 +510,9 @@ public partial class IslandWindow : Window
         return (width, Math.Clamp(height, 160, 720));
     }
 
-    private const double AnimMs = 260;
+
     private readonly DispatcherTimer _frameTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private double AnimMs => Math.Clamp(Settings.AnimationMs, 80, 1200);
     private DateTime _animStart;
     private double _fromW;
     private double _fromH;
@@ -679,7 +681,9 @@ public partial class IslandWindow : Window
             return;
         }
 
-        ClockText.Text = DateTime.Now.ToString("HH:mm");
+        var now = DateTime.Now.ToString("HH:mm");
+        ClockText.Text = now;
+        PanelClock.Text = now;
     }
 
     /// <summary>紧凑态右下角天气。</summary>
@@ -821,6 +825,16 @@ public partial class IslandWindow : Window
             Surface.Refresh();
             UpdateNavVisuals(_current?.Key ?? "home");
         });
+    }
+
+    protected override void OnMouseRightButtonUp(System.Windows.Input.MouseButtonEventArgs e)
+    {
+        base.OnMouseRightButtonUp(e);
+        if (_expanded)
+        {
+            OpenSettings();
+            e.Handled = true;
+        }
     }
 
     private void OpenSettings()
