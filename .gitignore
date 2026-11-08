@@ -1,0 +1,17 @@
+# build output
+bin/
+obj/
+publish/
+dist/
+*.wixpdb
+*.user
+
+# IDE
+.vs/
+.vscode/
+*.suo
+
+# local scratch (screenshots of this machine, login helper output)
+shots/
+data-gh-login.txt
+*.log

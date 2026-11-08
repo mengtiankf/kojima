@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Kojima.Core</RootNamespace>
+    <AssemblyName>Kojima.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\assets\themes\*.json" LogicalName="themes/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>
