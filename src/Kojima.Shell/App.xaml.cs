@@ -126,10 +126,23 @@ public partial class App : Application
             return;
         }
 
-        if (!NativeMethods.RegisterHotKey(handle, id, modifiers | NativeMethods.MOD_NOREPEAT, key))
+        if (NativeMethods.RegisterHotKey(handle, id, modifiers | NativeMethods.MOD_NOREPEAT, key))
         {
-            AppLog.Warn($"热键注册失败：{text}");
+            return;
         }
+
+        // 被其它程序占用时退到备选组合，避免功能直接不可用
+        if (id == 3)
+        {
+            var (altModifiers, altKey) = ParseHotkey("Ctrl+Alt+O");
+            if (NativeMethods.RegisterHotKey(handle, id, altModifiers | NativeMethods.MOD_NOREPEAT, altKey))
+            {
+                AppLog.Info("热键 Ctrl+Alt+M 被占用，监控改用 Ctrl+Alt+O");
+                return;
+            }
+        }
+
+        AppLog.Warn($"热键注册失败：{text}");
     }
 
     internal static (uint Modifiers, uint Key) ParseHotkey(string text)
