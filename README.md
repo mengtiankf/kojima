@@ -1,6 +1,6 @@
 # Kojima
 
-Windows 桌面灵动岛（Dynamic Island）。主进程只负责界面与调度，功能全部放在**按需启动的子进程**里；岛体材质、肩部曲线与主题文件沿用 [BrimDeck](https://github.com/MoFeng2223/BrimDeck) 的设计语言。
+Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://github.com/mengtiankf/kojima/releases)主进程只负责界面与调度，功能全部放在**按需启动的子进程**里；岛体材质、肩部曲线与主题文件沿用 [BrimDeck](https://github.com/MoFeng2223/BrimDeck) 的设计语言。
 
 ![灵动岛](docs/notch.png)
 ![AI 用量](docs/usage.png)
@@ -31,6 +31,8 @@ Kojima.Shell (WPF, 主进程)          Kojima.Agents (子进程, 每个功能一
 - 共享模型、配置、主题与几何算法都在 `Kojima.Core`，两个进程引用同一份代码。
 
 ## 安装
+
+从 [Releases](https://github.com/mengtiankf/kojima/releases) 下载，或本地构建后从 `dist/` 取用：
 
 - `dist/KojimaSetup-1.0.0.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
 - `dist/Kojima-1.0.0-x64.msi`：WiX 安装包（per-user）
