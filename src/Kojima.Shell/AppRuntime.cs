@@ -24,6 +24,7 @@ public sealed class AppRuntime
         Weather = new WeatherService(dispatcher);
         Notify = new NotifyCenter(dispatcher);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardService() : null;
+        Media = new MediaSessionService();
         Messages = new MessageCenter(dispatcher, Config);
         Agents.EventReceived += OnAgentEvent;
         Weather.Updated += OnWeather;
@@ -48,6 +49,9 @@ public sealed class AppRuntime
     public ClipboardService? Clipboard { get; }
 
     public MessageCenter Messages { get; }
+
+    /// <summary>系统媒体会话（SMTC）。</summary>
+    public MediaSessionService Media { get; }
 
     public event Action? ConfigChanged;
 
@@ -140,6 +144,7 @@ public sealed class AppRuntime
         if (Config.Feature("clipboard").Enabled)
         {
             Clipboard?.Start();
+            Media.Start();
         }
 
         Messages.Start();
@@ -159,6 +164,7 @@ public sealed class AppRuntime
         try
         {
             Clipboard?.Dispose();
+            Media.Dispose();
             Messages.Dispose();
             Weather.Dispose();
             await Monitor.StopAsync().ConfigureAwait(false);

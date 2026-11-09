@@ -128,6 +128,33 @@ public sealed class MonitorSettings
     public List<string> DetectedSources { get; set; } = [];
 }
 
+public sealed class WeatherSettings
+{
+    /// <summary>城市名（如“北京”“Tokyo”），留空则按 IP 自动定位。</summary>
+    public string Location { get; set; } = "";
+
+    /// <summary>刷新间隔（分钟）。</summary>
+    public int RefreshMinutes { get; set; } = 20;
+}
+
+public sealed class AppSettings
+{
+    /// <summary>控制页“音乐”按钮要打开的程序；留空则打开系统音乐应用。</summary>
+    public string Music { get; set; } = "";
+}
+
+public sealed class TranslateSettings
+{
+    /// <summary>翻译引擎：auto / free / deepseek。</summary>
+    public string Engine { get; set; } = "auto";
+
+    /// <summary>目标语言：ja / en。</summary>
+    public string Target { get; set; } = "ja";
+
+    /// <summary>是否反向（目标语言 → 中文）。</summary>
+    public bool Reversed { get; set; }
+}
+
 public sealed class KojimaConfig
 {
     public int Version { get; set; } = 1;
@@ -143,6 +170,12 @@ public sealed class KojimaConfig
     public UsageSettings Usage { get; set; } = new();
 
     public MonitorSettings Monitor { get; set; } = new();
+
+    public WeatherSettings Weather { get; set; } = new();
+
+    public AppSettings Apps { get; set; } = new();
+
+    public TranslateSettings Translate { get; set; } = new();
 
     /// <summary>消息中心（QQ / 微信 / 邮件通知）。</summary>
     public MessageSettings Messages { get; set; } = new();

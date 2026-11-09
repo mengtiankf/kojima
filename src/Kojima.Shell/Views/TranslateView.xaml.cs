@@ -18,6 +18,7 @@ public partial class TranslateView : UserControl
     private const string Endpoint = "https://api.deepseek.com/chat/completions";
     private const string SystemPrompt = "你是专业翻译，只输出译文";
     private const string NoKey = "未配置 DeepSeek API Key：设置 → 用量 → 来源密钥 里填入后即可翻译";
+    private const string FreeHint = "使用免费翻译通道（MyMemory / Google）。想要更好的译文可在设置里填入 DeepSeek API Key。";
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
 
@@ -238,6 +239,8 @@ public partial class TranslateView : UserControl
     private void SelectLanguage(int index)
     {
         _target = index == 0 ? "日" : "英";
+        _runtime.Config.Translate.Target = _target == "日" ? "ja" : "en";
+        _runtime.SaveConfig();
         UpdateSegments();
     }
 
@@ -261,29 +264,15 @@ public partial class TranslateView : UserControl
         }
 
         var key = ApiKey();
-        if (key.Length == 0)
-        {
-            SetResult(NoKey, ResultKind.Hint);
-            return;
-        }
+        var engine = _runtime.Config.Translate.Engine;
 
         _translating = true;
         _translateLabel.Text = "翻译中…";
         SetResult("翻译中…", ResultKind.Hint);
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
-            request.Content = new StringContent(JsonSerializer.Serialize(Payload(text)), Encoding.UTF8, "application/json");
-            using var response = await Http.SendAsync(request);
-            var body = await response.Content.ReadAsStringAsync();
-            if (!response.IsSuccessStatusCode)
-            {
-                SetResult("翻译失败：" + ErrorText(body, response.StatusCode), ResultKind.Error);
-                return;
-            }
+            var translated = await Services.TranslationService.TranslateAsync(text, _target, _reversed, engine, key);
 
-            var translated = ExtractContent(body);
             if (translated.Trim().Length == 0)
             {
                 SetResult("翻译失败：接口未返回内容", ResultKind.Error);
@@ -308,64 +297,10 @@ public partial class TranslateView : UserControl
         }
     }
 
-    private object Payload(string text)
-    {
-        var language = _target == "日" ? "日文" : "英文";
-        var prompt = _reversed
-            ? $"把下面的{language}翻译成中文，只输出译文：\n{text}"
-            : $"把下面的中文翻译成{language}，只输出译文：\n{text}";
-        return new
-        {
-            model = "deepseek-chat",
-            temperature = 0.0,
-            messages = new[]
-            {
-                new { role = "system", content = SystemPrompt },
-                new { role = "user", content = prompt },
-            },
-        };
-    }
-
     private string ApiKey()
     {
         _runtime.Config.Usage.Keys.TryGetValue("deepseek", out var key);
         return (key ?? "").Trim();
-    }
-
-    private static string ExtractContent(string body)
-    {
-        using var document = JsonDocument.Parse(body);
-        if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
-        {
-            return "";
-        }
-
-        if (!choices[0].TryGetProperty("message", out var message)
-            || !message.TryGetProperty("content", out var content))
-        {
-            return "";
-        }
-
-        return content.GetString() ?? "";
-    }
-
-    private static string ErrorText(string body, HttpStatusCode status)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(body);
-            if (document.RootElement.TryGetProperty("error", out var error)
-                && error.TryGetProperty("message", out var message)
-                && message.GetString() is { Length: > 0 } text)
-            {
-                return text;
-            }
-        }
-        catch (JsonException)
-        {
-        }
-
-        return $"HTTP {(int)status}";
     }
 
     private void SetResult(string text, ResultKind kind)
@@ -389,7 +324,9 @@ public partial class TranslateView : UserControl
         if (!_loaded)
         {
             ThemeRuntime.Changed += OnThemeChanged;
-            if (ApiKey().Length == 0) { SetResult(NoKey, ResultKind.Hint); }
+            _target = (_runtime.Config.Translate.Target ?? "ja").StartsWith("en", StringComparison.OrdinalIgnoreCase) ? "英" : "日";
+            UpdateSegments();
+            if (ApiKey().Length == 0) { SetResult(FreeHint, ResultKind.Hint); }
         }
 
         _loaded = true;

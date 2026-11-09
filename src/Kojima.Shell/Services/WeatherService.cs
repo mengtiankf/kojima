@@ -6,7 +6,7 @@ using Kojima.Core.Config;
 
 namespace Kojima.Shell.Services;
 
-/// <summary>天气：wttr.in 免费接口，IP 定位，20 分钟刷新一次。</summary>
+/// <summary>天气：wttr.in 免费接口，可指定城市（留空则按 IP 定位），默认 20 分钟刷新一次。</summary>
 public sealed class WeatherService : IDisposable
 {
     private static readonly HttpClient Http = new()
@@ -29,16 +29,34 @@ public sealed class WeatherService : IDisposable
 
     public WeatherInfo Current { get; private set; } = new();
 
+    /// <summary>当前地区名（来自配置；空串表示自动定位）。</summary>
+    public string Location { get; private set; } = "";
+
     public event Action<WeatherInfo>? Updated;
+
+    /// <summary>按配置刷新：地区与间隔都从 ConfigStore 读取。</summary>
+    public void ApplySettings()
+    {
+        var config = ConfigStore.Load();
+        Location = (config.Weather.Location ?? "").Trim();
+        var minutes = Math.Clamp(config.Weather.RefreshMinutes, 5, 180);
+        if (Math.Abs(_timer.Interval.TotalMinutes - minutes) > 0.5)
+        {
+            _timer.Interval = TimeSpan.FromMinutes(minutes);
+        }
+    }
 
     public void Start()
     {
         if (_started)
         {
+            ApplySettings();
+            _ = RefreshAsync();
             return;
         }
 
         _started = true;
+        ApplySettings();
         _timer.Start();
         _ = RefreshAsync();
     }
@@ -53,10 +71,13 @@ public sealed class WeatherService : IDisposable
         _busy = true;
         try
         {
-            using var response = await Http.GetAsync("https://wttr.in/?format=j1&lang=zh-cn").ConfigureAwait(false);
+            Location = (ConfigStore.Load().Weather.Location ?? "").Trim();
+            var target = Location.Length == 0 ? "" : Uri.EscapeDataString(Location);
+            var url = $"https://wttr.in/{target}?format=j1&lang=zh-cn";
+            using var response = await Http.GetAsync(url).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                AppLog.Warn($"天气请求失败：HTTP {(int)response.StatusCode}");
+                AppLog.Warn($"天气请求失败：HTTP {(int)response.StatusCode} ({Location})");
                 return;
             }
 
@@ -67,6 +88,9 @@ public sealed class WeatherService : IDisposable
             {
                 return;
             }
+
+            // 未指定地区时按 IP 定位，城市名不可靠（wttr.in 常给出片区别名），统一显示「本地」
+            info.City = Location.Length > 0 ? Location : "本地";
 
             Current = info;
             Updated?.Invoke(info);
@@ -277,7 +301,7 @@ public sealed class WeatherInfo
 
     public string Description { get; init; } = "";
 
-    public string City { get; init; } = "";
+    public string City { get; set; } = "";
 
     public string Glyph { get; init; } = "";
 

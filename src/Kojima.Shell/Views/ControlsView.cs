@@ -5,12 +5,14 @@ using System.Windows.Media;
 using Kojima.Shell.Interop;
 using Kojima.Shell.Services;
 using Kojima.Shell.Theme;
+using Kojima.Core.Config;
 
 namespace Kojima.Shell.Views;
 
 /// <summary>控制页：音量、亮度、快捷动作。</summary>
 public sealed class ControlsView : UserControl
 {
+    private readonly AppRuntime? _runtime;
     private readonly Slider _volume;
     private readonly Slider _brightness;
     private readonly TextBlock _volumeText;
@@ -20,7 +22,13 @@ public sealed class ControlsView : UserControl
     private readonly AudioEndpoints _audio = new();
 
     public ControlsView()
+        : this(null)
     {
+    }
+
+    public ControlsView(AppRuntime? runtime)
+    {
+        _runtime = runtime;
         Height = 236;
 
         var root = new StackPanel();
@@ -166,6 +174,26 @@ public sealed class ControlsView : UserControl
         var muted = _audio.ToggleMute();
         _muteGlyph.Text = muted ? "\uE74F" : "\uE767";
         _muteGlyph.Foreground = muted ? ThemeRuntime.Danger : ThemeRuntime.Text2;
+    }
+
+    /// <summary>「音乐」按钮：优先打开用户自定义的程序，否则退回系统音乐应用。</summary>
+    private void OpenMusic()
+    {
+        var custom = (_runtime?.Config.Apps.Music ?? "").Trim();
+        if (custom.Length > 0 && System.IO.File.Exists(custom))
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(custom) { UseShellExecute = true });
+                return;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("打开自定义音乐程序失败：" + ex.Message);
+            }
+        }
+
+        Shell("ms-music:");
     }
 
     private static void Shell(string target)

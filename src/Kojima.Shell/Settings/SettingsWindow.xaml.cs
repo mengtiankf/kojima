@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Reflection;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -93,6 +94,8 @@ public partial class SettingsWindow : Window
             e.Handled = true;
         };
 
+        BrowseMusic.Click += (_, _) => BrowseForMusic();
+        ApplyVersion();
         ApplyThemeResources();
         LoadConfig();
         _loading = false;
@@ -101,6 +104,22 @@ public partial class SettingsWindow : Window
     }
 
     public event Action? Saved;
+
+    private void ApplyVersion()
+    {
+        var version = typeof(SettingsWindow).Assembly
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? "1.2.1";
+        var dash = version.IndexOf('+', StringComparison.Ordinal);
+        if (dash > 0)
+        {
+            version = version[..dash];
+        }
+
+        VersionLabel.Text = version;
+        AboutVersionBadge.Text = version;
+        AboutVersionLine.Text = $"Kojima {version} · Windows · .NET 10 · WPF";
+    }
 
     protected override void OnClosed(EventArgs e)
     {
@@ -227,6 +246,11 @@ public partial class SettingsWindow : Window
         DetectedSourcesText.Text = cfg.Monitor.DetectedSources.Count > 0
             ? "检测到：" + string.Join("、", cfg.Monitor.DetectedSources)
             : "未检测到外部监控软件";
+
+        WeatherLocation.Text = cfg.Weather.Location ?? "";
+        MusicPath.Text = cfg.Apps.Music ?? "";
+        var engine = (cfg.Translate.Engine ?? "auto").Trim().ToLowerInvariant();
+        (engine == "free" ? TranslateFree : engine == "deepseek" ? TranslateDeepSeek : TranslateAuto).IsChecked = true;
 
         IdleExitBox.Text = cfg.Feature("monitor").IdleExitSeconds.ToString(CultureInfo.InvariantCulture);
         RefreshBox.Text = cfg.Usage.RefreshSeconds.ToString(CultureInfo.InvariantCulture);
@@ -636,6 +660,12 @@ public partial class SettingsWindow : Window
                 : MonitorOhm.IsChecked == true ? "ohm"
                 : "auto";
 
+            cfg.Weather.Location = (WeatherLocation.Text ?? "").Trim();
+            cfg.Apps.Music = (MusicPath.Text ?? "").Trim();
+            cfg.Translate.Engine = TranslateFree.IsChecked == true ? "free"
+                : TranslateDeepSeek.IsChecked == true ? "deepseek"
+                : "auto";
+
             // 数据源：保留清单外的历史来源，避免升级后丢失
             var known = new HashSet<string>(_sources.Select(s => s.Key), StringComparer.OrdinalIgnoreCase);
             var sources = _sources.Where(s => s.Toggle.IsChecked == true).Select(s => s.Key).ToList();
@@ -691,6 +721,9 @@ public partial class SettingsWindow : Window
                 }
             }
 
+            _runtime.Weather.ApplySettings();
+            _ = _runtime.Weather.RefreshAsync();
+
             StatusText.Text = "已保存";
             Saved?.Invoke();
             Close();
@@ -701,6 +734,21 @@ public partial class SettingsWindow : Window
             _saving = false;
             SaveButton.IsEnabled = true;
             CancelButton.IsEnabled = true;
+        }
+    }
+
+    private void BrowseForMusic()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择音乐程序",
+            Filter = "程序 (*.exe)|*.exe|所有文件 (*.*)|*.*",
+            CheckFileExists = true,
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            MusicPath.Text = dialog.FileName;
         }
     }
 

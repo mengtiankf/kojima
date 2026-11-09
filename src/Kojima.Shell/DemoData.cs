@@ -140,4 +140,9 @@ internal static class DemoData
             new WeatherDay { Date = DateOnly.FromDateTime(DateTime.Now.AddDays(2)), Max = 22, Min = 14, Description = "小雨", Glyph = "\uE9C5", Code = 296 },
         ],
     };
+
+    /// <summary>演示用的播放信息。</summary>
+    public static Kojima.Shell.Services.MediaInfo Media() => new(
+        "夜航星", "不才", "演示专辑", "demo", true,
+        TimeSpan.FromSeconds(48), TimeSpan.FromSeconds(224), null);
 }

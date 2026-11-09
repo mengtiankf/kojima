@@ -17,19 +17,20 @@ Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://gi
 
 | 模块 | 说明 |
 | --- | --- |
-| 灵动岛 | 顶部居中 / 上靠左 / 上靠右三档位置；Notch（上凸缺口）、Capsule（胶囊）、Indicator（指示条）三种形态；悬停展开、离开自动收起，**不支持拖动**，位置只在设置里改 |
+| 灵动岛 | 顶部居中 / 上靠左 / 上靠右三档位置；刘海 / 胶囊 / 指示条三种形态；悬停展开、离开自动收起，动画时长可调，**不支持拖动**，位置只在设置里改 |
 | 收起时显示 | 时钟和天气 / 仅时钟 / 仅天气 / 媒体信息 / 不显示，五档任选 |
-| 首页 | 时钟、日期、天气、媒体卡与常驻快捷操作（静音 / 实时字幕 / 截图 / 设置） |
+| 首页 | 时钟、日期、天气、媒体卡（封面 / 进度 / 上一首 / 播放暂停 / 下一首）与常驻快捷操作（静音 / 实时字幕 / 截图 / 设置） |
 | AI 用量 | 13 个来源：Claude、Codex、Cursor、Antigravity、DeepSeek Harness、Kimi、OpenCode、ZCode、DeepSeek、OpenRouter、GLM、NewAPI、Sub2API；今日 / 本周 / 本月 Token 与额度 |
 | 系统监控 | CPU（总/每核）、GPU（利用率/显存/温度/功耗）、内存、网络、磁盘、温度、进程 TOP 7；温度与功耗可接 LibreHardwareMonitor / OpenHardwareMonitor |
-| 天气 | 当前天气 + 三日预报；图标为自绘矢量，不依赖字体码位 |
+| 天气 | 当前天气 + 三日预报；可在设置里填写城市（如 上海、Tokyo），留空按 IP 定位；图标为自绘矢量，不依赖字体码位 |
 | 股票 | 上证 / 深证 / 茅台 / 宁德 / 比亚迪 / 腾讯，15 秒轮询，红涨绿跌 |
-| 控制 | 音量、亮度、截图、实时字幕、音乐、锁屏 |
-| 剪贴板 | 最近 40 条文本，点击写回剪贴板 |
-| 翻译 | 中→日 / 中→英，走 DeepSeek API（密钥在设置里填） |
+| 控制 | 音量、亮度、截图、实时字幕、音乐（可在设置里指定任意 exe）、锁屏 |
+| 剪贴板 | 400 ms 序列号轮询，最近 40 条文本，点击写回剪贴板 |
+| 翻译 | 中→日 / 中→英；默认免费通道（MyMemory → Google），填了 DeepSeek Key 亦可切到 DeepSeek |
 | 消息 | 应用内通知中心：CPU 占用过高、天气变化、持仓提醒等 |
 | 主题 | 内置 11 套 BrimDeck 主题，支持 `%LOCALAPPDATA%\Kojima\themes` 放入自定义主题 |
-| 设置 | 独立设置窗口：通用 / 外观 / 功能 / 用量 / 关于；主题即点即生效，滚动条为沉浸式细条 |
+| 设置 | 独立设置窗口：通用 / 外观 / 功能 / 用量 / 关于；主题即点即生效，滚动条为沉浸式细条；展开态右键也可打开 |
+| 导航 | 悬停标签即切换页面，不需要点击 |
 
 ## 架构
 
@@ -48,7 +49,7 @@ Kojima.Shell (WPF, 主进程)             Kojima.Agents (子进程, 每个功能
 
 从 [Releases](https://github.com/mengtiankf/kojima/releases) 下载，或本地构建后从 `dist/` 取用：
 
-- `dist/KojimaSetup-1.2.0.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
+- `dist/KojimaSetup-1.2.1.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
 - `publish/`：绿色版，直接运行 `Kojima.exe`
 
 配置与日志在 `%LOCALAPPDATA%\Kojima`：

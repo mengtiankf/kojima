@@ -70,6 +70,53 @@ public partial class App : Application
             _island.Expand(true);
         }
 
+        // KOJIMA_TRANSLATE=<文本>：命令行验证翻译通道（结果写入日志）
+        var probe = Environment.GetEnvironmentVariable("KOJIMA_TRANSLATE");
+        if (!string.IsNullOrWhiteSpace(probe) && _runtime is not null)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _runtime.Config.Usage.Keys.TryGetValue("deepseek", out var key);
+                    var text = await Kojima.Shell.Services.TranslationService.TranslateAsync(
+                        probe, "日", false, _runtime.Config.Translate.Engine, key).ConfigureAwait(false);
+                    AppLog.Info("翻译测试：" + text);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("翻译测试失败：" + ex.Message);
+                }
+            });
+        }
+
+        // KOJIMA_MEDIA_PROBE=1：验证媒体会话与控制（暂停/播放切换后写日志）
+        if (Environment.GetEnvironmentVariable("KOJIMA_MEDIA_PROBE") == "1" && _runtime is not null)
+        {
+            var mediaTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+            mediaTimer.Tick += async (_, _) =>
+            {
+                mediaTimer.Stop();
+                try
+                {
+                    var before = _runtime.Media.Current;
+                    AppLog.Info($"媒体探测：{(before is null ? "无会话" : before.Title + " / " + before.Artist + " playing=" + before.IsPlaying)}");
+                    if (before is not null)
+                    {
+                        await _runtime.Media.TogglePlayPauseAsync();
+                        await Task.Delay(1600);
+                        var after = _runtime.Media.Current;
+                        AppLog.Info($"媒体探测：切换后 playing={after?.IsPlaying}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("媒体探测失败：" + ex.Message);
+                }
+            };
+            mediaTimer.Start();
+        }
+
         var shot = Environment.GetEnvironmentVariable("KOJIMA_SHOT");
         if (string.IsNullOrWhiteSpace(shot) || _island is null)
         {

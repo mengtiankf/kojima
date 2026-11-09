@@ -1,8 +1,8 @@
 # Build Kojima: publish -> Inno Setup exe -> WiX msi
-# Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.1.0]
+# Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.2.1]
 
 param(
-    [string]$Version = "1.2.0"
+    [string]$Version = "1.2.1"
 )
 
 $ErrorActionPreference = "Stop"

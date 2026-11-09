@@ -1,36 +1,34 @@
 using System.Runtime.InteropServices;
-using System.Windows.Interop;
+using System.Windows.Threading;
 using Kojima.Core.Config;
 
 namespace Kojima.Shell.Services;
 
-/// <summary>剪贴板历史：监听 WM_CLIPBOARDUPDATE，保留最近若干条文本。</summary>
+/// <summary>
+/// 剪贴板历史：轮询 GetClipboardSequenceNumber（0.4 s），保留最近若干条文本。
+/// 用轮询而不是 WM_CLIPBOARDUPDATE 监听，是因为消息窗口在部分进程/时机收不到该消息。
+/// </summary>
 public sealed class ClipboardService : IDisposable
 {
-    private const int WM_CLIPBOARDUPDATE = 0x031D;
     private const int MaxItems = 40;
 
-    private readonly HwndSource _source;
+    private readonly DispatcherTimer _timer;
+    private readonly List<ClipItem> _items = [];
+    private int _lastSequence = -1;
     private bool _started;
 
     public ClipboardService()
     {
-        var parameters = new HwndSourceParameters("KojimaClipboardHook")
+        _timer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Width = 0,
-            Height = 0,
-            WindowStyle = 0,
-            ParentWindow = new IntPtr(-3), // HWND_MESSAGE
+            Interval = TimeSpan.FromMilliseconds(400),
         };
-        _source = new HwndSource(parameters);
-        _source.AddHook(WndProc);
+        _timer.Tick += (_, _) => Poll();
     }
 
     public IReadOnlyList<ClipItem> Items => _items;
 
     public event Action? Changed;
-
-    private readonly List<ClipItem> _items = [];
 
     public void Start()
     {
@@ -40,12 +38,15 @@ public sealed class ClipboardService : IDisposable
         }
 
         _started = true;
-        if (!AddClipboardFormatListener(_source.Handle))
-        {
-            AppLog.Warn("剪贴板监听注册失败");
-        }
+        _lastSequence = GetClipboardSequenceNumber();
+        _timer.Start();
     }
 
+    public void Stop()
+    {
+        _timer.Stop();
+        _started = false;
+    }
 
     /// <summary>演示数据：只在 KOJIMA_DEMO 截图时使用，不写系统剪贴板。</summary>
     public void Seed(IEnumerable<string> texts)
@@ -72,6 +73,7 @@ public sealed class ClipboardService : IDisposable
         try
         {
             System.Windows.Clipboard.SetText(text);
+            _lastSequence = GetClipboardSequenceNumber();
             return true;
         }
         catch (Exception ex)
@@ -81,56 +83,49 @@ public sealed class ClipboardService : IDisposable
         }
     }
 
-    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    private void Poll()
     {
-        if (msg != WM_CLIPBOARDUPDATE)
-        {
-            return IntPtr.Zero;
-        }
-
         try
         {
+            var sequence = GetClipboardSequenceNumber();
+            if (sequence == _lastSequence)
+            {
+                return;
+            }
+
+            _lastSequence = sequence;
             if (!System.Windows.Clipboard.ContainsText())
             {
-                return IntPtr.Zero;
+                return;
             }
 
             var text = System.Windows.Clipboard.GetText();
-            if (!string.IsNullOrWhiteSpace(text) && text.Length <= 20_000)
+            if (string.IsNullOrWhiteSpace(text) || text.Length > 20_000)
             {
-                _items.RemoveAll(i => i.Text == text);
-                _items.Insert(0, new ClipItem(text, DateTime.Now));
-                while (_items.Count > MaxItems)
-                {
-                    _items.RemoveAt(_items.Count - 1);
-                }
-
-                Changed?.Invoke();
+                return;
             }
+
+            _items.RemoveAll(i => i.Text == text);
+            _items.Insert(0, new ClipItem(text.Trim(), DateTime.Now));
+            while (_items.Count > MaxItems)
+            {
+                _items.RemoveAt(_items.Count - 1);
+            }
+
+            Changed?.Invoke();
         }
         catch
         {
-            // 剪贴板被其它进程占用时忽略
+            // 剪贴板被其它进程占用时忽略，下一轮再试
         }
-
-        return IntPtr.Zero;
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool AddClipboardFormatListener(IntPtr hwnd);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
+    [DllImport("user32.dll")]
+    private static extern int GetClipboardSequenceNumber();
 
     public void Dispose()
     {
-        if (_started)
-        {
-            RemoveClipboardFormatListener(_source.Handle);
-        }
-
-        _source.RemoveHook(WndProc);
-        _source.Dispose();
+        _timer.Stop();
     }
 }
 

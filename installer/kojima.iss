@@ -1,8 +1,8 @@
 ; Kojima 安装脚本（Inno Setup 6/7）
-; 由 build.ps1 在 publish 之后调用：ISCC.exe /DAppVersion=1.0.0 installer\kojima.iss
+; 由 build.ps1 在 publish 之后调用：ISCC.exe /DAppVersion=1.2.1 installer\kojima.iss
 
 #ifndef AppVersion
-  #define AppVersion "1.2.0"
+  #define AppVersion "1.2.1"
 #endif
 
 #define AppName "Kojima"

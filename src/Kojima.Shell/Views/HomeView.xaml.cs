@@ -35,11 +35,14 @@ public partial class HomeView : UserControl
         ActMute.MouseLeftButtonUp += (_, _) => ToggleMute();
         ActSnip.MouseLeftButtonUp += (_, _) => Run("ms-screenclip:");
         ActSub.MouseLeftButtonUp += (_, _) => Run("ms-settings:easeofaccess-hearing");
-        PlayPill.MouseLeftButtonUp += (_, _) => Run("ms-music:");
+        WeatherCard.MouseLeftButtonUp += (_, _) => OpenSettings();
     }
 
     /// <summary>天气卡：城市 / 温度 / 描述。</summary>
     private bool _demo;
+
+    /// <summary>演示播放信息（截图用）。</summary>
+    public void ApplyDemoMedia(Kojima.Shell.Services.MediaInfo info) => Media.ApplyDemo(info);
 
     /// <summary>演示数据：截图用，之后的真实天气不再覆盖。</summary>
     public void ApplyDemo(Kojima.Shell.Services.WeatherInfo info)
@@ -55,7 +58,7 @@ public partial class HomeView : UserControl
             return;
         }
 
-        WeatherCity.Text = "本地";
+        WeatherCity.Text = string.IsNullOrWhiteSpace(info.City) ? "本地" : info.City;
         WeatherGlyph.Code = info.Code;
         WeatherTemp.Text = info.TemperatureText;
         WeatherDesc.Text = string.IsNullOrWhiteSpace(info.Description) ? "等待天气数据" : info.Description;
@@ -85,17 +88,6 @@ public partial class HomeView : UserControl
         {
             card.Background = ThemeRuntime.Card;
         }
-
-        CoverBox.Background = ThemeRuntime.Track;
-        CoverGlyph.Foreground = ThemeRuntime.Text3;
-        PlayPill.Background = ThemeRuntime.Fill;
-
-        MediaTitle.Foreground = ThemeRuntime.Text;
-        MediaArtist.Foreground = ThemeRuntime.Text2;
-        MediaTime.Foreground = ThemeRuntime.Text3;
-        PrevGlyph.Foreground = ThemeRuntime.Text2;
-        NextGlyph.Foreground = ThemeRuntime.Text2;
-        PlayGlyph.Foreground = ThemeRuntime.Text;
 
         WeatherCity.Foreground = ThemeRuntime.Text3;
         WeatherGlyph.Brush = ThemeRuntime.Text2;

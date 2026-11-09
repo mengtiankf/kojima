@@ -21,6 +21,8 @@ public partial class IslandWindow : Window
     private readonly DispatcherTimer _hover = new(DispatcherPriority.Background);
     private readonly DispatcherTimer _outside = new(DispatcherPriority.Background);
     private readonly DispatcherTimer _fullscreen = new(DispatcherPriority.Background);
+    private readonly DispatcherTimer _tabHover = new(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(90) };
+    private string? _tabHoverKey;
     private readonly Dictionary<string, Border> _navPills = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TextBlock> _navLabels = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TextBlock> _navGlyphs = new(StringComparer.OrdinalIgnoreCase);
@@ -56,9 +58,20 @@ public partial class IslandWindow : Window
         _fullscreen.Interval = TimeSpan.FromSeconds(1);
         _fullscreen.Tick += (_, _) => PollFullscreen();
 
+        // 悬停到选项卡上 90 ms 即切换，不需要点击（BrimDeck 的标签行为）。
+        _tabHover.Tick += (_, _) =>
+        {
+            _tabHover.Stop();
+            if (_tabHoverKey is { } key && _navPills.TryGetValue(key, out var pill) && pill.IsMouseOver)
+            {
+                ShowPage(key);
+            }
+        };
+
         ThemeRuntime.Changed += OnThemeChanged;
         SizeChanged += (_, _) => Surface.Refresh();
         _runtime.Weather.Updated += info => Dispatcher.BeginInvoke(() => ApplyWeather(info));
+        _runtime.Media.Changed += () => Dispatcher.BeginInvoke(ApplyCompactContent);
         Dispatcher.BeginInvoke(() => ApplyWeather(_runtime.Weather.Current));
     }
 
@@ -140,7 +153,7 @@ public partial class IslandWindow : Window
             _pages.Add(new IslandPage("stocks", "", "股票", stocks, 300));
         }
 
-        _pages.Add(new IslandPage("ctl", "", "控制", new ControlsView(), 236));
+        _pages.Add(new IslandPage("ctl", "", "控制", new ControlsView(_runtime), 236));
 
         if (_runtime.FeatureEnabled("clipboard"))
         {
@@ -187,6 +200,7 @@ public partial class IslandWindow : Window
         _monitorView?.Update(DemoData.Monitor());
         _weatherView?.ApplyDemo(DemoData.Weather());
         _homeView?.ApplyDemo(DemoData.Weather());
+        _homeView?.ApplyDemoMedia(DemoData.Media());
 
         _runtime.Notify.Push("CPU 占用过高", "CPU 已持续 92% 超过 2 分钟，建议检查后台进程。", "warn");
         _runtime.Notify.Push("天气提醒", "半小时后有小雨，出门记得带伞。", "weather");
@@ -256,8 +270,27 @@ public partial class IslandWindow : Window
             Cursor = Cursors.Hand,
         };
 
-        pill.MouseEnter += (_, _) => UpdateNavVisuals(page.Key, hover: true);
-        pill.MouseLeave += (_, _) => UpdateNavVisuals(page.Key, hover: false);
+        pill.MouseEnter += (_, _) =>
+        {
+            UpdateNavVisuals(page.Key, hover: true);
+            if (_current is { } current && current.Key.Equals(page.Key, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _tabHoverKey = page.Key;
+            _tabHover.Stop();
+            _tabHover.Start();
+        };
+        pill.MouseLeave += (_, _) =>
+        {
+            UpdateNavVisuals(page.Key, hover: false);
+            if (_tabHoverKey == page.Key)
+            {
+                _tabHover.Stop();
+                _tabHoverKey = null;
+            }
+        };
         pill.MouseLeftButtonUp += (_, _) => ShowPage(page.Key);
 
         _navPills[page.Key] = pill;
@@ -670,7 +703,10 @@ public partial class IslandWindow : Window
 
         if (content == "media")
         {
-            MediaText.Text = "未在播放";
+            var media = _runtime.Media.Current;
+            MediaText.Text = media is null
+                ? "未在播放"
+                : (string.IsNullOrWhiteSpace(media.Artist) ? media.Title : media.Title + " · " + media.Artist);
         }
     }
 
