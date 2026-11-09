@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Kojima.Core.Config;
 using Kojima.Shell.Theme;
 
@@ -188,6 +189,56 @@ public partial class TranslateView : UserControl
         _result.VerticalScrollBarVisibility = ScrollBarVisibility.Hidden;
         _result.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
         resultHost.Children.Add(_result);
+
+        var copyButton = new Border
+        {
+            CornerRadius = new CornerRadius(7),
+            Padding = new Thickness(8, 3, 8, 3),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 6, 8, 0),
+            Cursor = Cursors.Hand,
+            Background = ThemeRuntime.Fill,
+            ToolTip = "复制译文",
+        };
+        var copyLabel = new TextBlock
+        {
+            Text = "复制",
+            FontSize = 11,
+            FontFamily = ThemeRuntime.UiFont,
+            Foreground = ThemeRuntime.Text2,
+        };
+        copyButton.Child = copyLabel;
+        copyButton.MouseEnter += (_, _) => copyButton.Background = ThemeRuntime.Hover;
+        copyButton.MouseLeave += (_, _) => copyButton.Background = ThemeRuntime.Fill;
+        copyButton.MouseLeftButtonUp += (_, _) =>
+        {
+            var text = _result.Text ?? "";
+            if (text.Length == 0 || _resultKind != ResultKind.Text)
+            {
+                SetResult("还没有可复制的译文。", ResultKind.Hint);
+                return;
+            }
+
+            try
+            {
+                System.Windows.Clipboard.SetText(text);
+                copyLabel.Text = "已复制";
+                var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.4) };
+                timer.Tick += (_, _) =>
+                {
+                    timer.Stop();
+                    copyLabel.Text = "复制";
+                };
+                timer.Start();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("复制译文失败：" + ex.Message);
+            }
+        };
+
+        resultHost.Children.Add(copyButton);
         _resultBox.Child = resultHost;
         Grid.SetRow(_resultBox, 2);
         layout.Children.Add(_resultBox);

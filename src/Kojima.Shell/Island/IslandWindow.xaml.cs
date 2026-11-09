@@ -740,7 +740,15 @@ public partial class IslandWindow : Window
         };
 
         Left = Math.Round(left);
-        Top = Math.Round(work.Top - 1);
+
+        // 刘海贴顶；胶囊与指示条往下让一点，收起时不再“吊”在屏幕最上沿
+        var collapsedGap = Settings.Shape switch
+        {
+            IslandShape.Capsule => 8.0,
+            IslandShape.Indicator => 8.0,
+            _ => -1.0,
+        };
+        Top = Math.Round(work.Top + (_expanded ? -1.0 : collapsedGap) + Math.Max(0, Settings.MarginTop));
     }
 
     public void RefreshAppearance() => ApplyAppearance();

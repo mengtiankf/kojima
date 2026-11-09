@@ -2,7 +2,7 @@
 # Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.2.1]
 
 param(
-    [string]$Version = "1.2.4"
+    [string]$Version = "1.2.6"
 )
 
 $ErrorActionPreference = "Stop"

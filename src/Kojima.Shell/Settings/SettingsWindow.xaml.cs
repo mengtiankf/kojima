@@ -760,16 +760,33 @@ public partial class SettingsWindow : Window
                 row.Initial = row.Toggle.IsChecked == true;
             }
 
+            var restartWanted = false;
+            if (changed.Count > 0)
+            {
+                var choice = MessageBox.Show(
+                    this,
+                    "功能模块的开/关会立即生效。" + Environment.NewLine + "要让所有界面与子进程完全按新配置运行，建议重启 Kojima。" + Environment.NewLine + Environment.NewLine + "现在重启吗？",
+                    "重启提示",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+                restartWanted = choice == MessageBoxResult.Yes;
+            }
+
+            StatusText.Text = changed.Count > 0 ? "已应用（建议重启一次）" : "已保存";
+            Saved?.Invoke();
+
+            if (restartWanted)
+            {
+                RestartApp();
+                return;
+            }
+
             if (close)
             {
-                StatusText.Text = "已保存";
-                Saved?.Invoke();
                 Close();
             }
             else
             {
-                StatusText.Text = "已应用（无需重启）";
-                Saved?.Invoke();
                 _saving = false;
                 ApplyButton.IsEnabled = true;
                 SaveButton.IsEnabled = true;
@@ -784,6 +801,25 @@ public partial class SettingsWindow : Window
             SaveButton.IsEnabled = true;
             CancelButton.IsEnabled = true;
         }
+    }
+
+    /// <summary>重启自己：先起新进程，再关掉当前实例（单实例互斥会在旧进程退出后接上）。</summary>
+    private void RestartApp()
+    {
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (!string.IsNullOrWhiteSpace(exe))
+            {
+                Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Warn("重启失败：" + ex.Message);
+        }
+
+        Application.Current.Shutdown();
     }
 
     private void BrowseForMusic()

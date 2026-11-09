@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Kojima.Core.Config;
 
 namespace Kojima.Shell.Settings;
 
@@ -24,6 +25,29 @@ public partial class SettingsWindow
 
     /// <summary>尚未保存的开关状态（排序重建时保留，避免视觉上被重置）。</summary>
     private readonly Dictionary<string, bool> _pending = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly Dictionary<string, (Button Up, Button Down)> _orderButtons = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>开发钩子：像真实点击那样触发上移/下移，用来复现崩溃并抓异常栈。</summary>
+    public void ClickOrder(string key, int delta)
+    {
+        if (!_orderButtons.TryGetValue(key, out var pair))
+        {
+            AppLog.Warn($"排序探针：找不到 {key}");
+            return;
+        }
+
+        try
+        {
+            var button = delta < 0 ? pair.Up : pair.Down;
+            button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            AppLog.Info($"排序探针：{key} {(delta < 0 ? "上移" : "下移")} 已触发");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error($"排序探针崩溃：{ex}");
+        }
+    }
 
     private void BuildModuleOrder()
     {
@@ -105,10 +129,11 @@ public partial class SettingsWindow
                 Margin = new Thickness(16, 0, 0, 0),
             };
 
-            var up = MakeOrderButton("\uE74A", "上移", index > 0, () => Move(index, -1));
-            var down = MakeOrderButton("\uE74B", "下移", index < _order.Count - 1, () => Move(index, 1));
+            var up = MakeOrderButton("\uE74A", "上移", index > 0, () => MoveKey(def.Key, -1));
+            var down = MakeOrderButton("\uE74B", "下移", index < _order.Count - 1, () => MoveKey(def.Key, 1));
             actions.Children.Add(up);
             actions.Children.Add(down);
+            _orderButtons[def.Key] = (up, down);
 
             if (ModuleMap.ContainsKey(def.Key))
             {
@@ -175,8 +200,26 @@ public partial class SettingsWindow
         return button;
     }
 
+    /// <summary>按 key 移动：按钮里不再捕获行号，避免列表重建后用到过期索引而崩溃。</summary>
+    private void MoveKey(string key, int delta)
+    {
+        var index = _order.FindIndex(k => k.Equals(key, StringComparison.OrdinalIgnoreCase));
+        AppLog.Info($"排序：MoveKey({key}, {delta}) index={index} count={_order.Count}");
+        if (index < 0)
+        {
+            return;
+        }
+
+        Move(index, delta);
+    }
+
     private void Move(int index, int delta)
     {
+        if (index < 0 || index >= _order.Count)
+        {
+            return;
+        }
+
         var target = index + delta;
         if (target < 0 || target >= _order.Count)
         {
@@ -184,6 +227,11 @@ public partial class SettingsWindow
         }
 
         (_order[index], _order[target]) = (_order[target], _order[index]);
+        AppLog.Info($"排序：移动 {_order[target]} index={index}->{target}，当前顺序 {string.Join(",", _order)}");
+
+        // 立刻写回配置：避免后续任何一次重建（主题切换、页面切换）又把顺序读回默认值
+        _runtime.Config.Island.NavOrder = _order.ToList();
+        _runtime.SaveConfig();
 
         // 延迟到本次点击处理结束再重建：直接在 Click 里清空按钮所在的视觉树会崩
         Dispatcher.BeginInvoke(new Action(RebuildFeatureList), System.Windows.Threading.DispatcherPriority.Background);

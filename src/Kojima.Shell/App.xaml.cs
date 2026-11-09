@@ -70,6 +70,21 @@ public partial class App : Application
                     window.SelectPage(index);
                 }
 
+                var clickProbe = Environment.GetEnvironmentVariable("KOJIMA_SETTINGS_SORTCLICK");
+                if (!string.IsNullOrWhiteSpace(clickProbe) && _settings is { } clicker)
+                {
+                    var parts = clickProbe.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    var delta = parts.Length > 1 && parts[1].StartsWith("up", StringComparison.OrdinalIgnoreCase) ? -1 : 1;
+                    var t1 = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.6) };
+                    t1.Tick += (_, _) =>
+                    {
+                        t1.Stop();
+                        clicker.ClickOrder(parts[0], delta);
+                        clicker.ClickOrder(parts[0], delta);
+                    };
+                    t1.Start();
+                }
+
                 var sortProbe = Environment.GetEnvironmentVariable("KOJIMA_SETTINGS_SORT");
                 if (!string.IsNullOrWhiteSpace(sortProbe) && _settings is { } sorter)
                 {
@@ -326,6 +341,21 @@ public partial class App : Application
     {
         if (_runtime is null)
         {
+            return;
+        }
+
+        if (_settings is { IsLoaded: true } existing && existing.IsVisible)
+        {
+            if (existing.WindowState == WindowState.Minimized)
+            {
+                existing.WindowState = WindowState.Normal;
+            }
+
+            existing.Show();
+            existing.Activate();
+            existing.Topmost = true;
+            existing.Topmost = false;
+            existing.Focus();
             return;
         }
 
