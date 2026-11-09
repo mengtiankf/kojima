@@ -16,6 +16,8 @@ public partial class SettingsWindow
         ["weather"] = ["ModuleWeather", "天气", "天气地区与定位方式。"],
         ["media"] = ["ModuleMusic", "外部程序", "控制页「音乐」按钮启动的程序。"],
         ["translate"] = ["ModuleTranslate", "翻译", "翻译引擎与各引擎的凭据。"],
+        ["stocks"] = ["ModuleStocks", "股票", "自选股与刷新间隔。"],
+        ["usage"] = ["", "AI 用量", "来源、密钥与刷新间隔。"],
     };
 
     private readonly List<string> _order = new();
@@ -112,7 +114,14 @@ public partial class SettingsWindow
                     Margin = new Thickness(8, 0, 0, 0),
                     VerticalAlignment = VerticalAlignment.Center,
                 };
-                open.Click += (_, _) => OpenModule(def.Key);
+                if (def.Key.Equals("usage", StringComparison.OrdinalIgnoreCase))
+                {
+                    open.Click += (_, _) => OpenUsageModule();
+                }
+                else
+                {
+                    open.Click += (_, _) => OpenModule(def.Key);
+                }
                 actions.Children.Add(open);
             }
 
@@ -174,6 +183,38 @@ public partial class SettingsWindow
     /// <summary>供开发钩子直接进入某个模块的二级设置。</summary>
     public void SelectModule(string key) => OpenModule(key);
 
+    private bool _usageBackAdded;
+
+    /// <summary>AI 用量：直接把原「用量」页当作二级设置打开（带返回按钮）。</summary>
+    private void OpenUsageModule()
+    {
+        if (!_usageBackAdded && PageUsage.Content is StackPanel panel)
+        {
+            var back = new Button
+            {
+                Content = "← 返回",
+                Style = (Style)FindResource("GhostButton"),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Height = 28,
+                Padding = new Thickness(12, 0, 12, 0),
+                Margin = new Thickness(0, 0, 0, 14),
+            };
+            back.Click += (_, _) =>
+            {
+                PageTitleText.Text = "功能";
+                PageDescText.Text = "按需启动的模块、系统监控数据源与空闲回收。";
+                ShowPage(2);
+            };
+            panel.Children.Insert(0, back);
+            _usageBackAdded = true;
+        }
+
+        PageTitleText.Text = "模块设置";
+        PageDescText.Text = "AI 用量的来源、密钥与刷新间隔。";
+        NavFeatures.IsChecked = true;
+        ShowPage(3);
+    }
+
     private void OpenModule(string key)
     {
         if (!ModuleMap.TryGetValue(key, out var info))
@@ -181,7 +222,7 @@ public partial class SettingsWindow
             return;
         }
 
-        foreach (var name in new[] { "ModuleMonitor", "ModuleWeather", "ModuleMusic", "ModuleTranslate" })
+        foreach (var name in new[] { "ModuleMonitor", "ModuleWeather", "ModuleMusic", "ModuleTranslate", "ModuleStocks" })
         {
             if (FindName(name) is FrameworkElement element)
             {

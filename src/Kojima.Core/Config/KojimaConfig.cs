@@ -131,6 +131,18 @@ public sealed class MonitorSettings
     public List<string> DetectedSources { get; set; } = [];
 }
 
+public sealed class StockSettings
+{
+    /// <summary>自选股代码（腾讯行情格式，如 sh600519、hk00700）。</summary>
+    public List<string> Symbols { get; set; } =
+    [
+        "sh000001", "sz399001", "sh600519", "sz300750", "sz002594", "hk00700",
+    ];
+
+    /// <summary>刷新间隔（秒）。</summary>
+    public int RefreshSeconds { get; set; } = 15;
+}
+
 public sealed class WeatherSettings
 {
     /// <summary>城市名（如“北京”“Tokyo”），留空则按 IP 自动定位。</summary>
@@ -198,6 +210,8 @@ public sealed class KojimaConfig
     public WeatherSettings Weather { get; set; } = new();
 
     public AppSettings Apps { get; set; } = new();
+
+    public StockSettings Stocks { get; set; } = new();
 
     public TranslateSettings Translate { get; set; } = new();
 

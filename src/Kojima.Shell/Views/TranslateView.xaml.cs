@@ -253,6 +253,13 @@ public partial class TranslateView : UserControl
 
     // ── 翻译 ────────────────────────────────────────────────────────────────
 
+    /// <summary>开发钩子：填入文本并立即翻译。</summary>
+    public void FillAndTranslate(string text)
+    {
+        _input.Text = text;
+        _ = TranslateAsync();
+    }
+
     private async Task TranslateAsync()
     {
         if (_translating) { return; }

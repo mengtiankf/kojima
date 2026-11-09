@@ -18,6 +18,9 @@ public sealed class WeatherView : UserControl
     private readonly TextBlock _humidity;
     private readonly TextBlock _wind;
     private readonly StackPanel _days;
+    private readonly List<Border> _chips = new();
+    private readonly List<TextBlock> _chipIcons = new();
+    private readonly List<TextBlock> _chipLabels = new();
 
     public WeatherView(AppRuntime runtime)
     {
@@ -85,6 +88,8 @@ public sealed class WeatherView : UserControl
         content.Children.Add(icon);
         var label = UiKit.T(text, 11, ThemeRuntime.Text2);
         content.Children.Add(label);
+        _chipIcons.Add(icon);
+        _chipLabels.Add(label);
 
         var chip = new Border
         {
@@ -95,6 +100,7 @@ public sealed class WeatherView : UserControl
             Child = content,
         };
         host.Children.Add(chip);
+        _chips.Add(chip);
         return label;
     }
 
@@ -168,6 +174,22 @@ public sealed class WeatherView : UserControl
 
     private void ApplyTheme()
     {
+        // 静态文本在构造时抓的是当时的画刷，切换主题后必须重新上色
+        _temp.Foreground = ThemeRuntime.Text;
+        _desc.Foreground = ThemeRuntime.Text2;
+        _status.Foreground = ThemeRuntime.Text3;
+        _feels.Foreground = ThemeRuntime.Text2;
+        _humidity.Foreground = ThemeRuntime.Text2;
+        _wind.Foreground = ThemeRuntime.Text2;
+        _glyph.Brush = ThemeRuntime.Text2;
+
+        for (var i = 0; i < _chips.Count; i++)
+        {
+            _chips[i].Background = ThemeRuntime.Hover;
+            _chipIcons[i].Foreground = ThemeRuntime.Text3;
+            _chipLabels[i].Foreground = ThemeRuntime.Text2;
+        }
+
         Apply(_runtime.Weather.Current);
     }
 }

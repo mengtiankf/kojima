@@ -23,10 +23,10 @@ Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://gi
 | AI 用量 | 13 个来源：Claude、Codex、Cursor、Antigravity、DeepSeek Harness、Kimi、OpenCode、ZCode、DeepSeek、OpenRouter、GLM、NewAPI、Sub2API；今日 / 本周 / 本月 Token 与额度 |
 | 系统监控 | CPU（总/每核）、GPU（利用率/显存/温度/功耗）、内存、网络、磁盘、温度、进程 TOP 7；温度与功耗可接 LibreHardwareMonitor / OpenHardwareMonitor |
 | 天气 | 当前天气 + 三日预报；可在设置里填写城市（如 上海、Tokyo），留空按 IP 定位；图标为自绘矢量，不依赖字体码位 |
-| 股票 | 上证 / 深证 / 茅台 / 宁德 / 比亚迪 / 腾讯，15 秒轮询，红涨绿跌 |
+| 股票 | 自选股（默认上证 / 深证 / 茅台 / 宁德 / 比亚迪 / 腾讯），行情代码与刷新间隔可在设置里改，红涨绿跌 |
 | 控制 | 音量、亮度、截图、实时字幕、音乐（可在设置里指定任意 exe）、锁屏 |
 | 剪贴板 | 400 ms 序列号轮询，最近 40 条文本，点击写回剪贴板 |
-| 翻译 | 中→日 / 中→英；引擎可选自动 / 免费通道（MyMemory → Google）/ DeepSeek / 百度 / 微软 / 自定义 OpenAI 兼容大模型 |
+| 翻译 | 中→日 / 中→英；引擎可选 Google 翻译 / MyMemory / 百度翻译 / 微软翻译 / DeepSeek / 自定义 OpenAI 兼容大模型（自动模式优先 DeepSeek，其次 Google） |
 | 消息 | 应用内通知中心：CPU 占用过高、天气变化、持仓提醒等 |
 | 主题 | 内置 11 套 BrimDeck 主题，支持 `%LOCALAPPDATA%\Kojima\themes` 放入自定义主题 |
 | 设置 | 独立设置窗口：通用 / 外观 / 功能 / 用量 / 关于；主题即点即生效，滚动条为沉浸式细条；展开态右键也可打开 |
@@ -50,7 +50,7 @@ Kojima.Shell (WPF, 主进程)             Kojima.Agents (子进程, 每个功能
 
 从 [Releases](https://github.com/mengtiankf/kojima/releases) 下载，或本地构建后从 `dist/` 取用：
 
-- `dist/KojimaSetup-1.2.2.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
+- `dist/KojimaSetup-1.2.3.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
 - `publish/`：绿色版，直接运行 `Kojima.exe`
 
 配置与日志在 `%LOCALAPPDATA%\Kojima`：

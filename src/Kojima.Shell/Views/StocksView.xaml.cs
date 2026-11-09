@@ -31,7 +31,7 @@ public partial class StocksView : UserControl
 /// <summary>股票画布：标题、状态、自绘行情行。</summary>
 public sealed class StocksSurface : FrameworkElement
 {
-    private const string Url = "https://qt.gtimg.cn/q=sh000001,sz399001,sh600519,sz300750,sz002594,hk00700";
+    private const string UrlPrefix = "https://qt.gtimg.cn/q=";
     private const double PageWidth = 640, PageHeight = 300, HeaderH = 30, HeaderGap = 10, RowH = 40,
         CapsuleW = 64, CapsuleH = 20, RefreshW = 28;
 
@@ -71,8 +71,17 @@ public sealed class StocksSurface : FrameworkElement
         SnapsToDevicePixels = true;
         UseLayoutRounding = true;
         ClipToBounds = true;
-        foreach (var (code, name) in Watch) { _rows.Add(new Row { Code = code, Name = name }); }
-        _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(15) };
+
+        var cfg = AppRuntime.Current?.Config.Stocks;
+        var symbols = cfg?.Symbols is { Count: > 0 } list ? list : Watch.Select(w => w.Code).ToList();
+        foreach (var code in symbols)
+        {
+            var known = Watch.FirstOrDefault(w => w.Code.Equals(code, StringComparison.OrdinalIgnoreCase));
+            _rows.Add(new Row { Code = code, Name = known.Code is null ? code.ToUpperInvariant() : known.Name });
+        }
+
+        var seconds = Math.Clamp(cfg?.RefreshSeconds ?? 15, 5, 600);
+        _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(seconds) };
         _timer.Tick += async (_, _) => await RefreshAsync();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
@@ -231,7 +240,8 @@ public sealed class StocksSurface : FrameworkElement
         InvalidateVisual();
         try
         {
-            var bytes = await Http.GetByteArrayAsync(Url);
+            var url = UrlPrefix + string.Join(",", _rows.Select(r => r.Code));
+            var bytes = await Http.GetByteArrayAsync(url);
             var quotes = Parse(Gbk.GetString(bytes));
             if (quotes.Count == 0) { throw new InvalidOperationException("行情返回为空"); }
             foreach (var row in _rows)

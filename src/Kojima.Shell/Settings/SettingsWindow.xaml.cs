@@ -248,12 +248,16 @@ public partial class SettingsWindow : Window
             ? "检测到：" + string.Join("、", cfg.Monitor.DetectedSources)
             : "未检测到外部监控软件";
 
+        StockSymbols.Text = string.Join(",", cfg.Stocks.Symbols);
+        StockRefresh.Text = cfg.Stocks.RefreshSeconds.ToString(CultureInfo.InvariantCulture);
         WeatherLocation.Text = cfg.Weather.Location ?? "";
         MusicPath.Text = cfg.Apps.Music ?? "";
         var engine = (cfg.Translate.Engine ?? "auto").Trim().ToLowerInvariant();
         (engine switch
         {
-            "free" => TranslateFree,
+            "free" => TranslateGoogle,
+            "google" => TranslateGoogle,
+            "mymemory" => TranslateMyMemory,
             "deepseek" => TranslateDeepSeek,
             "baidu" => TranslateBaidu,
             "microsoft" => TranslateMicrosoft,
@@ -652,9 +656,23 @@ public partial class SettingsWindow : Window
                 : MonitorOhm.IsChecked == true ? "ohm"
                 : "auto";
 
+            var symbols = (StockSymbols.Text ?? "")
+                .Split([',', '，', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            if (symbols.Count > 0)
+            {
+                cfg.Stocks.Symbols = symbols;
+            }
+
+            if (int.TryParse(StockRefresh.Text, out var refreshSeconds))
+            {
+                cfg.Stocks.RefreshSeconds = Math.Clamp(refreshSeconds, 5, 600);
+            }
+
             cfg.Weather.Location = (WeatherLocation.Text ?? "").Trim();
             cfg.Apps.Music = (MusicPath.Text ?? "").Trim();
-            cfg.Translate.Engine = TranslateFree.IsChecked == true ? "free"
+            cfg.Translate.Engine = TranslateGoogle.IsChecked == true ? "google"
+                : TranslateMyMemory.IsChecked == true ? "mymemory"
                 : TranslateDeepSeek.IsChecked == true ? "deepseek"
                 : TranslateBaidu.IsChecked == true ? "baidu"
                 : TranslateMicrosoft.IsChecked == true ? "microsoft"

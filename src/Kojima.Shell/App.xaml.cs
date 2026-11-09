@@ -90,6 +90,19 @@ public partial class App : Application
             _island.Expand(true);
         }
 
+        // KOJIMA_TRANSLATE_UI=<文本>：把文本填进翻译页并触发一次真实翻译（用于 UI 验证）
+        var probeUi = Environment.GetEnvironmentVariable("KOJIMA_TRANSLATE_UI");
+        if (!string.IsNullOrWhiteSpace(probeUi))
+        {
+            var timerUi = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+            timerUi.Tick += (_, _) =>
+            {
+                timerUi.Stop();
+                _island?.TranslateProbe(probeUi);
+            };
+            timerUi.Start();
+        }
+
         // KOJIMA_TRANSLATE=<文本>：命令行验证翻译通道（结果写入日志）
         var probe = Environment.GetEnvironmentVariable("KOJIMA_TRANSLATE");
         if (!string.IsNullOrWhiteSpace(probe) && _runtime is not null)

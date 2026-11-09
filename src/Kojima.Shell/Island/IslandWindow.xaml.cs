@@ -193,6 +193,17 @@ public partial class IslandWindow : Window
     /// <summary>演示数据：生成 README 示例图时使用，不含真实数据。</summary>
     private bool _demo;
 
+    /// <summary>开发钩子：把文本填进翻译页并触发翻译。</summary>
+    public void TranslateProbe(string text)
+    {
+        ShowPage("translate");
+        var page = _pages.FirstOrDefault(p => p.Key == "translate");
+        if (page?.View is TranslateView view)
+        {
+            view.FillAndTranslate(text);
+        }
+    }
+
     public void ApplyDemoData()
     {
         _demo = true;

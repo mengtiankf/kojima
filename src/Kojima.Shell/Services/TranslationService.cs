@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Kojima.Core.Config;
 
 namespace Kojima.Shell.Services;
 
@@ -18,7 +19,7 @@ public static class TranslationService
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
 
-    /// <summary>按设置里的引擎翻译：auto / free / deepseek / baidu / microsoft / custom。</summary>
+    /// <summary>按设置里的引擎翻译：auto / google / mymemory / deepseek / baidu / microsoft / custom。</summary>
     public static Task<string> TranslateAsync(
         string text,
         Kojima.Core.Config.TranslateSettings settings,
@@ -33,6 +34,8 @@ public static class TranslationService
             "microsoft" => MicrosoftAsync(text, target, settings, ct),
             "custom" => CustomAsync(text, target, settings, ct),
             "deepseek" => DeepSeekAsync(text, target, settings.Reversed, (deepSeekKey ?? "").Trim(), ct),
+            "google" => GoogleAsync(text, target, settings.Reversed, ct),
+            "mymemory" => MyMemoryAsync(text, target, settings.Reversed, ct),
             "free" => FreeAsync(text, target, settings.Reversed, ct),
             _ => (deepSeekKey ?? "").Trim().Length > 0
                 ? DeepSeekAsync(text, target, settings.Reversed, deepSeekKey!.Trim(), ct)
@@ -226,7 +229,26 @@ public static class TranslationService
     }
 
     /// <summary>免费通道：MyMemory 优先，失败回退 Google 公共端点。</summary>
+    /// <summary>免费通道：先 MyMemory，失败再 Google。</summary>
     public static async Task<string> FreeAsync(
+        string text,
+        string target,
+        bool reversed,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            return await MyMemoryAsync(text, target, reversed, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            AppLog.Warn("MyMemory 失败，改用 Google：" + ex.Message);
+            return await GoogleAsync(text, target, reversed, ct).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>MyMemory 免费接口。</summary>
+    public static async Task<string> MyMemoryAsync(
         string text,
         string target,
         bool reversed,
@@ -263,6 +285,17 @@ public static class TranslationService
             // 免费通道失败就换下一个，不向用户暴露中间错误
         }
 
+        // MyMemory 不可用时由 FreeAsync 负责兜底；显式选 MyMemory 也回落到 Google，避免整页不可用
+        return await GoogleAsync(text, target, reversed, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Google 免费接口（translate_a/single）。</summary>
+    public static async Task<string> GoogleAsync(
+        string text,
+        string target,
+        bool reversed,
+        CancellationToken ct = default)
+    {
         var google = "https://translate.googleapis.com/translate_a/single?client=gtx&sl="
             + (reversed ? (target == "日" ? "ja" : "en") : "auto")
             + "&tl=" + (reversed ? "zh-CN" : (target == "日" ? "ja" : "en"))
