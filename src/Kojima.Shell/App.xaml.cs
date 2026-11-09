@@ -344,6 +344,15 @@ public partial class App : Application
             return;
         }
 
+        // 兜底：即使引用丢了，只要进程里已有可见的设置窗口就复用它
+        var visible = Application.Current?.Windows
+            .OfType<Settings.SettingsWindow>()
+            .FirstOrDefault(w => w.IsVisible);
+        if (visible is not null)
+        {
+            _settings = visible;
+        }
+
         if (_settings is { IsLoaded: true } existing && existing.IsVisible)
         {
             if (existing.WindowState == WindowState.Minimized)
