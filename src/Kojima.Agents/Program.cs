@@ -4,6 +4,7 @@ using Kojima.Agents.Features;
 using Kojima.Core.Config;
 using Kojima.Core.Ipc;
 using Kojima.Core.Models;
+using Kojima.Core.Themes;
 
 namespace Kojima.Agents;
 
@@ -14,9 +15,17 @@ internal static class Program
         var options = LaunchOptions.Parse(argv);
         if (options.SelfTest)
         {
-            return options.SelfTestTarget.Equals("usage", StringComparison.OrdinalIgnoreCase)
-                ? RunUsageSelfTest()
-                : RunSelfTest();
+            if (options.SelfTestTarget.Equals("usage", StringComparison.OrdinalIgnoreCase))
+            {
+                return RunUsageSelfTest();
+            }
+
+            if (options.SelfTestTarget.Equals("themes", StringComparison.OrdinalIgnoreCase))
+            {
+                return RunThemeSelfTest();
+            }
+
+            return RunSelfTest();
         }
 
         if (!FeatureIds.TryParse(options.Feature, out var featureId))
@@ -89,6 +98,34 @@ internal static class Program
     }
 
     /// <summary>无 UI 自检：采两帧监控数据，打印关键字段。</summary>
+    private static int RunThemeSelfTest()
+    {
+        ThemeCatalog.Reload();
+        var failures = 0;
+        Console.WriteLine("id                             dark  text2/card  text3/card  text/surface");
+        foreach (var palette in ThemeCatalog.All.OrderBy(p => p.Id, StringComparer.Ordinal))
+        {
+            var surface = palette.Surface with { A = 255 };
+            var card = new Rgba(palette.Text.R, palette.Text.G, palette.Text.B,
+                (byte)(palette.Dark ? 0x3C : 0x22)).Over(surface);
+            var c2 = Rgba.ContrastRatio(palette.Text2, card);
+            var c3 = Rgba.ContrastRatio(palette.Text3, card);
+            var c1 = Rgba.ContrastRatio(palette.Text, surface);
+            var ok = c2 >= 4.5 && c3 >= 3.0;
+            if (!ok)
+            {
+                failures++;
+            }
+
+            Console.WriteLine(string.Create(
+                System.Globalization.CultureInfo.InvariantCulture,
+                $"{palette.Id,-30} {palette.Dark,-5} {c2,10:0.00} {c3,11:0.00} {c1,12:0.00} {(ok ? "" : "  <-- 不达标")}"));
+        }
+
+        Console.WriteLine(failures == 0 ? "OK 主题对比度全部达标" : $"FAIL {failures} 套主题不达标");
+        return failures == 0 ? 0 : 1;
+    }
+
     private static int RunSelfTest()
     {
         try

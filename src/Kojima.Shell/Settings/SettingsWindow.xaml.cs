@@ -488,9 +488,11 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        if (index == 2)
+        var radio = NavList.Children.OfType<RadioButton>()
+            .FirstOrDefault(r => (r.Tag as string) == index.ToString(CultureInfo.InvariantCulture));
+        if (radio is not null)
         {
-            NavFeatures.IsChecked = true;
+            radio.IsChecked = true;
         }
 
         ShowPage(index);

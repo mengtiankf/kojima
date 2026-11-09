@@ -9,7 +9,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
-    <Version>1.2.6</Version>
+    <Version>1.2.7</Version>
     <RootNamespace>Kojima.Shell</RootNamespace>
     <AssemblyName>Kojima</AssemblyName>
     <ApplicationIcon>..\..\assets\kojima.ico</ApplicationIcon>

@@ -56,7 +56,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <StackPanel Grid.Row="1" Margin="12,4,12,0">
+                    <StackPanel x:Name="NavList" Grid.Row="1" Margin="12,4,12,0">
                         <RadioButton x:Name="NavGeneral" GroupName="Nav" Tag="0" Style="{StaticResource NavItem}"
                                      Checked="OnNavChecked">
                             <StackPanel Orientation="Horizontal">

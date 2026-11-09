@@ -56,6 +56,63 @@ public readonly record struct Rgba(byte R, byte G, byte B, byte A = 255)
 
     public double Luminance => (0.2126 * R + 0.7152 * G + 0.0722 * B) / 255.0;
 
+    /// <summary>WCAG 相对亮度（sRGB 伽马校正后加权）。</summary>
+    public double RelativeLuminance
+    {
+        get
+        {
+            static double Channel(byte value)
+            {
+                var c = value / 255.0;
+                return c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+            }
+
+            return 0.2126 * Channel(R) + 0.7152 * Channel(G) + 0.0722 * Channel(B);
+        }
+    }
+
+    /// <summary>把带 alpha 的前景合成到不透明背景上。</summary>
+    public Rgba Over(Rgba background)
+    {
+        var a = A / 255.0;
+        return new Rgba(
+            (byte)Math.Round(R * a + background.R * (1 - a)),
+            (byte)Math.Round(G * a + background.G * (1 - a)),
+            (byte)Math.Round(B * a + background.B * (1 - a)),
+            255);
+    }
+
+    /// <summary>WCAG 对比度（1~21）。</summary>
+    public static double ContrastRatio(Rgba foreground, Rgba background)
+    {
+        var fg = foreground.Over(background);
+        var l1 = fg.RelativeLuminance;
+        var l2 = background.RelativeLuminance;
+        var hi = Math.Max(l1, l2);
+        var lo = Math.Min(l1, l2);
+        return (hi + 0.05) / (lo + 0.05);
+    }
+
+    /// <summary>把低对比度的次要文字往主文字色靠拢，直到在卡片与面板底上都达标。</summary>
+    public static Rgba EnsureContrast(Rgba color, Rgba primary, Rgba surface, Rgba card, double minimum)
+    {
+        if (ContrastRatio(color, card) >= minimum && ContrastRatio(color, surface) >= minimum)
+        {
+            return color;
+        }
+
+        for (var step = 1; step <= 20; step++)
+        {
+            var candidate = Blend(color, primary, step / 20.0) with { A = 255 };
+            if (ContrastRatio(candidate, card) >= minimum && ContrastRatio(candidate, surface) >= minimum)
+            {
+                return candidate;
+            }
+        }
+
+        return primary with { A = 255 };
+    }
+
     public string Hex => $"#{A:X2}{R:X2}{G:X2}{B:X2}";
 }
 
@@ -262,13 +319,21 @@ public static class ThemeCatalog
             }
 
             var dark = !string.Equals(merged.GetValueOrDefault("mode"), "light", StringComparison.OrdinalIgnoreCase);
+            var surface = Rgba.Parse(merged.GetValueOrDefault("surface"), new Rgba(0, 0, 0));
             if (merged.TryGetValue("surface", out var surfaceText))
             {
-                var surface = Rgba.Parse(surfaceText, new Rgba(0, 0, 0));
-                dark = surface.Luminance < 0.5;
+                var parsed = Rgba.Parse(surfaceText, new Rgba(0, 0, 0));
+                surface = parsed;
+                dark = parsed.Luminance < 0.5;
             }
 
             var id = doc.Id.StartsWith("deck-", StringComparison.OrdinalIgnoreCase) ? doc.Id : "deck-" + doc.Id;
+            var text = Rgba.Parse(merged.GetValueOrDefault("textPrimary"), new Rgba(245, 245, 247));
+            var text2Raw = Rgba.Parse(merged.GetValueOrDefault("textSecondary"), new Rgba(235, 235, 245, 158));
+            var text3Raw = Rgba.Parse(merged.GetValueOrDefault("textTertiary"), new Rgba(235, 235, 245, 140));
+            var cardOverlay = (byte)(dark ? 0x3C : 0x22);
+            var surfaceOpaque = surface with { A = 255 };
+            var card = new Rgba(text.R, text.G, text.B, cardOverlay).Over(surfaceOpaque);
             Cache[id] = new DeckPalette
             {
                 Id = id,
@@ -277,10 +342,10 @@ public static class ThemeCatalog
                 Author = doc.Author,
                 Dark = dark,
                 FilePath = path,
-                Surface = Rgba.Parse(merged.GetValueOrDefault("surface"), new Rgba(0, 0, 0)),
-                Text = Rgba.Parse(merged.GetValueOrDefault("textPrimary"), new Rgba(245, 245, 247)),
-                Text2 = Rgba.Parse(merged.GetValueOrDefault("textSecondary"), new Rgba(235, 235, 245, 158)),
-                Text3 = Rgba.Parse(merged.GetValueOrDefault("textTertiary"), new Rgba(235, 235, 245, 140)),
+                Surface = surface,
+                Text = text,
+                Text2 = Rgba.EnsureContrast(text2Raw, text, surface, card, 4.5),
+                Text3 = Rgba.EnsureContrast(text3Raw, text, surface, card, 3.0),
                 Accent = Rgba.Parse(merged.GetValueOrDefault("accent"), new Rgba(10, 132, 255)),
                 OnAccent = Rgba.Parse(merged.GetValueOrDefault("onAccent"), new Rgba(0, 0, 0)),
                 Danger = Rgba.Parse(merged.GetValueOrDefault("danger"), new Rgba(242, 119, 127)),
