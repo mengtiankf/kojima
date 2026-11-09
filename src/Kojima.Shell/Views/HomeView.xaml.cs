@@ -123,9 +123,7 @@ public partial class HomeView : UserControl
 
     private void OpenSettings()
     {
-        var window = new Kojima.Shell.Settings.SettingsWindow(_runtime);
-        window.Show();
-        window.Activate();
+        Kojima.Shell.App.ShowSettingsDialog();
     }
 
     private void ToggleMute()

@@ -1016,14 +1016,8 @@ public partial class IslandWindow : Window
 
     private void OpenSettings()
     {
-        var window = new Settings.SettingsWindow(_runtime);
-        window.Saved += () =>
-        {
-            ApplyAppearance();
-            BuildNav();
-        };
-        window.Show();
-        window.Activate();
+        // 统一入口：避免齿轮/右键各开一个设置窗口
+        App.ShowSettingsDialog();
     }
 
     protected override void OnMouseEnter(MouseEventArgs e)

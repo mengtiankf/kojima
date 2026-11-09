@@ -337,6 +337,15 @@ public partial class App : Application
 
     private Settings.SettingsWindow? _settings;
 
+    /// <summary>所有入口（热键 / 灵岛齿轮 / 右键 / 首页按钮）统一走这里，保证只开一个设置窗口。</summary>
+    public static void ShowSettingsDialog()
+    {
+        if (Application.Current is App app)
+        {
+            app.OpenSettings();
+        }
+    }
+
     private void OpenSettings()
     {
         if (_runtime is null)
