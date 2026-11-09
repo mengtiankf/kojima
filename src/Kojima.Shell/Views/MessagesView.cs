@@ -125,7 +125,9 @@ public sealed class MessagesView : UserControl
 
             var body = new StackPanel();
             var title = UiKit.T(
-                string.IsNullOrWhiteSpace(item.Sender) ? $"{item.App} 有新消息" : item.Sender,
+                string.IsNullOrWhiteSpace(item.Sender)
+                    ? (item.Kind == "other" ? item.App : $"{item.App} 有新消息")
+                    : item.Sender,
                 12.5,
                 ThemeRuntime.Text,
                 FontWeights.SemiBold);
@@ -133,7 +135,8 @@ public sealed class MessagesView : UserControl
             body.Children.Add(title);
 
             var sub = UiKit.T(
-                item.Source == "flash" ? $"任务栏提醒 · {KindName(item.Kind)}" : $"{KindName(item.Kind)} 通知",
+                item.Kind == "other" ? "系统通知"
+                    : item.Source == "flash" ? $"任务栏提醒 · {KindName(item.Kind)}" : $"{KindName(item.Kind)} 通知",
                 10.5,
                 ThemeRuntime.Text3);
             sub.Margin = new Thickness(0, 3, 0, 0);

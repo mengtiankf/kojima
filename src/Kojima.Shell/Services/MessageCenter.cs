@@ -338,7 +338,40 @@ public sealed class MessageCenter : IDisposable
             name = "微软 " + name["Microsoft.".Length..];
         }
 
-        name = name.Replace("Appex", " · ").Replace("App", "").Trim();
+        // 常见打包器的前缀：electron.app.xxx / com.vendor.xxx
+        if (name.StartsWith("electron.app.", StringComparison.OrdinalIgnoreCase))
+        {
+            name = name["electron.app.".Length..];
+        }
+        else if (name.StartsWith("electron.", StringComparison.OrdinalIgnoreCase))
+        {
+            name = name["electron.".Length..];
+        }
+        else if (name.StartsWith("com.", StringComparison.OrdinalIgnoreCase)
+                 || name.StartsWith("org.", StringComparison.OrdinalIgnoreCase)
+                 || name.StartsWith("io.", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = name.Split('.');
+            if (parts.Length >= 3)
+            {
+                name = parts[^1];
+            }
+        }
+
+        var exe = name.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+        if (exe > 0)
+        {
+            name = name[..exe];
+        }
+
+        name = name.Replace("pcsute", "手机助手").Trim();
+
+        // 有些应用把通知正文塞进 PrimaryId：含空格或中文就当作未知应用，避免把正文当应用名
+        if (name.Length == 0 || name.Any(c => char.IsWhiteSpace(c) || c > 0x7F))
+        {
+            return "应用通知";
+        }
+
         return name.Length > 18 ? name[..18] : name;
     }
 
