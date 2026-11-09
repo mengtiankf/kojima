@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Navigation;
 using System.Windows.Threading;
+using System.Threading.Tasks;
 using Kojima.Core.Config;
 using Kojima.Core.Themes;
 using Kojima.Shell.Theme;
@@ -618,7 +619,11 @@ public partial class SettingsWindow : Window
     // ==================================================================
     // 保存
     // ==================================================================
-    private async void OnSaveClick(object sender, RoutedEventArgs e)
+    private async void OnSaveClick(object sender, RoutedEventArgs e) => await ApplyAsync(close: true);
+
+    private async void OnApplyClick(object sender, RoutedEventArgs e) => await ApplyAsync(close: false);
+
+    private async Task ApplyAsync(bool close)
     {
         if (_saving)
         {
@@ -626,6 +631,7 @@ public partial class SettingsWindow : Window
         }
 
         _saving = true;
+        ApplyButton.IsEnabled = false;
         SaveButton.IsEnabled = false;
         CancelButton.IsEnabled = false;
         StatusText.Text = "正在保存…";
@@ -746,14 +752,35 @@ public partial class SettingsWindow : Window
             _runtime.Weather.ApplySettings();
             _ = _runtime.Weather.RefreshAsync();
 
-            StatusText.Text = "已保存";
-            Saved?.Invoke();
-            Close();
+            _pending.Clear();
+            _runtime.Island?.ReloadFeatures();
+
+            foreach (var row in _features)
+            {
+                row.Initial = row.Toggle.IsChecked == true;
+            }
+
+            if (close)
+            {
+                StatusText.Text = "已保存";
+                Saved?.Invoke();
+                Close();
+            }
+            else
+            {
+                StatusText.Text = "已应用（无需重启）";
+                Saved?.Invoke();
+                _saving = false;
+                ApplyButton.IsEnabled = true;
+                SaveButton.IsEnabled = true;
+                CancelButton.IsEnabled = true;
+            }
         }
         catch (Exception ex)
         {
             StatusText.Text = "保存失败：" + ex.Message;
             _saving = false;
+            ApplyButton.IsEnabled = true;
             SaveButton.IsEnabled = true;
             CancelButton.IsEnabled = true;
         }
@@ -777,7 +804,12 @@ public partial class SettingsWindow : Window
     private static int ParseInt(string? text, int fallback) =>
         int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
 
-    private sealed record FeatureRow(string Key, CheckBox Toggle, bool Initial);
+    private sealed class FeatureRow(string key, CheckBox toggle, bool initial)
+    {
+        public string Key { get; } = key;
+        public CheckBox Toggle { get; } = toggle;
+        public bool Initial { get; set; } = initial;
+    }
 
     private sealed record SourceRow(string Key, CheckBox Toggle);
 

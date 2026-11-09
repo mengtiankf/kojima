@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -44,6 +45,8 @@ public partial class IslandWindow : Window
         _frameTimer.Tick += OnFrame;
 
         SourceInitialized += (_, _) => ApplyWindowStyles();
+        PreviewMouseDown += OnPreviewMouseDown;
+        Deactivated += (_, _) => RestoreNoActivate();
         Loaded += (_, _) => Initialise();
 
         _clock.Interval = TimeSpan.FromSeconds(1);
@@ -112,6 +115,69 @@ public partial class IslandWindow : Window
             0,
             0,
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+    }
+
+    /// <summary>输入类控件需要键盘焦点：点它们时临时去掉 WS_EX_NOACTIVATE 并激活窗口。</summary>
+    private void OnPreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
+        if (FindParent<TextBoxBase>(source) is null && FindParent<PasswordBox>(source) is null)
+        {
+            return;
+        }
+
+        var handle = new WindowInteropHelper(this).Handle;
+        var exStyle = NativeMethods.GetWindowLong(handle, NativeMethods.GWL_EXSTYLE);
+        if ((exStyle & NativeMethods.WS_EX_NOACTIVATE) != 0)
+        {
+            NativeMethods.SetWindowLong(handle, NativeMethods.GWL_EXSTYLE, exStyle & ~NativeMethods.WS_EX_NOACTIVATE);
+        }
+
+        Activate();
+        Focus();
+    }
+
+    private void RestoreNoActivate()
+    {
+        if (!_expanded)
+        {
+            return;
+        }
+
+        var handle = new WindowInteropHelper(this).Handle;
+        var exStyle = NativeMethods.GetWindowLong(handle, NativeMethods.GWL_EXSTYLE);
+        NativeMethods.SetWindowLong(handle, NativeMethods.GWL_EXSTYLE, exStyle | NativeMethods.WS_EX_NOACTIVATE);
+    }
+
+    private static T? FindParent<T>(DependencyObject node) where T : DependencyObject
+    {
+        for (var current = node; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is T match)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>设置里改了功能开关后，无需重启即可重建页面与导航。</summary>
+    public void ReloadFeatures()
+    {
+        var currentKey = _current?.Key ?? "home";
+        _pages.Clear();
+        BuildPages();
+        BuildNav();
+
+        var target = _pages.FirstOrDefault(p => p.Key.Equals(currentKey, StringComparison.OrdinalIgnoreCase))
+            ?? _pages[0];
+        ShowPage(target.Key);
+        ApplyCompactContent();
     }
 
     private void BuildPages()

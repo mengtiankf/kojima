@@ -774,6 +774,8 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                             <Button x:Name="CancelButton" Style="{StaticResource GhostButton}" Content="取消"
                                     Margin="0,0,10,0" Click="OnCancelClick"/>
+                            <Button x:Name="ApplyButton" Style="{StaticResource GhostButton}" Content="应用"
+                                    Margin="0,0,10,0" Click="OnApplyClick"/>
                             <Button x:Name="SaveButton" Style="{StaticResource PrimaryButton}" Content="保存"
                                     Click="OnSaveClick"/>
                         </StackPanel>

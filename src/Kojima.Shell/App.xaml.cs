@@ -70,6 +70,15 @@ public partial class App : Application
                     window.SelectPage(index);
                 }
 
+                var sortProbe = Environment.GetEnvironmentVariable("KOJIMA_SETTINGS_SORT");
+                if (!string.IsNullOrWhiteSpace(sortProbe) && _settings is { } sorter)
+                {
+                    var parts = sortProbe.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    var delta = parts.Length > 1 && parts[1].StartsWith("up", StringComparison.OrdinalIgnoreCase) ? -1 : 1;
+                    sorter.DebugMove(parts[0], delta);
+                    sorter.DebugMove(parts[0], delta);
+                }
+
                 var module = Environment.GetEnvironmentVariable("KOJIMA_SETTINGS_MODULE");
                 if (!string.IsNullOrWhiteSpace(module) && _settings is { } target)
                 {
@@ -88,6 +97,23 @@ public partial class App : Application
         {
             _island.ShowPage(preview);
             _island.Expand(true);
+        }
+
+        // KOJIMA_TOGGLE=<key>:<on|off>：不重启地切换功能并热重建导航（验证即时生效）
+        var toggle = Environment.GetEnvironmentVariable("KOJIMA_TOGGLE");
+        if (!string.IsNullOrWhiteSpace(toggle) && _runtime is not null && _island is not null)
+        {
+            var parts = toggle.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length == 2)
+            {
+                var on = parts[1].Equals("on", StringComparison.OrdinalIgnoreCase);
+                _runtime.Config.Feature(parts[0]).Enabled = on;
+                _runtime.SaveConfig();
+                _ = _runtime.SetFeatureAsync(parts[0], on).ContinueWith(_ =>
+                {
+                    Dispatcher.BeginInvoke(new Action(() => _island?.ReloadFeatures()));
+                });
+            }
         }
 
         // KOJIMA_TRANSLATE_UI=<文本>：把文本填进翻译页并触发一次真实翻译（用于 UI 验证）

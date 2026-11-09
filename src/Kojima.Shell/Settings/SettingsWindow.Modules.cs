@@ -22,6 +22,9 @@ public partial class SettingsWindow
 
     private readonly List<string> _order = new();
 
+    /// <summary>尚未保存的开关状态（排序重建时保留，避免视觉上被重置）。</summary>
+    private readonly Dictionary<string, bool> _pending = new(StringComparer.OrdinalIgnoreCase);
+
     private void BuildModuleOrder()
     {
         _order.Clear();
@@ -68,7 +71,9 @@ public partial class SettingsWindow
             }
 
             first = false;
-            var enabled = _runtime.FeatureEnabled(def.Key);
+            var enabled = _pending.TryGetValue(def.Key, out var pending)
+                ? pending
+                : _runtime.FeatureEnabled(def.Key);
             var toggle = new CheckBox
             {
                 Style = (Style)FindResource("Switch"),
@@ -76,6 +81,8 @@ public partial class SettingsWindow
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(16, 0, 0, 0),
             };
+            toggle.Checked += (_, _) => _pending[def.Key] = true;
+            toggle.Unchecked += (_, _) => _pending[def.Key] = false;
 
             var row = new Grid { Style = (Style)FindResource("SettingRow") };
             row.ColumnDefinitions.Add(new ColumnDefinition());
@@ -177,7 +184,19 @@ public partial class SettingsWindow
         }
 
         (_order[index], _order[target]) = (_order[target], _order[index]);
-        RebuildFeatureList();
+
+        // 延迟到本次点击处理结束再重建：直接在 Click 里清空按钮所在的视觉树会崩
+        Dispatcher.BeginInvoke(new Action(RebuildFeatureList), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>开发钩子：按 key 上移/下移一行（用于自动化验证排序逻辑）。</summary>
+    public void DebugMove(string key, int delta)
+    {
+        var index = _order.FindIndex(k => k.Equals(key, StringComparison.OrdinalIgnoreCase));
+        if (index >= 0)
+        {
+            Move(index, delta);
+        }
     }
 
     /// <summary>供开发钩子直接进入某个模块的二级设置。</summary>

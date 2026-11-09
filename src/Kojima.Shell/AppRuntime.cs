@@ -52,6 +52,9 @@ public sealed class AppRuntime
     public MessageCenter Messages { get; }
 
     /// <summary>系统媒体会话（SMTC）。</summary>
+    /// <summary>灵岛窗口（由 App 启动时挂上），用于保存设置后热刷新。</summary>
+    public Kojima.Shell.Island.IslandWindow? Island { get; set; }
+
     public MediaSessionService Media { get; }
 
     /// <summary>系统输出频谱（WASAPI 环回）。</summary>
