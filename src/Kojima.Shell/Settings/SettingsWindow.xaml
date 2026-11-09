@@ -82,7 +82,7 @@
                             </StackPanel>
                         </RadioButton>
 
-                        <RadioButton GroupName="Nav" Tag="2" Style="{StaticResource NavItem}" Checked="OnNavChecked">
+                        <RadioButton x:Name="NavFeatures" GroupName="Nav" Tag="2" Style="{StaticResource NavItem}" Checked="OnNavChecked">
                             <StackPanel Orientation="Horizontal">
                                 <Grid Width="16" Height="16" VerticalAlignment="Center">
                                     <Path Data="{StaticResource IconFeatures}" StrokeThickness="1.5"
@@ -417,80 +417,10 @@
                                   Visibility="Collapsed">
                         <StackPanel Margin="0,2,0,26">
                             <TextBlock Text="功能模块" Style="{StaticResource GroupLabel}"/>
+                            <TextBlock Text="用 ↑ ↓ 调整灵动岛里的标签顺序；带「设置」的模块可在二级菜单里配置。"
+                                       Style="{StaticResource Hint}" Margin="2,0,0,10"/>
                             <Border Style="{StaticResource Card}">
                                 <StackPanel x:Name="FeatureList"/>
-                            </Border>
-
-                            <TextBlock Text="系统监控" Style="{StaticResource GroupLabel}"/>
-                            <Border Style="{StaticResource Card}" Padding="18,16">
-                                <StackPanel>
-                                    <TextBlock Text="监控数据源" Style="{StaticResource RowTitle}"/>
-                                    <TextBlock Text="温度、风扇与功耗的读取方式；自动会优先使用检测到的外部程序。"
-                                               Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
-                                    <Border Style="{StaticResource SegmentGroup}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <RadioButton x:Name="MonitorAuto" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
-                                                         Content="自动"/>
-                                            <RadioButton x:Name="MonitorInternal" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
-                                                         Content="内置"/>
-                                            <RadioButton x:Name="MonitorLhm" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
-                                                         Content="LibreHardwareMonitor"/>
-                                            <RadioButton x:Name="MonitorOhm" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
-                                                         Content="OpenHardwareMonitor"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <TextBlock x:Name="DetectedSourcesText" Style="{StaticResource Hint}" Margin="2,12,0,0"
-                                               Text="未检测到外部监控软件"/>
-                                </StackPanel>
-                            </Border>
-
-                            <TextBlock Text="天气" Style="{StaticResource GroupLabel}"/>
-                            <Border Style="{StaticResource Card}" Padding="18,16">
-                                <StackPanel>
-                                    <TextBlock Text="地区" Style="{StaticResource RowTitle}"/>
-                                    <TextBlock Text="留空则按 IP 自动定位；可直接写中文城市名，例如 上海、杭州、Tokyo。"
-                                               Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
-                                    <TextBox x:Name="WeatherLocation" Style="{StaticResource Field}" Width="260"
-                                             HorizontalAlignment="Left" Text=""/>
-                                </StackPanel>
-                            </Border>
-
-                            <TextBlock Text="外部程序" Style="{StaticResource GroupLabel}"/>
-                            <Border Style="{StaticResource Card}" Padding="18,16">
-                                <StackPanel>
-                                    <TextBlock Text="音乐程序" Style="{StaticResource RowTitle}"/>
-                                    <TextBlock Text="控制页点「音乐」时启动的程序；留空则打开系统默认音乐应用。"
-                                               Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="8"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="MusicPath" Grid.Column="0" Style="{StaticResource Field}"/>
-                                        <Button x:Name="BrowseMusic" Grid.Column="2" Content="浏览…"
-                                                Style="{StaticResource GhostButton}" Height="32" Padding="12,0"/>
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
-
-                            <TextBlock Text="翻译" Style="{StaticResource GroupLabel}"/>
-                            <Border Style="{StaticResource Card}" Padding="18,16">
-                                <StackPanel>
-                                    <TextBlock Text="翻译引擎" Style="{StaticResource RowTitle}"/>
-                                    <TextBlock Text="自动：配置了 DeepSeek Key 就用它，否则走免费通道。"
-                                               Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
-                                    <Border Style="{StaticResource SegmentGroup}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <RadioButton x:Name="TranslateAuto" GroupName="TranslateEngine"
-                                                         Style="{StaticResource SegmentTight}" Content="自动"/>
-                                            <RadioButton x:Name="TranslateFree" GroupName="TranslateEngine"
-                                                         Style="{StaticResource SegmentTight}" Content="免费通道"/>
-                                            <RadioButton x:Name="TranslateDeepSeek" GroupName="TranslateEngine"
-                                                         Style="{StaticResource SegmentTight}" Content="DeepSeek"/>
-                                        </StackPanel>
-                                    </Border>
-                                </StackPanel>
                             </Border>
 
                             <TextBlock Text="性能" Style="{StaticResource GroupLabel}"/>
@@ -513,6 +443,180 @@
                                     </StackPanel>
                                 </Grid>
                             </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- 功能模块的二级设置 -->
+                    <ScrollViewer x:Name="PageModule" Style="{StaticResource PageScroll}" Margin="30,0,18,0"
+                                  Visibility="Collapsed">
+                        <StackPanel Margin="0,2,0,26">
+                            <Button x:Name="ModuleBack" HorizontalAlignment="Left" Style="{StaticResource GhostButton}"
+                                    Height="30" Padding="12,0" Click="OnModuleBack">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Text="返回" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <StackPanel x:Name="ModuleMonitor" Visibility="Collapsed">
+                                <TextBlock Text="系统监控" Style="{StaticResource GroupLabel}"/>
+                                <Border Style="{StaticResource Card}" Padding="18,16">
+                                    <StackPanel>
+                                        <TextBlock Text="监控数据源" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="温度、风扇与功耗的读取方式；自动会优先使用检测到的外部程序。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
+                                        <Border Style="{StaticResource SegmentGroup}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton x:Name="MonitorAuto" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
+                                                             Content="自动"/>
+                                                <RadioButton x:Name="MonitorInternal" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
+                                                             Content="内置"/>
+                                                <RadioButton x:Name="MonitorLhm" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
+                                                             Content="LibreHardwareMonitor"/>
+                                                <RadioButton x:Name="MonitorOhm" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
+                                                             Content="OpenHardwareMonitor"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <TextBlock x:Name="DetectedSourcesText" Style="{StaticResource Hint}" Margin="2,12,0,0"
+                                                   Text="未检测到外部监控软件"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel x:Name="ModuleWeather" Visibility="Collapsed">
+                                <TextBlock Text="天气" Style="{StaticResource GroupLabel}"/>
+                                <Border Style="{StaticResource Card}" Padding="18,16">
+                                    <StackPanel>
+                                        <TextBlock Text="地区" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="留空则按 IP 自动定位；可直接写中文城市名，例如 上海、杭州、Tokyo。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
+                                        <TextBox x:Name="WeatherLocation" Style="{StaticResource Field}" Width="260"
+                                                 HorizontalAlignment="Left" Text=""/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel x:Name="ModuleMusic" Visibility="Collapsed">
+                                <TextBlock Text="外部程序" Style="{StaticResource GroupLabel}"/>
+                                <Border Style="{StaticResource Card}" Padding="18,16">
+                                    <StackPanel>
+                                        <TextBlock Text="音乐程序" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="控制页点「音乐」时启动的程序；留空则打开系统默认音乐应用。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="MusicPath" Grid.Column="0" Style="{StaticResource Field}"/>
+                                            <Button x:Name="BrowseMusic" Grid.Column="2" Content="浏览…"
+                                                    Style="{StaticResource GhostButton}" Height="32" Padding="12,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel x:Name="ModuleTranslate" Visibility="Collapsed">
+                                <TextBlock Text="翻译" Style="{StaticResource GroupLabel}"/>
+                                <Border Style="{StaticResource Card}" Padding="18,16">
+                                    <StackPanel>
+                                        <TextBlock Text="翻译引擎" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="自动：优先用 DeepSeek（填了 Key 时），否则走免费通道。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
+                                        <Border Style="{StaticResource SegmentGroup}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton x:Name="TranslateAuto" GroupName="TranslateEngine"
+                                                             Style="{StaticResource SegmentTight}" Content="自动"/>
+                                                <RadioButton x:Name="TranslateFree" GroupName="TranslateEngine"
+                                                             Style="{StaticResource SegmentTight}" Content="免费通道"/>
+                                                <RadioButton x:Name="TranslateDeepSeek" GroupName="TranslateEngine"
+                                                             Style="{StaticResource SegmentTight}" Content="DeepSeek"/>
+                                                <RadioButton x:Name="TranslateBaidu" GroupName="TranslateEngine"
+                                                             Style="{StaticResource SegmentTight}" Content="百度"/>
+                                                <RadioButton x:Name="TranslateMicrosoft" GroupName="TranslateEngine"
+                                                             Style="{StaticResource SegmentTight}" Content="微软"/>
+                                                <RadioButton x:Name="TranslateCustom" GroupName="TranslateEngine"
+                                                             Style="{StaticResource SegmentTight}" Content="自定义大模型"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="百度翻译" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="在百度翻译开放平台申请通用文本翻译，AppID 与密钥都填这里。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="AppID" Style="{StaticResource Hint}" Margin="2,0,0,6"/>
+                                                <TextBox x:Name="BaiduAppId" Style="{StaticResource Field}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="密钥" Style="{StaticResource Hint}" Margin="2,0,0,6"/>
+                                                <TextBox x:Name="BaiduKey" Style="{StaticResource Field}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="微软翻译" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="Azure 认知服务的翻译密钥；区域可留空（多区域资源需要填写，例如 eastasia）。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="密钥" Style="{StaticResource Hint}" Margin="2,0,0,6"/>
+                                                <TextBox x:Name="MicrosoftKey" Style="{StaticResource Field}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="区域（可选）" Style="{StaticResource Hint}" Margin="2,0,0,6"/>
+                                                <TextBox x:Name="MicrosoftRegion" Style="{StaticResource Field}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="自定义大模型" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="任何 OpenAI 兼容的 /chat/completions 端点，例如 Ollama、vLLM 或第三方中转。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
+                                        <StackPanel>
+                                            <TextBlock Text="接口地址" Style="{StaticResource Hint}" Margin="2,0,0,6"/>
+                                            <TextBox x:Name="CustomEndpoint" Style="{StaticResource Field}"/>
+                                        </StackPanel>
+                                        <Grid Margin="0,12,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="模型" Style="{StaticResource Hint}" Margin="2,0,0,6"/>
+                                                <TextBox x:Name="CustomModel" Style="{StaticResource Field}"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="密钥（可留空）" Style="{StaticResource Hint}" Margin="2,0,0,6"/>
+                                                <TextBox x:Name="CustomKey" Style="{StaticResource Field}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
 

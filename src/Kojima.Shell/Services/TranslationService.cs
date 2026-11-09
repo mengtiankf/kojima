@@ -18,6 +18,168 @@ public static class TranslationService
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
 
+    /// <summary>按设置里的引擎翻译：auto / free / deepseek / baidu / microsoft / custom。</summary>
+    public static Task<string> TranslateAsync(
+        string text,
+        Kojima.Core.Config.TranslateSettings settings,
+        string? deepSeekKey,
+        CancellationToken ct = default)
+    {
+        var target = settings.Target == "en" ? "英" : "日";
+        var mode = (settings.Engine ?? "auto").Trim().ToLowerInvariant();
+        return mode switch
+        {
+            "baidu" => BaiduAsync(text, target, settings, ct),
+            "microsoft" => MicrosoftAsync(text, target, settings, ct),
+            "custom" => CustomAsync(text, target, settings, ct),
+            "deepseek" => DeepSeekAsync(text, target, settings.Reversed, (deepSeekKey ?? "").Trim(), ct),
+            "free" => FreeAsync(text, target, settings.Reversed, ct),
+            _ => (deepSeekKey ?? "").Trim().Length > 0
+                ? DeepSeekAsync(text, target, settings.Reversed, deepSeekKey!.Trim(), ct)
+                : FreeAsync(text, target, settings.Reversed, ct),
+        };
+    }
+
+    /// <summary>百度翻译：需要 AppID + 密钥。</summary>
+    public static async Task<string> BaiduAsync(
+        string text,
+        string target,
+        Kojima.Core.Config.TranslateSettings settings,
+        CancellationToken ct = default)
+    {
+        var appId = (settings.BaiduAppId ?? "").Trim();
+        var key = (settings.BaiduKey ?? "").Trim();
+        if (appId.Length == 0 || key.Length == 0)
+        {
+            throw new InvalidOperationException("未配置百度翻译 AppID / 密钥：设置 → 功能 → 翻译");
+        }
+
+        var salt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+        var to = target == "英" ? "en" : "jp";
+        var from = to == "en" ? "zh" : "zh";
+        var sign = Convert.ToHexString(System.Security.Cryptography.MD5.HashData(
+            Encoding.UTF8.GetBytes(appId + text + salt + key))).ToLowerInvariant();
+
+        var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["q"] = text,
+            ["from"] = from,
+            ["to"] = to,
+            ["appid"] = appId,
+            ["salt"] = salt,
+            ["sign"] = sign,
+        });
+        using var response = await Http.PostAsync("https://fanyi-api.baidu.com/api/trans/vip/translate", form, ct)
+            .ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"HTTP {(int)response.StatusCode}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+        var root = document.RootElement;
+        if (root.TryGetProperty("error_code", out var code) && code.GetString() is { Length: > 0 } error && error != "52000")
+        {
+            throw new InvalidOperationException($"百度翻译错误 {error}" +
+                (root.TryGetProperty("error_msg", out var message) ? "：" + message.GetString() : ""));
+        }
+
+        if (!root.TryGetProperty("trans_result", out var results) || results.GetArrayLength() == 0)
+        {
+            throw new InvalidOperationException("百度翻译返回为空");
+        }
+
+        var builder = new StringBuilder();
+        foreach (var item in results.EnumerateArray())
+        {
+            if (item.TryGetProperty("dst", out var dst) && dst.GetString() is { } line)
+            {
+                if (builder.Length > 0) { builder.Append('\n'); }
+                builder.Append(line);
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>微软翻译（Azure Translator）。</summary>
+    public static async Task<string> MicrosoftAsync(
+        string text,
+        string target,
+        Kojima.Core.Config.TranslateSettings settings,
+        CancellationToken ct = default)
+    {
+        var key = (settings.MicrosoftKey ?? "").Trim();
+        if (key.Length == 0)
+        {
+            throw new InvalidOperationException("未配置微软翻译密钥：设置 → 功能 → 翻译");
+        }
+
+        var to = target == "英" ? "en" : "ja";
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=" + to);
+        request.Headers.Add("Ocp-Apim-Subscription-Key", key);
+        var region = (settings.MicrosoftRegion ?? "").Trim();
+        if (region.Length > 0)
+        {
+            request.Headers.Add("Ocp-Apim-Subscription-Region", region);
+        }
+
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(new[] { new { Text = text } }), Encoding.UTF8, "application/json");
+        using var response = await Http.SendAsync(request, ct).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"HTTP {(int)response.StatusCode}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+        return document.RootElement[0].GetProperty("translations")[0].GetProperty("text").GetString() ?? "";
+    }
+
+    /// <summary>自定义大模型（OpenAI 兼容的 /chat/completions）。</summary>
+    public static async Task<string> CustomAsync(
+        string text,
+        string target,
+        Kojima.Core.Config.TranslateSettings settings,
+        CancellationToken ct = default)
+    {
+        var endpoint = (settings.CustomEndpoint ?? "").Trim();
+        if (endpoint.Length == 0)
+        {
+            throw new InvalidOperationException("未配置自定义大模型接口：设置 → 功能 → 翻译");
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        var key = (settings.CustomKey ?? "").Trim();
+        if (key.Length > 0)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
+        }
+
+        var body = new
+        {
+            model = string.IsNullOrWhiteSpace(settings.CustomModel) ? "gpt-4o-mini" : settings.CustomModel.Trim(),
+            temperature = 0,
+            messages = new object[]
+            {
+                new { role = "system", content = SystemPrompt },
+                new { role = "user", content = BuildInstruction(text, target, settings.Reversed) },
+            },
+        };
+        request.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+        using var response = await Http.SendAsync(request, ct).ConfigureAwait(false);
+        var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"HTTP {(int)response.StatusCode}");
+        }
+
+        return ExtractDeepSeek(responseBody);
+    }
+
     /// <summary>按目标语言（"日" / "英"）与方向翻译一段文本。</summary>
     public static async Task<string> TranslateAsync(
         string text,
@@ -131,12 +293,17 @@ public static class TranslationService
         return builder.ToString();
     }
 
-    private static object Payload(string text, string target, bool reversed)
+    private static string BuildInstruction(string text, string target, bool reversed)
     {
         var language = target == "日" ? "日文" : "英文";
-        var prompt = reversed
+        return reversed
             ? $"把下面的{language}翻译成中文，只输出译文：\n{text}"
             : $"把下面的中文翻译成{language}，只输出译文：\n{text}";
+    }
+
+    private static object Payload(string text, string target, bool reversed)
+    {
+        var prompt = BuildInstruction(text, target, reversed);
         return new
         {
             model = "deepseek-chat",

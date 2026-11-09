@@ -263,15 +263,15 @@ public partial class TranslateView : UserControl
             return;
         }
 
+        var settings = _runtime.Config.Translate;
         var key = ApiKey();
-        var engine = _runtime.Config.Translate.Engine;
 
         _translating = true;
         _translateLabel.Text = "翻译中…";
         SetResult("翻译中…", ResultKind.Hint);
         try
         {
-            var translated = await Services.TranslationService.TranslateAsync(text, _target, _reversed, engine, key);
+            var translated = await Services.TranslationService.TranslateAsync(text, settings, key);
 
             if (translated.Trim().Length == 0)
             {
@@ -326,7 +326,7 @@ public partial class TranslateView : UserControl
             ThemeRuntime.Changed += OnThemeChanged;
             _target = (_runtime.Config.Translate.Target ?? "ja").StartsWith("en", StringComparison.OrdinalIgnoreCase) ? "英" : "日";
             UpdateSegments();
-            if (ApiKey().Length == 0) { SetResult(FreeHint, ResultKind.Hint); }
+            if (ApiKey().Length == 0 && _runtime.Config.Translate.Engine == "deepseek") { SetResult(FreeHint, ResultKind.Hint); }
         }
 
         _loaded = true;

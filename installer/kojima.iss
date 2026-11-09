@@ -1,8 +1,8 @@
-; Kojima 安装脚本（Inno Setup 6/7）
+﻿; Kojima 安装脚本（Inno Setup 6/7）
 ; 由 build.ps1 在 publish 之后调用：ISCC.exe /DAppVersion=1.2.1 installer\kojima.iss
 
 #ifndef AppVersion
-  #define AppVersion "1.2.1"
+  #define AppVersion "1.2.2"
 #endif
 
 #define AppName "Kojima"
@@ -31,6 +31,7 @@ UninstallDisplayName={#AppName}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+ShowLanguageDialog=no
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -39,11 +40,10 @@ RestartApplications=no
 MinVersion=10.0.19041
 
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Default.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "chinesesimplified"; MessagesFile: "ChineseSimplified.isl"
 
 [Tasks]
-Name: "startup"; Description: "开机自动启动 Kojima"; GroupDescription: "其它:"; Flags: checkedonce
+Name: "startup"; Description: "开机自动启动 Kojima"; GroupDescription: "其它"; Flags: checkedonce
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]

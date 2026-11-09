@@ -221,7 +221,7 @@ public partial class IslandWindow : Window
         var host = new Grid();
 
         var left = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left };
-        foreach (var page in _pages)
+        foreach (var page in OrderedPages())
         {
             left.Children.Add(CreateNavItem(page));
         }
@@ -232,6 +232,48 @@ public partial class IslandWindow : Window
         host.Children.Add(left);
         host.Children.Add(right);
         NavRow.Children.Add(host);
+    }
+
+    /// <summary>按设置里的模块顺序排标签；主页固定在最前，控制固定在末尾。</summary>
+    private IEnumerable<IslandPage> OrderedPages()
+    {
+        var home = _pages.FirstOrDefault(p => p.Key == "home");
+        if (home is not null)
+        {
+            yield return home;
+        }
+
+        var order = _runtime.Config.Island.NavOrder ?? new List<string>();
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["usage"] = "usage",
+            ["monitor"] = "monitor",
+            ["stocks"] = "stocks",
+            ["weather"] = "weather",
+            ["clipboard"] = "clip",
+            ["translate"] = "translate",
+        };
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "home", "ctl" };
+        foreach (var key in order)
+        {
+            if (map.TryGetValue(key, out var pageKey) && seen.Add(pageKey))
+            {
+                var page = _pages.FirstOrDefault(p => p.Key == pageKey);
+                if (page is not null)
+                {
+                    yield return page;
+                }
+            }
+        }
+
+        foreach (var page in _pages)
+        {
+            if (seen.Add(page.Key))
+            {
+                yield return page;
+            }
+        }
     }
 
     private FrameworkElement CreateNavItem(IslandPage page)
@@ -821,10 +863,24 @@ public partial class IslandWindow : Window
         }
 
         var screen = PointToScreen(new Point(0, 0));
-        return point.X >= screen.X - 2
-               && point.Y >= screen.Y - 2
-               && point.X <= screen.X + ActualWidth + 2
-               && point.Y <= screen.Y + ActualHeight + 2;
+        var inside = point.X >= screen.X - 2
+                     && point.Y >= screen.Y - 2
+                     && point.X <= screen.X + ActualWidth + 2
+                     && point.Y <= screen.Y + ActualHeight + 2;
+
+        if (!inside && !_expanded)
+        {
+            // 收起态感应区：把岛体与屏幕顶边之间的空隙桥接进来（对齐 BrimDeck 的 HoverExtensionBox）
+            var work = SystemParameters.WorkArea;
+            var left = Math.Max(work.Left, screen.X - 4);
+            var right = Math.Min(work.Right, screen.X + ActualWidth + 4);
+            inside = point.X >= left
+                     && point.X <= right
+                     && point.Y >= work.Top - 1
+                     && point.Y <= screen.Y + ActualHeight + 4;
+        }
+
+        return inside;
     }
 
     private void PollFullscreen()

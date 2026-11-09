@@ -20,8 +20,7 @@ public sealed class MediaWidget : UserControl
     private readonly TextBlock _album;
     private readonly TextBlock _position;
     private readonly TextBlock _duration;
-    private readonly Border _track = new();
-    private readonly Border _fill = new();
+    private readonly SpectrumView _spectrum = new();
     private readonly TextBlock _playGlyph;
     private readonly Border _playButton = new();
     private readonly TextBlock _prevGlyph;
@@ -67,25 +66,9 @@ public sealed class MediaWidget : UserControl
         Grid.SetColumn(info, 1);
         top.Children.Add(info);
 
-        // 进度
-        _track.Height = 4;
-        _track.CornerRadius = new CornerRadius(2);
-        _track.Margin = new Thickness(0, 12, 0, 0);
-        _track.Cursor = Cursors.Hand;
-        _fill.CornerRadius = new CornerRadius(2);
-        _fill.HorizontalAlignment = HorizontalAlignment.Left;
-        _track.Child = new Grid { Children = { _fill } };
-        _track.MouseLeftButtonUp += (_, e) =>
-        {
-            var info2 = _service.Current;
-            if (info2 is null || info2.Duration <= TimeSpan.Zero || _track.ActualWidth <= 0)
-            {
-                return;
-            }
-
-            var ratio = Math.Clamp(e.GetPosition(_track).X / _track.ActualWidth, 0, 1);
-            _ = _service.SeekAsync(TimeSpan.FromTicks((long)(info2.Duration.Ticks * ratio)));
-        };
+        // 频谱（替代进度条）
+        _spectrum.Height = 34;
+        _spectrum.Margin = new Thickness(0, 10, 0, 0);
 
         _position = UiKit.T("0:00", 10.5, ThemeRuntime.Text3, num: true);
         _duration = UiKit.T("0:00", 10.5, ThemeRuntime.Text3, num: true);
@@ -148,8 +131,8 @@ public sealed class MediaWidget : UserControl
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         Grid.SetRow(top, 0);
         root.Children.Add(top);
-        Grid.SetRow(_track, 1);
-        root.Children.Add(_track);
+        Grid.SetRow(_spectrum, 1);
+        root.Children.Add(_spectrum);
         Grid.SetRow(times, 2);
         root.Children.Add(times);
         Grid.SetRow(controls, 3);
@@ -157,12 +140,8 @@ public sealed class MediaWidget : UserControl
         root.Children.Add(_empty);
         Content = root;
 
+        _spectrum.SetSource(() => AppRuntime.Current?.Spectrum?.Levels);
         _service.Changed += OnChanged;
-        _track.SizeChanged += (_, _) =>
-        {
-            var media = _service.Current;
-            UpdateProgress(media?.Position ?? TimeSpan.Zero, media?.Duration ?? TimeSpan.Zero);
-        };
         Unloaded += (_, _) => _service.Changed -= OnChanged;
         ThemeRuntime.Changed += OnTheme;
         Unloaded += (_, _) => ThemeRuntime.Changed -= OnTheme;
@@ -245,17 +224,8 @@ public sealed class MediaWidget : UserControl
         var duration = info?.Duration ?? TimeSpan.Zero;
         _position.Text = Format(position);
         _duration.Text = Format(duration);
-        _track.Background = ThemeRuntime.Track;
-        _fill.Background = ThemeRuntime.Accent;
-        UpdateProgress(position, duration);
-    }
-
-    private void UpdateProgress(TimeSpan position, TimeSpan duration)
-    {
-        var ratio = duration.TotalMilliseconds > 1
-            ? Math.Clamp(position.TotalMilliseconds / duration.TotalMilliseconds, 0, 1)
-            : 0;
-        _fill.Width = Math.Max(0, _track.ActualWidth * ratio);
+        _spectrum.Active = info?.IsPlaying == true;
+        _spectrum.Demo = _demo;
     }
 
     private static string Format(TimeSpan time) =>

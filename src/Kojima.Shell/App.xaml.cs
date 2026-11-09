@@ -58,6 +58,26 @@ public partial class App : Application
     /// <summary>开发/截图钩子：KOJIMA_PREVIEW 指定页面，KOJIMA_SHOT 输出窗口 PNG。</summary>
     private void ApplyDevHooks()
     {
+        // KOJIMA_SETTINGS=1：启动后直接打开设置窗口（截图/调试用）
+        if (Environment.GetEnvironmentVariable("KOJIMA_SETTINGS") is { Length: > 0 })
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                OpenSettings();
+                var page = Environment.GetEnvironmentVariable("KOJIMA_SETTINGS_PAGE");
+                if (int.TryParse(page, out var index) && _settings is { } window)
+                {
+                    window.SelectPage(index);
+                }
+
+                var module = Environment.GetEnvironmentVariable("KOJIMA_SETTINGS_MODULE");
+                if (!string.IsNullOrWhiteSpace(module) && _settings is { } target)
+                {
+                    target.SelectModule(module);
+                }
+            }));
+        }
+
         if (Environment.GetEnvironmentVariable("KOJIMA_DEMO") == "1" && _island is not null)
         {
             _island.ApplyDemoData();
@@ -80,7 +100,7 @@ public partial class App : Application
                 {
                     _runtime.Config.Usage.Keys.TryGetValue("deepseek", out var key);
                     var text = await Kojima.Shell.Services.TranslationService.TranslateAsync(
-                        probe, "日", false, _runtime.Config.Translate.Engine, key).ConfigureAwait(false);
+                        probe, _runtime.Config.Translate, key).ConfigureAwait(false);
                     AppLog.Info("翻译测试：" + text);
                 }
                 catch (Exception ex)
@@ -261,6 +281,8 @@ public partial class App : Application
         return IntPtr.Zero;
     }
 
+    private Settings.SettingsWindow? _settings;
+
     private void OpenSettings()
     {
         if (_runtime is null)
@@ -270,6 +292,14 @@ public partial class App : Application
 
         var window = new Settings.SettingsWindow(_runtime);
         window.Saved += Reapply;
+        window.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_settings, window))
+            {
+                _settings = null;
+            }
+        };
+        _settings = window;
         window.Show();
         window.Activate();
     }

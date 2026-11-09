@@ -25,6 +25,7 @@ public sealed class AppRuntime
         Notify = new NotifyCenter(dispatcher);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardService() : null;
         Media = new MediaSessionService();
+        Spectrum = new SpectrumService();
         Messages = new MessageCenter(dispatcher, Config);
         Agents.EventReceived += OnAgentEvent;
         Weather.Updated += OnWeather;
@@ -52,6 +53,9 @@ public sealed class AppRuntime
 
     /// <summary>系统媒体会话（SMTC）。</summary>
     public MediaSessionService Media { get; }
+
+    /// <summary>系统输出频谱（WASAPI 环回）。</summary>
+    public SpectrumService Spectrum { get; }
 
     public event Action? ConfigChanged;
 
@@ -145,6 +149,7 @@ public sealed class AppRuntime
         {
             Clipboard?.Start();
             Media.Start();
+            Spectrum.Start();
         }
 
         Messages.Start();
@@ -165,6 +170,7 @@ public sealed class AppRuntime
         {
             Clipboard?.Dispose();
             Media.Dispose();
+            Spectrum.Dispose();
             Messages.Dispose();
             Weather.Dispose();
             await Monitor.StopAsync().ConfigureAwait(false);

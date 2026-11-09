@@ -64,6 +64,7 @@ public partial class SettingsWindow : Window
         ("功能", "按需启动的模块、系统监控数据源与空闲回收。"),
         ("用量", "各 AI 服务的用量来源、密钥与刷新节奏。"),
         ("关于", "版本信息、仓库链接与开源致谢。"),
+        ("模块设置", "该模块的详细设置。"),
     };
 
     private readonly AppRuntime _runtime;
@@ -81,7 +82,7 @@ public partial class SettingsWindow : Window
         ArgumentNullException.ThrowIfNull(runtime);
         _runtime = runtime;
         InitializeComponent();
-        _pages = new[] { PageGeneral, PageAppearance, PageFeatures, PageUsage, PageAbout };
+        _pages = new[] { PageGeneral, PageAppearance, PageFeatures, PageUsage, PageAbout, PageModule };
         foreach (var page in _pages)
         {
             page.RenderTransform = new TranslateTransform();
@@ -250,7 +251,23 @@ public partial class SettingsWindow : Window
         WeatherLocation.Text = cfg.Weather.Location ?? "";
         MusicPath.Text = cfg.Apps.Music ?? "";
         var engine = (cfg.Translate.Engine ?? "auto").Trim().ToLowerInvariant();
-        (engine == "free" ? TranslateFree : engine == "deepseek" ? TranslateDeepSeek : TranslateAuto).IsChecked = true;
+        (engine switch
+        {
+            "free" => TranslateFree,
+            "deepseek" => TranslateDeepSeek,
+            "baidu" => TranslateBaidu,
+            "microsoft" => TranslateMicrosoft,
+            "custom" => TranslateCustom,
+            _ => TranslateAuto,
+        }).IsChecked = true;
+
+        BaiduAppId.Text = cfg.Translate.BaiduAppId ?? "";
+        BaiduKey.Text = cfg.Translate.BaiduKey ?? "";
+        MicrosoftKey.Text = cfg.Translate.MicrosoftKey ?? "";
+        MicrosoftRegion.Text = cfg.Translate.MicrosoftRegion ?? "";
+        CustomEndpoint.Text = cfg.Translate.CustomEndpoint ?? "";
+        CustomModel.Text = cfg.Translate.CustomModel ?? "";
+        CustomKey.Text = cfg.Translate.CustomKey ?? "";
 
         IdleExitBox.Text = cfg.Feature("monitor").IdleExitSeconds.ToString(CultureInfo.InvariantCulture);
         RefreshBox.Text = cfg.Usage.RefreshSeconds.ToString(CultureInfo.InvariantCulture);
@@ -287,49 +304,8 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        FeatureList.Children.Add(new TextBlock
-        {
-            Text = "子进程按需启动，关闭后立即回收。",
-            Style = (Style)FindResource("Hint"),
-            Margin = new Thickness(0, 12, 0, 12),
-        });
-
-        var first = true;
-        foreach (var (key, label, desc) in FeatureDefs)
-        {
-            if (!first)
-            {
-                FeatureList.Children.Add(new Border { Style = (Style)FindResource("RowDivider") });
-            }
-
-            first = false;
-            var enabled = _runtime.FeatureEnabled(key);
-            var toggle = new CheckBox
-            {
-                Style = (Style)FindResource("Switch"),
-                IsChecked = enabled,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(24, 0, 0, 0),
-            };
-
-            var row = new Grid { Style = (Style)FindResource("SettingRow") };
-            row.ColumnDefinitions.Add(new ColumnDefinition());
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var text = new StackPanel
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 10, 0, 10),
-            };
-            text.Children.Add(new TextBlock { Text = label, Style = (Style)FindResource("RowTitle") });
-            text.Children.Add(new TextBlock { Text = desc, Style = (Style)FindResource("RowDesc") });
-
-            row.Children.Add(text);
-            Grid.SetColumn(toggle, 1);
-            row.Children.Add(toggle);
-            FeatureList.Children.Add(row);
-            _features.Add(new FeatureRow(key, toggle, enabled));
-        }
+        BuildModuleOrder();
+        RebuildFeatureList();
     }
 
     private void BuildSources()
@@ -494,6 +470,22 @@ public partial class SettingsWindow : Window
         if (_pages.Length == 0 || index < 0 || index >= _pages.Length)
         {
             return;
+        }
+
+        ShowPage(index);
+    }
+
+    /// <summary>供开发钩子直接切页（0 通用 / 1 外观 / 2 功能 / 3 用量 / 4 关于）。</summary>
+    public void SelectPage(int index)
+    {
+        if (index < 0 || index >= _pages.Length)
+        {
+            return;
+        }
+
+        if (index == 2)
+        {
+            NavFeatures.IsChecked = true;
         }
 
         ShowPage(index);
@@ -664,7 +656,19 @@ public partial class SettingsWindow : Window
             cfg.Apps.Music = (MusicPath.Text ?? "").Trim();
             cfg.Translate.Engine = TranslateFree.IsChecked == true ? "free"
                 : TranslateDeepSeek.IsChecked == true ? "deepseek"
+                : TranslateBaidu.IsChecked == true ? "baidu"
+                : TranslateMicrosoft.IsChecked == true ? "microsoft"
+                : TranslateCustom.IsChecked == true ? "custom"
                 : "auto";
+            cfg.Translate.BaiduAppId = (BaiduAppId.Text ?? "").Trim();
+            cfg.Translate.BaiduKey = (BaiduKey.Text ?? "").Trim();
+            cfg.Translate.MicrosoftKey = (MicrosoftKey.Text ?? "").Trim();
+            cfg.Translate.MicrosoftRegion = (MicrosoftRegion.Text ?? "").Trim();
+            cfg.Translate.CustomEndpoint = (CustomEndpoint.Text ?? "").Trim();
+            cfg.Translate.CustomModel = (CustomModel.Text ?? "").Trim();
+            cfg.Translate.CustomKey = (CustomKey.Text ?? "").Trim();
+
+            cfg.Island.NavOrder = _order.ToList();
 
             // 数据源：保留清单外的历史来源，避免升级后丢失
             var known = new HashSet<string>(_sources.Select(s => s.Key), StringComparer.OrdinalIgnoreCase);

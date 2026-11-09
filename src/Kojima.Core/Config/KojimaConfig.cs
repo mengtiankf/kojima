@@ -56,6 +56,9 @@ public sealed class IslandSettings
     /// <summary>展开 / 收起动画时长（毫秒）。</summary>
     public int AnimationMs { get; set; } = 260;
 
+    /// <summary>导航与功能列表的顺序（页面 key）；为空表示使用内置顺序。</summary>
+    public List<string> NavOrder { get; set; } = new();
+
     /// <summary>收起时显示：clock / pet。</summary>
     public string CompactView { get; set; } = "clock";
 
@@ -145,8 +148,29 @@ public sealed class AppSettings
 
 public sealed class TranslateSettings
 {
-    /// <summary>翻译引擎：auto / free / deepseek。</summary>
+    /// <summary>翻译引擎：auto / free / deepseek / baidu / microsoft / custom。</summary>
     public string Engine { get; set; } = "auto";
+
+    /// <summary>百度翻译 AppID。</summary>
+    public string BaiduAppId { get; set; } = "";
+
+    /// <summary>百度翻译密钥。</summary>
+    public string BaiduKey { get; set; } = "";
+
+    /// <summary>微软翻译（Azure Translator）密钥。</summary>
+    public string MicrosoftKey { get; set; } = "";
+
+    /// <summary>微软翻译区域。</summary>
+    public string MicrosoftRegion { get; set; } = "";
+
+    /// <summary>自定义大模型接口地址（OpenAI 兼容 /chat/completions）。</summary>
+    public string CustomEndpoint { get; set; } = "";
+
+    /// <summary>自定义大模型名称。</summary>
+    public string CustomModel { get; set; } = "";
+
+    /// <summary>自定义大模型 API Key。</summary>
+    public string CustomKey { get; set; } = "";
 
     /// <summary>目标语言：ja / en。</summary>
     public string Target { get; set; } = "ja";
