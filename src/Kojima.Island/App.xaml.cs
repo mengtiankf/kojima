@@ -430,6 +430,26 @@ public partial class App : Application
         Register(handle, 3, keys.Monitor);
     }
 
+    /// <summary>设置保存后重新注册热键，不需要重启应用。</summary>
+    internal static void RehookHotkeys()
+    {
+        if (Application.Current is not App app || app._island is null || app._source is null || app._runtime is null)
+        {
+            return;
+        }
+
+        var handle = app._source.Handle;
+        for (var id = 1; id <= 3; id++)
+        {
+            NativeMethods.UnregisterHotKey(handle, id);
+        }
+
+        var keys = app._runtime.Config.Hotkeys;
+        app.Register(handle, 1, keys.Toggle);
+        app.Register(handle, 2, keys.Settings);
+        app.Register(handle, 3, keys.Monitor);
+    }
+
     private void Register(IntPtr handle, int id, string text)
     {
         if (handle == IntPtr.Zero || string.IsNullOrWhiteSpace(text))

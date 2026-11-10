@@ -985,7 +985,7 @@ public partial class SettingsWindow : Window
 
             if (HotkeySignature(cfg.Hotkeys) != previousHotkeys)
             {
-                restartReasons.Add("快捷键已保存，新组合需要重启后才会注册。");
+                App.RehookHotkeys();
             }
 
             if (restartReasons.Count > 0)
