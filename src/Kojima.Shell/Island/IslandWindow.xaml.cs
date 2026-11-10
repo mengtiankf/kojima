@@ -37,6 +37,16 @@ public partial class IslandWindow : Window
     private DateTime _hoverSince;
     private DateTime _outsideSince;
     private bool _hiddenForFullscreen;
+    private bool _dragArmed;
+    private bool _dragging;
+    private bool _suppressClick;
+    private bool _resizing;
+    private Point _pressScreen;
+    private double _pressLeft;
+    private double _pressTop;
+    private double _resizeStartWidth;
+    private const double DragThreshold = 4;
+    private const double ResizeEdge = 18;
 
     public IslandWindow(AppRuntime runtime)
     {
@@ -46,6 +56,9 @@ public partial class IslandWindow : Window
 
         SourceInitialized += (_, _) => ApplyWindowStyles();
         PreviewMouseDown += OnPreviewMouseDown;
+        PreviewMouseLeftButtonDown += OnDragPress;
+        PreviewMouseMove += OnDragMove;
+        PreviewMouseLeftButtonUp += OnDragRelease;
         Deactivated += (_, _) => RestoreNoActivate();
         Loaded += (_, _) => Initialise();
 
@@ -728,9 +741,19 @@ public partial class IslandWindow : Window
         }
     }
 
+    private DisplayInfo? CurrentDisplay() => DisplayInfo.Find(Settings.Monitor) ?? DisplayInfo.Find(null);
+
     private void PositionWindow()
     {
-        var work = SystemParameters.WorkArea;
+        var work = CurrentDisplay()?.Work ?? SystemParameters.WorkArea;
+        if (Settings.DragX is double dragX && Settings.DragY is double dragY)
+        {
+            // 拖拽位置：允许略微出界，但保留可抓回的余量
+            Left = Math.Round(Math.Clamp(work.Left + dragX, work.Left - Width + 48, work.Right - 48));
+            Top = Math.Round(Math.Clamp(work.Top + dragY, work.Top - Height + 24, work.Bottom - 24));
+            return;
+        }
+
         var margin = Settings.MarginX;
         var left = Settings.Position switch
         {
@@ -940,29 +963,43 @@ public partial class IslandWindow : Window
         }
     }
 
-    private bool IsCursorInside()
+    private Point CursorDip()
     {
         if (!NativeMethods.GetCursorPos(out var point))
+        {
+            return new Point(double.NaN, double.NaN);
+        }
+
+        var dpi = VisualTreeHelper.GetDpi(this);
+        return new Point(point.X / dpi.DpiScaleX, point.Y / dpi.DpiScaleY);
+    }
+
+    private bool IsCursorInside()
+    {
+        var cursor = CursorDip();
+        if (double.IsNaN(cursor.X))
         {
             return true;
         }
 
-        var screen = PointToScreen(new Point(0, 0));
-        var inside = point.X >= screen.X - 2
-                     && point.Y >= screen.Y - 2
-                     && point.X <= screen.X + ActualWidth + 2
-                     && point.Y <= screen.Y + ActualHeight + 2;
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var origin = PointToScreen(new Point(0, 0));
+        var screen = new Point(origin.X / dpi.DpiScaleX, origin.Y / dpi.DpiScaleY);
+        var inside = cursor.X >= screen.X - 2
+                     && cursor.Y >= screen.Y - 2
+                     && cursor.X <= screen.X + ActualWidth + 2
+                     && cursor.Y <= screen.Y + ActualHeight + 2;
 
         if (!inside && !_expanded)
         {
             // 收起态感应区：把岛体与屏幕顶边之间的空隙桥接进来（对齐 BrimDeck 的 HoverExtensionBox）
-            var work = SystemParameters.WorkArea;
+            var work = CurrentDisplay()?.Work ?? SystemParameters.WorkArea;
             var left = Math.Max(work.Left, screen.X - 4);
             var right = Math.Min(work.Right, screen.X + ActualWidth + 4);
-            inside = point.X >= left
-                     && point.X <= right
-                     && point.Y >= work.Top - 1
-                     && point.Y <= screen.Y + ActualHeight + 4;
+            inside = cursor.X >= left
+                     && cursor.X <= right
+                     && cursor.Y >= work.Top - 1
+                     && cursor.Y <= screen.Y + ActualHeight + 4;
         }
 
         return inside;
@@ -1004,6 +1041,137 @@ public partial class IslandWindow : Window
         });
     }
 
+    private Point ToScreenDip(Point client)
+    {
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var screen = PointToScreen(client);
+        return new Point(screen.X / dpi.DpiScaleX, screen.Y / dpi.DpiScaleY);
+    }
+
+    private void OnDragPress(object sender, MouseButtonEventArgs e)
+    {
+        _suppressClick = false;
+        if (e.ChangedButton != MouseButton.Left)
+        {
+            return;
+        }
+
+        var point = ToScreenDip(e.GetPosition(this));
+        if (_expanded)
+        {
+            // 展开面板右下角 18px 作为缩放热区
+            if (e.GetPosition(this).X >= ActualWidth - ResizeEdge &&
+                e.GetPosition(this).Y >= ActualHeight - ResizeEdge)
+            {
+                _resizing = true;
+                _pressScreen = point;
+                _resizeStartWidth = Width;
+                CaptureMouse();
+            }
+
+            return;
+        }
+
+        _dragArmed = true;
+        _pressScreen = point;
+        _pressLeft = Left;
+        _pressTop = Top;
+    }
+
+    private void OnDragMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        var point = ToScreenDip(e.GetPosition(this));
+        if (_resizing)
+        {
+            Width = Math.Clamp(_resizeStartWidth + (point.X - _pressScreen.X), 420, 900);
+            _suppressClick = true;
+            return;
+        }
+
+        if (!_dragArmed)
+        {
+            return;
+        }
+
+        if (!_dragging)
+        {
+            if (Math.Abs(point.X - _pressScreen.X) < DragThreshold &&
+                Math.Abs(point.Y - _pressScreen.Y) < DragThreshold)
+            {
+                return;
+            }
+
+            _dragging = true;
+            CaptureMouse();
+        }
+
+        Left = _pressLeft + (point.X - _pressScreen.X);
+        Top = _pressTop + (point.Y - _pressScreen.Y);
+        _suppressClick = true;
+    }
+
+    private void OnDragRelease(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left)
+        {
+            return;
+        }
+
+        if (_resizing)
+        {
+            _resizing = false;
+            Settings.PanelWidth = Math.Round(Width);
+            _runtime.SaveConfig();
+            ReleaseMouseCapture();
+            e.Handled = true;
+            return;
+        }
+
+        if (!_dragging)
+        {
+            _dragArmed = false;
+            return;
+        }
+
+        _dragging = false;
+        _dragArmed = false;
+        ReleaseMouseCapture();
+
+        var display = DisplayInfo.At(Left + Width / 2, Top + Height / 2) ?? CurrentDisplay();
+        if (display is not null)
+        {
+            var work = display.Work;
+            var x = Left - work.Left;
+            var y = Top - work.Top;
+            if (Math.Abs(Left - work.Left) <= 16)
+            {
+                x = 0;
+            }
+            else if (Math.Abs(Left + Width - work.Right) <= 16)
+            {
+                x = work.Width - Width;
+            }
+
+            if (Math.Abs(Top - work.Top) <= 16)
+            {
+                y = 0;
+            }
+
+            Settings.Monitor = display.DeviceName;
+            Settings.DragX = Math.Round(x);
+            Settings.DragY = Math.Round(y);
+            PositionWindow();
+            _runtime.SaveConfig();
+        }
+
+        e.Handled = true;
+    }
+
     protected override void OnMouseRightButtonUp(System.Windows.Input.MouseButtonEventArgs e)
     {
         base.OnMouseRightButtonUp(e);
@@ -1042,10 +1210,12 @@ public partial class IslandWindow : Window
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonUp(e);
-        if (!_expanded)
+        if (!_expanded && !_suppressClick)
         {
             ShowPage(_current?.Key ?? "home");
         }
+
+        _suppressClick = false;
     }
 
     protected override void OnClosed(EventArgs e)

@@ -42,6 +42,13 @@ public sealed class IslandSettings
 
     public double PanelWidth { get; set; } = 640;
 
+    /// <summary>岛体所在显示器（设备名，空 = 主显示器）。</summary>
+    public string Monitor { get; set; } = "";
+
+    /// <summary>拖拽后的位置（相对显示器工作区左上角的 DIP 偏移，空 = 按 Position 吸附）。</summary>
+    public double? DragX { get; set; }
+    public double? DragY { get; set; }
+
     public string Theme { get; set; } = "deck-dark";
 
     public bool HideFullscreen { get; set; } = true;

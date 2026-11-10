@@ -391,6 +391,59 @@
                             <TextBlock Text="把 .json 主题放进该目录后重新打开设置窗口即可看到。"
                                        Style="{StaticResource Hint}" Margin="2,0,0,0"/>
 
+                            <TextBlock Text="显示器与位置" Style="{StaticResource GroupLabel}"/>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="显示器" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="岛体放在哪块屏幕；直接拖动收起态岛体即可移动并吸附边缘"
+                                                       Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <ComboBox x:Name="MonitorBox" Grid.Column="1" Width="200"
+                                                  DisplayMemberPath="DeviceName" Margin="24,0,0,0"/>
+                                    </Grid>
+                                    <Border Style="{StaticResource RowDivider}"/>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="展开宽度" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="也可以用展开面板右下角拖拽调整"
+                                                       Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                    VerticalAlignment="Center" Margin="24,0,0,0">
+                                            <Slider x:Name="PanelWidthSlider" Style="{StaticResource SlimSlider}"
+                                                    Width="180" Minimum="420" Maximum="900"
+                                                    ValueChanged="OnPanelWidthChanged"/>
+                                            <TextBlock x:Name="PanelWidthValue" Style="{StaticResource Hint}"
+                                                       Width="54" TextAlignment="Right" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Border Style="{StaticResource RowDivider}"/>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="重置位置" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="清除拖动记忆，回到上方选定的吸附位置"
+                                                       Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Style="{StaticResource GhostButton}" Margin="24,0,0,0"
+                                                Click="OnResetPositionClick" Content="重置"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
                             <TextBlock Text="自动切换" Style="{StaticResource GroupLabel}"/>
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>

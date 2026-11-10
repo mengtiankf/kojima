@@ -279,6 +279,16 @@ public partial class SettingsWindow : Window
         Sub2ApiSite.Text = cfg.Usage.Sites.GetValueOrDefault("sub2api") ?? "";
         ThemePathText.Text = ConfigStore.ThemesDirectory;
 
+        var displays = DisplayInfo.All();
+        MonitorBox.ItemsSource = displays;
+        MonitorBox.DisplayMemberPath = nameof(DisplayInfo.DeviceName);
+        MonitorBox.SelectedItem = displays.FirstOrDefault(d =>
+                                     string.Equals(d.DeviceName, cfg.Island.Monitor, StringComparison.OrdinalIgnoreCase))
+                                 ?? displays.FirstOrDefault(d => d.Primary)
+                                 ?? displays.FirstOrDefault();
+        PanelWidthSlider.Value = Math.Clamp(cfg.Island.PanelWidth, 420, 900);
+        PanelWidthValue.Text = ((int)Math.Round(PanelWidthSlider.Value)) + " px";
+
         var appearance = cfg.Appearance ??= new AppearanceSettings();
         (appearance.Mode switch
         {
@@ -360,6 +370,27 @@ public partial class SettingsWindow : Window
         {
             StatusText.Text = "保存主题失败：" + ex.Message;
         }
+    }
+
+    private void OnPanelWidthChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (PanelWidthValue is not null)
+        {
+            PanelWidthValue.Text = ((int)Math.Round(e.NewValue)) + " px";
+        }
+    }
+
+    private void OnResetPositionClick(object sender, RoutedEventArgs e)
+    {
+        var cfg = _runtime.Config;
+        cfg.Island.DragX = null;
+        cfg.Island.DragY = null;
+        cfg.Island.Monitor = "";
+        _runtime.SaveConfig();
+        var displays = DisplayInfo.All();
+        MonitorBox.SelectedItem = displays.FirstOrDefault(d => d.Primary) ?? displays.FirstOrDefault();
+        App.RefreshIsland();
+        StatusText.Text = "已清除拖动位置，岛体回到吸附位置。";
     }
 
     private void UpdateCurrentThemeText()
@@ -751,6 +782,21 @@ public partial class SettingsWindow : Window
             cfg.Island.Position = PosLeft.IsChecked == true ? IslandPosition.TopLeft
                 : PosRight.IsChecked == true ? IslandPosition.TopRight
                 : IslandPosition.TopCenter;
+
+            var previousMonitor = cfg.Island.Monitor;
+            if (MonitorBox.SelectedItem is DisplayInfo display)
+            {
+                cfg.Island.Monitor = display.DeviceName;
+            }
+
+            if (!string.Equals(previousMonitor, cfg.Island.Monitor, StringComparison.OrdinalIgnoreCase))
+            {
+                // 换显示器后旧的拖拽偏移不再适用，回到吸附位置
+                cfg.Island.DragX = null;
+                cfg.Island.DragY = null;
+            }
+
+            cfg.Island.PanelWidth = Math.Round(PanelWidthSlider.Value);
             cfg.Island.Shape = ShapeCapsule.IsChecked == true ? IslandShape.Capsule
                 : ShapeIndicator.IsChecked == true ? IslandShape.Indicator
                 : IslandShape.Notch;
@@ -864,6 +910,7 @@ public partial class SettingsWindow : Window
 
             _runtime.SaveConfig();
             _runtime.Themes.Apply();
+            App.RefreshIsland();
             UpdateCurrentThemeText();
             foreach (var (key, enabled) in changed)
             {

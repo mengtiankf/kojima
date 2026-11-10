@@ -359,6 +359,15 @@ public partial class App : Application
         }
     }
 
+    /// <summary>设置里改了显示器 / 位置 / 尺寸后，让岛体立即重新布局。</summary>
+    public static void RefreshIsland()
+    {
+        if (Application.Current is App { _island: { } island })
+        {
+            island.RefreshAppearance();
+        }
+    }
+
     private void OpenSettings()
     {
         if (_runtime is null)

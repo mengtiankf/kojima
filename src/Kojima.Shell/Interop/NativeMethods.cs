@@ -46,6 +46,31 @@ internal static class NativeMethods
         public uint dwFlags;
     }
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct MONITORINFOEX
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string szDevice;
+    }
+
+    public delegate bool MonitorEnumProc(IntPtr monitor, IntPtr hdc, IntPtr rect, IntPtr data);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc callback, IntPtr data);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFOEX info);
+
+    [DllImport("shcore.dll")]
+    public static extern int GetDpiForMonitor(IntPtr monitor, int dpiType, out uint dpiX, out uint dpiY);
+
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT
     {
