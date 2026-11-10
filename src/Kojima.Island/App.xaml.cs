@@ -72,7 +72,11 @@ public partial class App : Application
         _island.Loaded += (_, _) => HookHotkeys();
         _island.Show();
         RebuildExtraIslands();
-        _runtime.Weather.Start();
+        if (_runtime.Config.Feature("weather").Enabled)
+        {
+            _runtime.Weather.Start();
+        }
+
         _runtime.StartFeatures();
 
         StartShellBridge();

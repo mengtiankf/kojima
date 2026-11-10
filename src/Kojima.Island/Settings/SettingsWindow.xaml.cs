@@ -933,6 +933,7 @@ public partial class SettingsWindow : Window
             _runtime.Weather.ApplySettings();
             _ = _runtime.Weather.RefreshAsync();
             _runtime.Usage.ApplySettings();
+            _ = _runtime.Usage.RefreshAsync();
 
             if (cfg.Messages.PollMs != previousPollMs)
             {

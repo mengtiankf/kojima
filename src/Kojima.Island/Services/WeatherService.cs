@@ -10,7 +10,6 @@ public sealed class WeatherService : IDisposable
     private readonly DispatcherTimer _timer;
     private readonly AgentSupervisor _agents;
     private bool _busy;
-    private bool _started;
 
     public WeatherService(Dispatcher dispatcher, AgentSupervisor agents)
     {
@@ -43,18 +42,13 @@ public sealed class WeatherService : IDisposable
 
     public void Start()
     {
-        if (_started)
-        {
-            ApplySettings();
-            _ = RefreshAsync();
-            return;
-        }
-
-        _started = true;
         ApplySettings();
         _timer.Start();
         _ = RefreshAsync();
     }
+
+    /// <summary>关闭天气模块时停掉后台刷新；重新开启时再 Start。</summary>
+    public void Stop() => _timer.Stop();
 
     public async Task RefreshAsync()
     {

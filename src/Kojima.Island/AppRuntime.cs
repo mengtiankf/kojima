@@ -115,6 +115,9 @@ public sealed class AppRuntime
                 case "monitor":
                     await Monitor.StopAsync().ConfigureAwait(false);
                     break;
+                case "weather":
+                    Weather.Stop();
+                    break;
                 case "clipboard":
                     Clipboard.Stop();
                     break;
@@ -160,7 +163,7 @@ public sealed class AppRuntime
                     _ = Usage.RefreshAsync();
                     break;
                 case "weather":
-                    _ = Weather.RefreshAsync();
+                    Weather.Start();
                     break;
                 case "controls":
                     _ = Controls.LoadAsync();
