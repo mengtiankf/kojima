@@ -21,6 +21,7 @@ public partial class App : Application
     private Mutex? _mutex;
     private AppRuntime? _runtime;
     private IslandWindow? _island;
+    private readonly List<IslandWindow> _extraIslands = [];
     private System.Windows.Forms.NotifyIcon? _tray;
     private HwndSource? _source;
     private bool _exiting;
@@ -47,6 +48,7 @@ public partial class App : Application
         _island = new IslandWindow(_runtime);
         _island.Loaded += (_, _) => HookHotkeys();
         _island.Show();
+        RebuildExtraIslands();
         _runtime.Weather.Start();
         _runtime.StartFeatures();
 
@@ -391,9 +393,64 @@ public partial class App : Application
     /// <summary>设置里改了显示器 / 位置 / 尺寸后，让岛体立即重新布局。</summary>
     public static void RefreshIsland()
     {
-        if (Application.Current is App { _island: { } island })
+        if (Application.Current is App app)
         {
-            island.RefreshAppearance();
+            app._island?.RefreshAppearance();
+            foreach (var extra in app._extraIslands)
+            {
+                extra.RefreshAppearance();
+            }
+        }
+    }
+
+    /// <summary>设置里改了“其他显示器也显示”后，重建副岛窗口。</summary>
+    public static void RebuildDecks()
+    {
+        if (Application.Current is App app)
+        {
+            app.RebuildExtraIslands();
+        }
+    }
+
+    private void RebuildExtraIslands()
+    {
+        foreach (var window in _extraIslands.ToList())
+        {
+            try
+            {
+                window.Close();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("关闭副岛失败：" + ex.Message);
+            }
+        }
+
+        _extraIslands.Clear();
+        if (_runtime is null)
+        {
+            return;
+        }
+
+        var primary = DisplayInfo.Find(_runtime.Config.Island.Monitor);
+        foreach (var device in _runtime.Config.Island.ExtraMonitors.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var display = DisplayInfo.Find(device);
+            if (display is null || string.Equals(display.DeviceName, primary?.DeviceName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                var extra = new IslandWindow(_runtime, display.DeviceName);
+                extra.Show();
+                _extraIslands.Add(extra);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn($"创建副岛失败（{device}）：{ex.Message}");
+            }
         }
     }
 
@@ -456,6 +513,10 @@ public partial class App : Application
 
         _runtime.Themes.Apply();
         _island?.RefreshAppearance();
+        foreach (var extra in _extraIslands)
+        {
+            extra.RefreshAppearance();
+        }
     }
 
     private void CreateTray()

@@ -45,6 +45,9 @@ public sealed class IslandSettings
     /// <summary>岛体所在显示器（设备名，空 = 主显示器）。</summary>
     public string Monitor { get; set; } = "";
 
+    /// <summary>除主岛外，还要在哪些显示器顶部各放一个岛（设备名列表）。</summary>
+    public List<string> ExtraMonitors { get; set; } = [];
+
     /// <summary>拖拽后的位置（相对显示器工作区左上角的 DIP 偏移，空 = 按 Position 吸附）。</summary>
     public double? DragX { get; set; }
     public double? DragY { get; set; }

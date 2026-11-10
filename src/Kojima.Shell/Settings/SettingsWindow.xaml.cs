@@ -288,6 +288,7 @@ public partial class SettingsWindow : Window
                                  ?? displays.FirstOrDefault();
         PanelWidthSlider.Value = Math.Clamp(cfg.Island.PanelWidth, 420, 900);
         PanelWidthValue.Text = ((int)Math.Round(PanelWidthSlider.Value)) + " px";
+        BuildExtraMonitors(cfg, displays);
 
         var appearance = cfg.Appearance ??= new AppearanceSettings();
         (appearance.Mode switch
@@ -317,7 +318,32 @@ public partial class SettingsWindow : Window
             string.Equals(c.Id, _runtime.Config.Island.Theme, StringComparison.OrdinalIgnoreCase));
     }
 
+    private void BuildExtraMonitors(KojimaConfig cfg, IReadOnlyList<DisplayInfo> displays)
+    {
+        ExtraMonitorsPanel.Children.Clear();
+        var selected = (MonitorBox.SelectedItem as DisplayInfo)?.DeviceName;
+        foreach (var display in displays)
+        {
+            if (string.Equals(display.DeviceName, selected, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var label = display.Primary ? display.DeviceName + "（主显示器）" : display.DeviceName;
+            var box = new CheckBox
+            {
+                Content = label,
+                Tag = display.DeviceName,
+                Margin = new Thickness(0, 0, 18, 8),
+                IsChecked = cfg.Island.ExtraMonitors.Any(name =>
+                    string.Equals(name, display.DeviceName, StringComparison.OrdinalIgnoreCase)),
+            };
+            ExtraMonitorsPanel.Children.Add(box);
+        }
+    }
+
     private void BuildThemeChoices(AppearanceSettings appearance)
+
     {
         var cards = ThemeCatalog.All.Select(ThemeCard.From).ToList();
         LightThemeBox.ItemsSource = cards;
@@ -835,6 +861,13 @@ public partial class SettingsWindow : Window
             }
 
             cfg.Island.PanelWidth = Math.Round(PanelWidthSlider.Value);
+            cfg.Island.ExtraMonitors = ExtraMonitorsPanel.Children.OfType<CheckBox>()
+                .Where(box => box.IsChecked == true)
+                .Select(box => box.Tag as string)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Select(name => name!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
             cfg.Island.Shape = ShapeCapsule.IsChecked == true ? IslandShape.Capsule
                 : ShapeIndicator.IsChecked == true ? IslandShape.Indicator
                 : IslandShape.Notch;
@@ -950,6 +983,7 @@ public partial class SettingsWindow : Window
             _runtime.SaveConfig();
             _runtime.Themes.Apply();
             App.RefreshIsland();
+            App.RebuildDecks();
             UpdateCurrentThemeText();
             foreach (var (key, enabled) in changed)
             {

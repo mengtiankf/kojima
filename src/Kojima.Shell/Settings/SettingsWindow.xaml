@@ -441,6 +441,13 @@
                                         <Button Grid.Column="1" Style="{StaticResource GhostButton}" Margin="24,0,0,0"
                                                 Click="OnResetPositionClick" Content="重置"/>
                                     </Grid>
+                                    <Border Style="{StaticResource RowDivider}"/>
+                                    <StackPanel Margin="0,12,0,12">
+                                        <TextBlock Text="其他显示器也显示" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="勾选后会在这些显示器顶部各放一个副岛；副岛固定居中，不参与拖动"
+                                                   Style="{StaticResource RowDesc}"/>
+                                        <WrapPanel x:Name="ExtraMonitorsPanel" Margin="0,8,0,0"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 

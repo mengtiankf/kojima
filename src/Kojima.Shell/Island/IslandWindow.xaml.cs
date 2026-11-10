@@ -47,10 +47,12 @@ public partial class IslandWindow : Window
     private double _resizeStartWidth;
     private const double DragThreshold = 4;
     private const double ResizeEdge = 18;
+    private readonly string? _displayOverride;
 
-    public IslandWindow(AppRuntime runtime)
+    public IslandWindow(AppRuntime runtime, string? display = null)
     {
         _runtime = runtime;
+        _displayOverride = display;
         InitializeComponent();
         _frameTimer.Tick += OnFrame;
 
@@ -741,11 +743,21 @@ public partial class IslandWindow : Window
         }
     }
 
-    private DisplayInfo? CurrentDisplay() => DisplayInfo.Find(Settings.Monitor) ?? DisplayInfo.Find(null);
+    private DisplayInfo? CurrentDisplay() =>
+        DisplayInfo.Find(_displayOverride) ?? DisplayInfo.Find(Settings.Monitor) ?? DisplayInfo.Find(null);
 
     private void PositionWindow()
     {
         var work = CurrentDisplay()?.Work ?? SystemParameters.WorkArea;
+        if (_displayOverride is not null)
+        {
+            // 副岛的职责是“每个显示器都能看到”，固定贴该显示器顶部居中，不参与拖拽记忆
+            var gap = Settings.Shape == IslandShape.Capsule || Settings.Shape == IslandShape.Indicator ? 8.0 : -1.0;
+            Left = Math.Round(work.Left + (work.Width - Width) / 2);
+            Top = Math.Round(work.Top + (_expanded ? -1.0 : gap) + Math.Max(0, Settings.MarginTop));
+            return;
+        }
+
         if (Settings.DragX is double dragX && Settings.DragY is double dragY)
         {
             // 拖拽位置：允许略微出界，但保留可抓回的余量
@@ -1050,6 +1062,12 @@ public partial class IslandWindow : Window
 
     private void OnDragPress(object sender, MouseButtonEventArgs e)
     {
+        if (_displayOverride is not null)
+        {
+            // 副岛固定在所属显示器顶部，不允许拖动/缩放
+            return;
+        }
+
         _suppressClick = false;
         if (e.ChangedButton != MouseButton.Left)
         {
