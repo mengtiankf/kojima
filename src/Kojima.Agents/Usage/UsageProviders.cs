@@ -23,7 +23,7 @@ public static class UsageProviders
             "claude" => await ReadClaudeAsync(start, end, ct).ConfigureAwait(false),
             "codex" => await ReadCodexAsync(start, end, ct).ConfigureAwait(false),
             "cursor" => await ReadCursorAsync(ct).ConfigureAwait(false),
-            "antigravity" => Antigravity(),
+            "antigravity" => AntigravityUsage.Read(start, end),
             "dsh" => LocalUsage.Read("dsh", start, end),
             "kimi" => await ReadKimiAsync(start, end, ct).ConfigureAwait(false),
             "opencode" => LocalUsageExtra.ReadOpenCode(start, end),
@@ -56,14 +56,14 @@ public static class UsageProviders
     private static async Task<UsageSnapshot> ReadClaudeAsync(DateOnly start, DateOnly end, CancellationToken ct)
     {
         var snapshot = LocalUsage.Read("claude", start, end);
-        await UsageQuotas.AddClaudeAsync(snapshot, ct).ConfigureAwait(false);
+        await QuotaGateway.ApplyAsync("claude", snapshot, null, ct).ConfigureAwait(false);
         return snapshot;
     }
 
     private static async Task<UsageSnapshot> ReadCodexAsync(DateOnly start, DateOnly end, CancellationToken ct)
     {
         var snapshot = LocalUsage.Read("codex", start, end);
-        await UsageQuotas.AddCodexAsync(snapshot, ct).ConfigureAwait(false);
+        await QuotaGateway.ApplyAsync("codex", snapshot, null, ct).ConfigureAwait(false);
         return snapshot;
     }
 
@@ -77,59 +77,49 @@ public static class UsageProviders
             Scope = "额度",
             Status = "ok",
         };
-        await UsageQuotas.AddCursorAsync(snapshot, ct).ConfigureAwait(false);
+        await QuotaGateway.ApplyAsync("cursor", snapshot, null, ct).ConfigureAwait(false);
         return snapshot;
     }
-
-    private static UsageSnapshot Antigravity() => new()
-    {
-        Pid = "antigravity",
-        Name = "Antigravity",
-        Source = "本机",
-        Scope = "日志",
-        Status = "ok",
-        Note = "Antigravity 的会话数据库使用 protobuf 记录，当前版本暂未解析",
-    };
 
     private static async Task<UsageSnapshot> ReadKimiAsync(DateOnly start, DateOnly end, CancellationToken ct)
     {
         var snapshot = LocalUsageExtra.ReadKimi(start, end);
-        await UsageQuotas.AddKimiAsync(snapshot, ct).ConfigureAwait(false);
+        await QuotaGateway.ApplyAsync("kimi", snapshot, null, ct).ConfigureAwait(false);
         return snapshot;
     }
 
     private static async Task<UsageSnapshot> ReadDeepSeekAsync(CancellationToken ct)
     {
         var snapshot = Online("deepseek", "DeepSeek");
-        await UsageQuotas.AddDeepSeekAsync(snapshot, ct).ConfigureAwait(false);
+        await QuotaGateway.ApplyAsync("deepseek", snapshot, null, ct).ConfigureAwait(false);
         return snapshot;
     }
 
     private static async Task<UsageSnapshot> ReadOpenRouterAsync(CancellationToken ct)
     {
         var snapshot = Online("openrouter", "OpenRouter");
-        await UsageQuotas.AddOpenRouterAsync(snapshot, ct).ConfigureAwait(false);
+        await QuotaGateway.ApplyAsync("openrouter", snapshot, null, ct).ConfigureAwait(false);
         return snapshot;
     }
 
     private static async Task<UsageSnapshot> ReadGlmAsync(CancellationToken ct)
     {
         var snapshot = Online("glm", "GLM");
-        await UsageQuotas.AddGlmAsync(snapshot, ct).ConfigureAwait(false);
+        await QuotaGateway.ApplyAsync("glm", snapshot, null, ct).ConfigureAwait(false);
         return snapshot;
     }
 
     private static async Task<UsageSnapshot> ReadNewApiAsync(UsageSettings settings, CancellationToken ct)
     {
         var snapshot = Online("newapi", "NewAPI");
-        await UsageQuotas.AddNewApiAsync(snapshot, settings, ct).ConfigureAwait(false);
+        await QuotaGateway.ApplyAsync("newapi", snapshot, settings, ct).ConfigureAwait(false);
         return snapshot;
     }
 
     private static async Task<UsageSnapshot> ReadSub2ApiAsync(UsageSettings settings, CancellationToken ct)
     {
         var snapshot = Online("sub2api", "Sub2API");
-        await UsageQuotas.AddSub2ApiAsync(snapshot, settings, ct).ConfigureAwait(false);
+        await QuotaGateway.ApplyAsync("sub2api", snapshot, settings, ct).ConfigureAwait(false);
         return snapshot;
     }
 

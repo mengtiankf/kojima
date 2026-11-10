@@ -27,6 +27,7 @@ public static class UpdateService
     {
         http ??= CreateClient();
         using var request = new HttpRequestMessage(HttpMethod.Get, LatestApi);
+        request.Headers.UserAgent.ParseAdd("Kojima/1.2.7");
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
