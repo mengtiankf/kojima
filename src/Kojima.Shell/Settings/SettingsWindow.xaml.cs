@@ -13,6 +13,7 @@ using System.Windows.Threading;
 using System.Threading.Tasks;
 using Kojima.Core.Config;
 using Kojima.Core.Themes;
+using Kojima.Shell.Interop;
 using Kojima.Shell.Theme;
 using Brush = System.Windows.Media.Brush;
 using CheckBox = System.Windows.Controls.CheckBox;
@@ -210,7 +211,7 @@ public partial class SettingsWindow : Window
     {
         var cfg = _runtime.Config;
 
-        StartSwitch.IsChecked = cfg.StartWithWindows;
+        StartSwitch.IsChecked = StartupRegistration.IsEnabled() || cfg.StartWithWindows;
         (string.Equals(cfg.Language, "en-US", StringComparison.OrdinalIgnoreCase) ? LanguageEn : LanguageZh).IsChecked = true;
 
         PosCenter.IsChecked = cfg.Island.Position == IslandPosition.TopCenter;
@@ -672,6 +673,7 @@ public partial class SettingsWindow : Window
         {
             var cfg = _runtime.Config;
             cfg.StartWithWindows = StartSwitch.IsChecked == true;
+            StartupRegistration.Apply(cfg.StartWithWindows);
             cfg.Language = LanguageEn.IsChecked == true ? "en-US" : "zh-CN";
 
             cfg.Island.Position = PosLeft.IsChecked == true ? IslandPosition.TopLeft
