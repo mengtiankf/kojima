@@ -23,9 +23,9 @@ public static class TranslationService
     public static Task<string> TranslateAsync(
         string text,
         Kojima.Core.Config.TranslateSettings settings,
-        string? deepSeekKey,
         CancellationToken ct = default)
     {
+        var deepSeekKey = SecretStore.Get(SecretNames.DeepSeek);
         var target = settings.Target == "en" ? "英" : "日";
         var mode = (settings.Engine ?? "auto").Trim().ToLowerInvariant();
         return mode switch
@@ -33,12 +33,12 @@ public static class TranslationService
             "baidu" => BaiduAsync(text, target, settings, ct),
             "microsoft" => MicrosoftAsync(text, target, settings, ct),
             "custom" => CustomAsync(text, target, settings, ct),
-            "deepseek" => DeepSeekAsync(text, target, settings.Reversed, (deepSeekKey ?? "").Trim(), ct),
+            "deepseek" => DeepSeekAsync(text, target, settings.Reversed, deepSeekKey, ct),
             "google" => GoogleAsync(text, target, settings.Reversed, ct),
             "mymemory" => MyMemoryAsync(text, target, settings.Reversed, ct),
             "free" => FreeAsync(text, target, settings.Reversed, ct),
-            _ => (deepSeekKey ?? "").Trim().Length > 0
-                ? DeepSeekAsync(text, target, settings.Reversed, deepSeekKey!.Trim(), ct)
+            _ => deepSeekKey.Length > 0
+                ? DeepSeekAsync(text, target, settings.Reversed, deepSeekKey, ct)
                 : FreeAsync(text, target, settings.Reversed, ct),
         };
     }
@@ -51,7 +51,7 @@ public static class TranslationService
         CancellationToken ct = default)
     {
         var appId = (settings.BaiduAppId ?? "").Trim();
-        var key = (settings.BaiduKey ?? "").Trim();
+        var key = SecretStore.Get(SecretNames.TranslateBaiduKey).Trim();
         if (appId.Length == 0 || key.Length == 0)
         {
             throw new InvalidOperationException("未配置百度翻译 AppID / 密钥：设置 → 功能 → 翻译");
@@ -113,7 +113,7 @@ public static class TranslationService
         Kojima.Core.Config.TranslateSettings settings,
         CancellationToken ct = default)
     {
-        var key = (settings.MicrosoftKey ?? "").Trim();
+        var key = SecretStore.Get(SecretNames.TranslateMicrosoftKey).Trim();
         if (key.Length == 0)
         {
             throw new InvalidOperationException("未配置微软翻译密钥：设置 → 功能 → 翻译");
@@ -156,7 +156,7 @@ public static class TranslationService
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        var key = (settings.CustomKey ?? "").Trim();
+        var key = SecretStore.Get(SecretNames.TranslateCustomKey).Trim();
         if (key.Length > 0)
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);

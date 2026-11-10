@@ -4,4 +4,7 @@
     <Project Path="src/Kojima.Core/Kojima.Core.csproj" />
     <Project Path="src/Kojima.Shell/Kojima.Shell.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Kojima.Tests/Kojima.Tests.csproj" />
+  </Folder>
 </Solution>

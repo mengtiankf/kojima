@@ -267,12 +267,12 @@ public partial class SettingsWindow : Window
         }).IsChecked = true;
 
         BaiduAppId.Text = cfg.Translate.BaiduAppId ?? "";
-        BaiduKey.Text = cfg.Translate.BaiduKey ?? "";
-        MicrosoftKey.Text = cfg.Translate.MicrosoftKey ?? "";
+        SetSecret(BaiduKey, SecretNames.TranslateBaiduKey);
+        SetSecret(MicrosoftKey, SecretNames.TranslateMicrosoftKey);
         MicrosoftRegion.Text = cfg.Translate.MicrosoftRegion ?? "";
         CustomEndpoint.Text = cfg.Translate.CustomEndpoint ?? "";
         CustomModel.Text = cfg.Translate.CustomModel ?? "";
-        CustomKey.Text = cfg.Translate.CustomKey ?? "";
+        SetSecret(CustomKey, SecretNames.TranslateCustomKey);
 
         IdleExitBox.Text = cfg.Feature("monitor").IdleExitSeconds.ToString(CultureInfo.InvariantCulture);
         RefreshBox.Text = cfg.Usage.RefreshSeconds.ToString(CultureInfo.InvariantCulture);
@@ -335,32 +335,15 @@ public partial class SettingsWindow : Window
 
     private void BuildSecrets()
     {
-        var keys = _runtime.Config.Usage.Keys;
         foreach (var (key, label) in SecretDefs)
         {
-            var existing = keys.TryGetValue(key, out var stored) ? stored : string.Empty;
             var box = new PasswordBox
             {
                 Style = (Style)FindResource("PwdField"),
-                Password = string.IsNullOrEmpty(existing) ? string.Empty : SecretMask,
                 VerticalAlignment = VerticalAlignment.Center,
             };
 
-            if (!string.IsNullOrEmpty(existing))
-            {
-                box.GotKeyboardFocus += (_, _) => box.SelectAll();
-                box.PreviewMouseLeftButtonDown += (_, args) =>
-                {
-                    if (box.Password != SecretMask)
-                    {
-                        return;
-                    }
-
-                    box.Focus();
-                    box.SelectAll();
-                    args.Handled = true;
-                };
-            }
+            SetSecret(box, SecretNames.Usage(key));
 
             var row = new Grid { Margin = new Thickness(0, 7, 0, 7) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
@@ -380,6 +363,53 @@ public partial class SettingsWindow : Window
             SecretsHost.Children.Add(row);
             _secrets.Add(new SecretRow(key, box));
         }
+    }
+
+    /// <summary>
+    /// 密钥框：已有密钥只显示掩码；聚焦时全选，输入即替换，清空后保存即删除。
+    /// 真实值不会进入控件，避免界面/屏幕录制泄露。
+    /// </summary>
+    private static void SetSecret(PasswordBox box, string name)
+    {
+        var stored = SecretStore.Get(name);
+        if (stored.Length == 0)
+        {
+            return;
+        }
+
+        box.Password = SecretMask;
+        box.ToolTip = "已用 Windows DPAPI 加密保存；清空后保存可删除";
+        box.GotKeyboardFocus += (_, _) =>
+        {
+            if (box.Password == SecretMask)
+            {
+                box.SelectAll();
+            }
+        };
+        box.PreviewMouseLeftButtonDown += (_, args) =>
+        {
+            if (box.Password != SecretMask)
+            {
+                return;
+            }
+
+            box.Focus();
+            box.SelectAll();
+            args.Handled = true;
+        };
+    }
+
+    /// <summary>把未改动的掩码跳过，其余（含空串=删除）交给密钥库。</summary>
+    private static void CollectSecret(
+        List<KeyValuePair<string, string?>> updates, PasswordBox box, string name)
+    {
+        var value = box.Password;
+        if (value == SecretMask || value.Contains(SecretMask, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        updates.Add(new KeyValuePair<string, string?>(name, value.Trim()));
     }
 
     // ==================================================================
@@ -687,12 +717,15 @@ public partial class SettingsWindow : Window
                 : TranslateCustom.IsChecked == true ? "custom"
                 : "auto";
             cfg.Translate.BaiduAppId = (BaiduAppId.Text ?? "").Trim();
-            cfg.Translate.BaiduKey = (BaiduKey.Text ?? "").Trim();
-            cfg.Translate.MicrosoftKey = (MicrosoftKey.Text ?? "").Trim();
             cfg.Translate.MicrosoftRegion = (MicrosoftRegion.Text ?? "").Trim();
             cfg.Translate.CustomEndpoint = (CustomEndpoint.Text ?? "").Trim();
             cfg.Translate.CustomModel = (CustomModel.Text ?? "").Trim();
-            cfg.Translate.CustomKey = (CustomKey.Text ?? "").Trim();
+
+            // 密钥只进 secrets.dat（DPAPI 加密），config.json 永远不落明文。
+            var secretUpdates = new List<KeyValuePair<string, string?>>();
+            CollectSecret(secretUpdates, BaiduKey, SecretNames.TranslateBaiduKey);
+            CollectSecret(secretUpdates, MicrosoftKey, SecretNames.TranslateMicrosoftKey);
+            CollectSecret(secretUpdates, CustomKey, SecretNames.TranslateCustomKey);
 
             cfg.Island.NavOrder = _order.ToList();
 
@@ -718,13 +751,12 @@ public partial class SettingsWindow : Window
 
             foreach (var secret in _secrets)
             {
-                var value = secret.Box.Password;
-                if (value == SecretMask || value.Contains(SecretMask, StringComparison.Ordinal))
-                {
-                    continue;
-                }
+                CollectSecret(secretUpdates, secret.Box, SecretNames.Usage(secret.Key));
+            }
 
-                cfg.Usage.Keys[secret.Key] = value.Trim();
+            if (secretUpdates.Count > 0)
+            {
+                SecretStore.SetMany(secretUpdates);
             }
 
             var changed = new List<(string Key, bool Enabled)>();

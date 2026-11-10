@@ -152,9 +152,8 @@ public partial class App : Application
             {
                 try
                 {
-                    _runtime.Config.Usage.Keys.TryGetValue("deepseek", out var key);
                     var text = await Kojima.Shell.Services.TranslationService.TranslateAsync(
-                        probe, _runtime.Config.Translate, key).ConfigureAwait(false);
+                        probe, _runtime.Config.Translate).ConfigureAwait(false);
                     AppLog.Info("翻译测试：" + text);
                 }
                 catch (Exception ex)

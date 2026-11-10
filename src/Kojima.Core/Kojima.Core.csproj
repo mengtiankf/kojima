@@ -13,4 +13,9 @@
     <EmbeddedResource Include="..\..\assets\themes\*.json" LogicalName="themes/%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- DPAPI（ProtectedData）在 net10.0 上是独立包；Windows 专用，调用处标注 SupportedOSPlatform。 -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+
 </Project>

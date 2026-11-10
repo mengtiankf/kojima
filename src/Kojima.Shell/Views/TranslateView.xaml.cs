@@ -322,14 +322,13 @@ public partial class TranslateView : UserControl
         }
 
         var settings = _runtime.Config.Translate;
-        var key = ApiKey();
 
         _translating = true;
         _translateLabel.Text = "翻译中…";
         SetResult("翻译中…", ResultKind.Hint);
         try
         {
-            var translated = await Services.TranslationService.TranslateAsync(text, settings, key);
+            var translated = await Services.TranslationService.TranslateAsync(text, settings);
 
             if (translated.Trim().Length == 0)
             {
@@ -355,10 +354,9 @@ public partial class TranslateView : UserControl
         }
     }
 
-    private string ApiKey()
+    private static string ApiKey()
     {
-        _runtime.Config.Usage.Keys.TryGetValue("deepseek", out var key);
-        return (key ?? "").Trim();
+        return SecretStore.Get(SecretNames.DeepSeek);
     }
 
     private void SetResult(string text, ResultKind kind)

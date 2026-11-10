@@ -42,7 +42,7 @@ public sealed class IslandSettings
 
     public double PanelWidth { get; set; } = 640;
 
-    public string Theme { get; set; } = "deck-dark";
+    public string Theme { get; set; } = "dark";
 
     public bool HideFullscreen { get; set; } = true;
 
@@ -99,20 +99,6 @@ public sealed class UsageSettings
 
     public string Home { get; set; } = "";
 
-    public Dictionary<string, string> Keys { get; set; } = new()
-    {
-        ["claude"] = "",
-        ["cursor"] = "",
-        ["zcode"] = "",
-        ["kimi"] = "",
-        ["deepseek"] = "",
-        ["openrouter"] = "",
-        ["glm"] = "",
-        ["glm-global"] = "",
-        ["newapi"] = "",
-        ["sub2api"] = "",
-    };
-
     public Dictionary<string, string> Sites { get; set; } = new()
     {
         ["newapi"] = "",
@@ -166,12 +152,6 @@ public sealed class TranslateSettings
     /// <summary>百度翻译 AppID。</summary>
     public string BaiduAppId { get; set; } = "";
 
-    /// <summary>百度翻译密钥。</summary>
-    public string BaiduKey { get; set; } = "";
-
-    /// <summary>微软翻译（Azure Translator）密钥。</summary>
-    public string MicrosoftKey { get; set; } = "";
-
     /// <summary>微软翻译区域。</summary>
     public string MicrosoftRegion { get; set; } = "";
 
@@ -180,9 +160,6 @@ public sealed class TranslateSettings
 
     /// <summary>自定义大模型名称。</summary>
     public string CustomModel { get; set; } = "";
-
-    /// <summary>自定义大模型 API Key。</summary>
-    public string CustomKey { get; set; } = "";
 
     /// <summary>目标语言：ja / en。</summary>
     public string Target { get; set; } = "ja";
