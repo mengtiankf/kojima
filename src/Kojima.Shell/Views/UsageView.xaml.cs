@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -58,6 +59,7 @@ public sealed class UsageCanvas : FrameworkElement
 
     public UsageCanvas()
     {
+        AutomationProperties.SetName(this, "AI 用量");
         SnapsToDevicePixels = true;
         UseLayoutRounding = true;
         _spinTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(24) };

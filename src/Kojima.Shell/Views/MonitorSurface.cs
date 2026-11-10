@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Media;
 using Kojima.Core.Models;
 using Kojima.Shell.Theme;
@@ -19,6 +20,7 @@ public sealed class MonitorSurface : FrameworkElement
 
     public MonitorSurface()
     {
+        AutomationProperties.SetName(this, "系统监控");
         SnapsToDevicePixels = true;
         ThemeRuntime.Changed += () => Dispatcher.BeginInvoke(InvalidateVisual);
     }

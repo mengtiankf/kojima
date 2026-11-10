@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -17,6 +18,7 @@ public sealed class MessagesView : UserControl
 
     public MessagesView(AppRuntime runtime)
     {
+        AutomationProperties.SetName(this, "通知中心");
         _runtime = runtime;
         Height = 292;
 

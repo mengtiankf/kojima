@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -65,6 +66,7 @@ public sealed class StocksSurface : FrameworkElement
 
     public StocksSurface()
     {
+        AutomationProperties.SetName(this, "股票行情");
         SnapsToDevicePixels = true;
         UseLayoutRounding = true;
         ClipToBounds = true;

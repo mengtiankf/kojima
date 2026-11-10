@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Kojima.Shell.Theme;
@@ -17,6 +18,7 @@ public sealed class SpectrumView : FrameworkElement
 
     public SpectrumView()
     {
+        AutomationProperties.SetName(this, "音频频谱");
         SnapsToDevicePixels = true;
         _timer.Tick += (_, _) => Step();
     }

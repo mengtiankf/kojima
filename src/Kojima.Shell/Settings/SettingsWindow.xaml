@@ -140,7 +140,7 @@
                         <TextBlock x:Name="PageDescText" Style="{StaticResource PageDesc}" Margin="0,3,0,0"
                                    Text="启动方式、灵动岛的形态与基础交互。"/>
                     </StackPanel>
-                    <Button x:Name="CloseButton" Style="{StaticResource CloseButton}"
+                    <Button x:Name="CloseButton" Style="{StaticResource CloseButton}" AutomationProperties.Name="关闭设置"
                             HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,18,0"
                             ToolTip="关闭 (Esc)" Click="OnCloseClick"/>
                 </Grid>
