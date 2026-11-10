@@ -40,7 +40,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
     {
         lock (_gate)
         {
-            return _hosts.TryGetValue(feature, out var host) && host.Process is { HasExited: false };
+            return _hosts.TryGetValue(feature, out var host) && Alive(host);
         }
     }
 
@@ -94,7 +94,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
     {
         lock (_gate)
         {
-            if (_hosts.TryGetValue(feature, out var ready) && ready.Process is { HasExited: false })
+            if (_hosts.TryGetValue(feature, out var ready) && Alive(ready))
             {
                 return ready;
             }
@@ -106,7 +106,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
         {
             lock (_gate)
             {
-                if (_hosts.TryGetValue(feature, out var ready2) && ready2.Process is { HasExited: false })
+                if (_hosts.TryGetValue(feature, out var ready2) && Alive(ready2))
                 {
                     return ready2;
                 }
@@ -125,7 +125,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
         AgentHost host;
         lock (_gate)
         {
-            if (_hosts.TryGetValue(feature, out var existing) && existing.Process is { HasExited: false })
+            if (_hosts.TryGetValue(feature, out var existing) && Alive(existing))
             {
                 return existing;
             }
@@ -251,7 +251,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
         {
             foreach (var host in _hosts.Values)
             {
-                if (host.Process.HasExited)
+                if (!Alive(host))
                 {
                     stale.Add(host);
                     continue;
@@ -276,9 +276,9 @@ public sealed class AgentSupervisor : IAsyncDisposable
 
         foreach (var host in stale)
         {
-            AppLog.Info(host.Process.HasExited
-                ? $"清理已退出的子进程：{host.Feature}"
-                : $"空闲回收子进程：{host.Feature}");
+            AppLog.Info(Alive(host)
+                ? $"空闲回收子进程：{host.Feature}"
+                : $"清理已退出的子进程：{host.Feature}");
             await DisposeHostAsync(host).ConfigureAwait(false);
         }
     }
@@ -354,9 +354,30 @@ public sealed class AgentSupervisor : IAsyncDisposable
         }
     }
 
-    private static async Task DisposeHostAsync(AgentHost host)
+    private static bool Alive(AgentHost host)
+    {
+        try
+        {
+            return !host.Process.HasExited;
+        }
+        catch (InvalidOperationException)
+        {
+            // 进程对象已释放：按已退出处理，避免把“没有关联进程”抛给调用方。
+            return false;
+        }
+    }
+
+    private async Task DisposeHostAsync(AgentHost host)
     {
         host.Stopping = true;
+        lock (_gate)
+        {
+            if (_hosts.TryGetValue(host.Feature, out var current) && ReferenceEquals(current, host))
+            {
+                _hosts.Remove(host.Feature);
+            }
+        }
+
         try
         {
             await host.Client.DisposeAsync().ConfigureAwait(false);
@@ -368,7 +389,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
 
         try
         {
-            if (!host.Process.HasExited)
+            if (Alive(host))
             {
                 host.Process.Kill(true);
                 host.Process.WaitForExit(2000);
