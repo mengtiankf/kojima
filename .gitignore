@@ -15,3 +15,7 @@ dist/
 shots/
 data-gh-login.txt
 *.log
+
+# local test homes / screenshots
+testhome*/
+shot*.png
