@@ -12,6 +12,7 @@ using Kojima.Island.Interop;
 using Kojima.Island.Ipc;
 using Kojima.Island.Island;
 using Kojima.Island.Theme;
+using Kojima.Island.Ui;
 
 namespace Kojima.Island;
 
@@ -44,17 +45,20 @@ public partial class App : Application
 
         ParseShellArguments(e.Args);
 
-        _mutex = new Mutex(true, MutexName, out var created);
-        if (!created)
-        {
-            MessageBox.Show("Kojima 已经在运行。", "Kojima", MessageBoxButton.OK, MessageBoxImage.Information);
-            Shutdown();
-            return;
-        }
-
         AppLog.Init("island");
         HookCrashLogging();
         ThemeCatalog.Reload();
+
+        _mutex = new Mutex(true, MutexName, out var created);
+        if (!created)
+        {
+            AppDialog.Notify(
+                null,
+                "Kojima 已在运行",
+                "已经有一个 Kojima 实例在运行，本次启动将退出。");
+            Shutdown();
+            return;
+        }
 
         if (!string.IsNullOrWhiteSpace(ShellPath))
         {
@@ -254,12 +258,41 @@ public partial class App : Application
                 {
                     target.SelectModule(module);
                 }
+
+                var dropdown = Environment.GetEnvironmentVariable("KOJIMA_SETTINGS_DROPDOWN");
+                if (!string.IsNullOrWhiteSpace(dropdown) && _settings is { } combo)
+                {
+                    var t2 = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.2) };
+                    t2.Tick += (_, _) =>
+                    {
+                        t2.Stop();
+                        combo.DebugOpenCombo(dropdown);
+                    };
+                    t2.Start();
+                }
             }));
         }
 
         if (Environment.GetEnvironmentVariable("KOJIMA_DEMO") == "1" && _island is not null)
         {
             _island.ApplyDemoData();
+        }
+
+        // KOJIMA_DIALOG=1：开发/截图钩子，展示新的主题对话框。
+        if (Environment.GetEnvironmentVariable("KOJIMA_DIALOG") == "1")
+        {
+            var dialogTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.2) };
+            dialogTimer.Tick += (_, _) =>
+            {
+                dialogTimer.Stop();
+                AppDialog.Confirm(
+                    null,
+                    "需要重启",
+                    "功能模块的开关会立即生效。\n要让所有界面与子进程完全按新配置运行，建议重启 Kojima。",
+                    "立即重启",
+                    "稍后");
+            };
+            dialogTimer.Start();
         }
 
         var preview = Environment.GetEnvironmentVariable("KOJIMA_PREVIEW");

@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows.Forms;
 using Kojima.Core.Config;
+using Kojima.Core.Themes;
 
 namespace Kojima.Shell;
 
@@ -21,6 +22,7 @@ internal sealed class ShellHost : ApplicationContext
     private NamedPipeServerStream? _server;
     private StreamWriter? _writer;
     private Process? _island;
+    private ContextMenuStrip? _probeMenu;
     private DateTime _restartDue = DateTime.MinValue;
     private DateTime _lastStart = DateTime.MinValue;
     private int _crashes;
@@ -34,15 +36,7 @@ internal sealed class ShellHost : ApplicationContext
         _shellExe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "Kojima.exe");
         _openSettings = args.Any(a => a.Equals("--settings", StringComparison.OrdinalIgnoreCase));
 
-        var menu = new ContextMenuStrip();
-        menu.Items.Add("打开面板", null, (_, _) => Send("toggle"));
-        menu.Items.Add("设置", null, (_, _) => Send("settings"));
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("退出", null, (_, _) =>
-        {
-            _detached = false;
-            _pendingExit = true;
-        });
+        var menu = BuildMenu();
 
         _tray = new NotifyIcon
         {
@@ -66,6 +60,89 @@ internal sealed class ShellHost : ApplicationContext
 
         StartPipeServer();
         LaunchIsland();
+
+        // KOJIMA_MENU=1：开发/截图钩子，展示托盘菜单的主题样式。
+        if (Environment.GetEnvironmentVariable("KOJIMA_MENU") == "1")
+        {
+            var probe = new System.Windows.Forms.Timer { Interval = 1600 };
+            probe.Tick += (_, _) =>
+            {
+                probe.Stop();
+                probe.Dispose();
+                _probeMenu = BuildMenu();
+                _probeMenu.Show(new Point(420, 320));
+            };
+            probe.Start();
+        }
+    }
+
+    private ContextMenuStrip BuildMenu()
+    {
+        var palette = LoadPalette();
+        var surface = ShellDialog.ToColor(palette?.Surface, Color.FromArgb(28, 28, 30));
+        var text = ShellDialog.ToColor(palette?.Text, Color.FromArgb(245, 245, 247));
+        var accent = ShellDialog.ToColor(palette?.Accent, Color.FromArgb(10, 132, 255));
+        var onAccent = ShellDialog.ToColor(palette?.OnAccent, Color.White);
+        var hairline = ShellDialog.ToColor(palette?.Hairline, Color.FromArgb(70, 70, 76));
+        var fill = ShellDialog.ToColor(palette?.Fill, Color.FromArgb(44, 44, 48));
+        var danger = ShellDialog.ToColor(palette?.Danger, Color.FromArgb(255, 96, 96));
+
+        var menu = new ContextMenuStrip
+        {
+            Renderer = new TrayMenuRenderer(new TrayColorTable(surface, accent, hairline, fill), text, onAccent),
+            ShowImageMargin = false,
+            ShowCheckMargin = false,
+            BackColor = surface,
+            ForeColor = text,
+            Font = new Font("Segoe UI", 10f),
+            Padding = new Padding(6, 8, 6, 8),
+            DropShadowEnabled = true,
+        };
+
+        menu.Items.Add(TrayItem("打开面板", text, (_, _) => Send("toggle")));
+        menu.Items.Add(TrayItem("设置", text, (_, _) => Send("settings")));
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(TrayItem("退出", danger, (_, _) =>
+        {
+            _detached = false;
+            _pendingExit = true;
+        }));
+
+        menu.Opened += (_, _) =>
+        {
+            if (menu.Width <= 0 || menu.Height <= 0)
+            {
+                return;
+            }
+
+            using var path = ShellDialog.RoundedPath(new Rectangle(0, 0, menu.Width, menu.Height), 10);
+            menu.Region = new Region(path);
+        };
+
+        return menu;
+    }
+
+    private static ToolStripMenuItem TrayItem(string text, Color color, EventHandler onClick)
+    {
+        var item = new ToolStripMenuItem(text)
+        {
+            ForeColor = color,
+            Padding = new Padding(10, 6, 14, 6),
+        };
+        item.Click += onClick;
+        return item;
+    }
+
+    private static DeckPalette? LoadPalette()
+    {
+        try
+        {
+            return ThemeCatalog.Get(ConfigStore.Load().Island.Theme);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public void Start() => AppLog.Info("Kojima Shell 已启动，等待灵动岛子进程");
@@ -89,7 +166,7 @@ internal sealed class ShellHost : ApplicationContext
             }
         }
 
-        MessageBox.Show("Kojima 已经在运行。", "Kojima", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        AppLog.Info("Kojima 已在运行，已请求打开设置");
     }
 
     private void StartPipeServer() => _ = Task.Run(AcceptLoopAsync);
@@ -231,7 +308,7 @@ internal sealed class ShellHost : ApplicationContext
             _restarting = false;
             if (_crashes > 5)
             {
-                _tray.ShowBalloonTip(3000, "Kojima", "灵动岛连续启动失败，已停止重试。", ToolTipIcon.Error);
+                ShellDialog.Show("Kojima", "灵动岛连续启动失败，已停止重试。请查看日志或重新安装。", error: true);
                 Shutdown(detach: false);
                 return;
             }
@@ -251,11 +328,7 @@ internal sealed class ShellHost : ApplicationContext
         var exe = ResolveIslandPath();
         if (exe is null)
         {
-            MessageBox.Show(
-                "找不到 Kojima.Island.exe，请重新安装 Kojima。",
-                "Kojima",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
+            ShellDialog.Show("无法启动 Kojima", "找不到 Kojima.Island.exe，请重新安装 Kojima。", error: true);
             Shutdown(detach: false);
             return;
         }
@@ -430,9 +503,62 @@ internal sealed class ShellHost : ApplicationContext
         {
             _watch.Dispose();
             _tray.Dispose();
+            _probeMenu?.Dispose();
             _server?.Dispose();
         }
 
         base.Dispose(disposing);
+    }
+
+    private sealed class TrayMenuRenderer : ToolStripProfessionalRenderer
+    {
+        private readonly Color _text;
+        private readonly Color _onAccent;
+
+        public TrayMenuRenderer(ProfessionalColorTable table, Color text, Color onAccent) : base(table)
+        {
+            _text = text;
+            _onAccent = onAccent;
+            RoundedEdges = false;
+        }
+
+        protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+        {
+            e.TextColor = e.Item.Selected
+                ? _onAccent
+                : e.Item.ForeColor.IsEmpty ? _text : e.Item.ForeColor;
+            base.OnRenderItemText(e);
+        }
+    }
+
+    private sealed class TrayColorTable : ProfessionalColorTable
+    {
+        private readonly Color _surface;
+        private readonly Color _accent;
+        private readonly Color _hairline;
+        private readonly Color _fill;
+
+        public TrayColorTable(Color surface, Color accent, Color hairline, Color fill)
+        {
+            _surface = surface;
+            _accent = accent;
+            _hairline = hairline;
+            _fill = fill;
+            UseSystemColors = false;
+        }
+
+        public override Color ToolStripDropDownBackground => _surface;
+        public override Color ImageMarginGradientBegin => _surface;
+        public override Color ImageMarginGradientMiddle => _surface;
+        public override Color ImageMarginGradientEnd => _surface;
+        public override Color MenuBorder => _hairline;
+        public override Color MenuItemBorder => _accent;
+        public override Color MenuItemSelected => _accent;
+        public override Color MenuItemSelectedGradientBegin => _accent;
+        public override Color MenuItemSelectedGradientEnd => _accent;
+        public override Color MenuItemPressedGradientBegin => _fill;
+        public override Color MenuItemPressedGradientEnd => _fill;
+        public override Color SeparatorDark => _hairline;
+        public override Color SeparatorLight => _hairline;
     }
 }

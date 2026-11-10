@@ -15,6 +15,7 @@ using Kojima.Core.Config;
 using Kojima.Core.Themes;
 using Kojima.Island.Interop;
 using Kojima.Island.Theme;
+using Kojima.Island.Ui;
 using Brush = System.Windows.Media.Brush;
 using CheckBox = System.Windows.Controls.CheckBox;
 using Color = System.Windows.Media.Color;
@@ -643,6 +644,20 @@ public partial class SettingsWindow : Window
         ShowPage(index);
     }
 
+    /// <summary>供开发钩子展开指定下拉框（截图/样式检查）。</summary>
+    public void DebugOpenCombo(string name)
+    {
+        if (FindName(name) is System.Windows.Controls.ComboBox box)
+        {
+            if (FindName("PageAppearance") is System.Windows.Controls.ScrollViewer page)
+            {
+                page.ScrollToEnd();
+            }
+
+            box.IsDropDownOpen = true;
+        }
+    }
+
     /// <summary>供开发钩子直接切页（0 通用 / 1 外观 / 2 功能 / 3 用量 / 4 关于）。</summary>
     public void SelectPage(int index)
     {
@@ -756,10 +771,14 @@ public partial class SettingsWindow : Window
 
             UpdateStatusText.Text = $"发现 {release.Version}";
             var notes = release.Notes.Length > 600 ? release.Notes[..600] + "…" : release.Notes;
-            var answer = MessageBox.Show(this,
+            var answer = AppDialog.Confirm(
+                this,
+                "Kojima 更新",
                 $"发现新版本 {release.Version}，是否现在下载并安装？\n\n{notes}",
-                "Kojima 更新", MessageBoxButton.YesNo, MessageBoxImage.Information);
-            if (answer != MessageBoxResult.Yes)
+                "下载并安装",
+                "稍后",
+                DialogTone.Info);
+            if (!answer)
             {
                 return;
             }
@@ -1011,13 +1030,13 @@ public partial class SettingsWindow : Window
             var restartWanted = false;
             if (changed.Count > 0)
             {
-                var choice = MessageBox.Show(
+                restartWanted = AppDialog.Confirm(
                     this,
-                    "功能模块的开/关会立即生效。" + Environment.NewLine + "要让所有界面与子进程完全按新配置运行，建议重启 Kojima。" + Environment.NewLine + Environment.NewLine + "现在重启吗？",
-                    "重启提示",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-                restartWanted = choice == MessageBoxResult.Yes;
+                    "需要重启",
+                    "功能模块的开关会立即生效。" + Environment.NewLine +
+                    "要让所有界面与子进程完全按新配置运行，建议重启 Kojima。",
+                    "立即重启",
+                    "稍后");
             }
 
             StatusText.Text = changed.Count > 0 ? "已应用（建议重启一次）" : "已保存";
