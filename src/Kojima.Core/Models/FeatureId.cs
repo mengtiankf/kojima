@@ -11,6 +11,8 @@ public enum FeatureId
     Clipboard,
     Translate,
     Live,
+    Messages,
+    Spectrum,
 }
 
 public static class FeatureIds
@@ -25,6 +27,8 @@ public static class FeatureIds
         FeatureId.Clipboard => "clipboard",
         FeatureId.Translate => "translate",
         FeatureId.Live => "live",
+        FeatureId.Messages => "messages",
+        FeatureId.Spectrum => "spectrum",
         _ => throw new ArgumentOutOfRangeException(nameof(id)),
     };
 
@@ -38,6 +42,8 @@ public static class FeatureIds
         FeatureId.Clipboard => "剪贴板",
         FeatureId.Translate => "翻译",
         FeatureId.Live => "实时字幕",
+        FeatureId.Messages => "通知中心",
+        FeatureId.Spectrum => "音频频谱",
         _ => id.ToString(),
     };
 

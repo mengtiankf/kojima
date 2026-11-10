@@ -29,8 +29,8 @@ public sealed class AppRuntime
         StockAlerts = new StockAlertService(Notify, Config, Agents);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardProxy(Agents, dispatcher) : null;
         Media = new MediaProxy(Agents, dispatcher);
-        Spectrum = new SpectrumService();
-        Messages = new MessageCenter(dispatcher, Config);
+        Spectrum = new SpectrumProxy(Agents);
+        Messages = new MessageProxy(Agents, dispatcher, Config);
         Agents.EventReceived += OnAgentEvent;
         Agents.Failed += (feature, reason) => Notify.Push("后台功能异常", $"子进程 {feature} 连续失败：{reason}", "warn");
         Weather.Updated += OnWeather;
@@ -62,7 +62,7 @@ public sealed class AppRuntime
 
     public ClipboardProxy? Clipboard { get; }
 
-    public MessageCenter Messages { get; }
+    public MessageProxy Messages { get; }
 
     /// <summary>系统媒体会话（SMTC）。</summary>
     /// <summary>灵岛窗口（由 App 启动时挂上），用于保存设置后热刷新。</summary>
@@ -71,7 +71,7 @@ public sealed class AppRuntime
     public MediaProxy Media { get; }
 
     /// <summary>系统输出频谱（WASAPI 环回）。</summary>
-    public SpectrumService Spectrum { get; }
+    public SpectrumProxy Spectrum { get; }
 
     public event Action? ConfigChanged;
 

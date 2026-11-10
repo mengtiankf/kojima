@@ -389,8 +389,8 @@ public sealed class AgentSupervisor : IAsyncDisposable
         {
             Path.Combine(baseDir, "Kojima.Agents.exe"),
             Path.Combine(baseDir, "agents", "Kojima.Agents.exe"),
-            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "Kojima.Agents", "bin", "Debug", "net10.0-windows", "Kojima.Agents.exe")),
-            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "Kojima.Agents", "bin", "Release", "net10.0-windows", "Kojima.Agents.exe")),
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "Kojima.Agents", "bin", "Debug", "net10.0-windows10.0.19041.0", "Kojima.Agents.exe")),
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "Kojima.Agents", "bin", "Release", "net10.0-windows10.0.19041.0", "Kojima.Agents.exe")),
         };
 
         foreach (var candidate in candidates)

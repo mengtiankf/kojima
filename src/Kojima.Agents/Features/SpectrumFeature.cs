@@ -1,15 +1,16 @@
+using Kojima.Core.Ipc;
 using System;
 using Kojima.Core.Config;
 using NAudio.Dsp;
 using NAudio.Wave;
 
-namespace Kojima.Shell.Services;
+namespace Kojima.Agents.Features;
 
 /// <summary>
 /// 系统输出音频的实时频谱：WASAPI 环回采集默认播放设备，FFT 后归到 <see cref="Bands"/> 个对数频段。
 /// 采集失败时保持 0，不抛异常。
 /// </summary>
-public sealed class SpectrumService : IDisposable
+public sealed class SpectrumCapture : IDisposable
 {
     public const int Bands = 28;
 
@@ -27,7 +28,7 @@ public sealed class SpectrumService : IDisposable
     private int _rate = 48000;
     private bool _started;
 
-    public SpectrumService()
+    public SpectrumCapture()
     {
         BuildBandMap();
     }
@@ -211,5 +212,72 @@ public sealed class SpectrumService : IDisposable
             _bandStart[band] = Math.Clamp((int)(f0 / nyquist * FftSize / 2), 1, FftSize / 2 - 1);
             _bandEnd[band] = Math.Clamp((int)(f1 / nyquist * FftSize / 2), _bandStart[band] + 1, FftSize / 2 - 1);
         }
+    }
+}
+
+/// <summary>频谱子进程：WASAPI 环回采集默认播放设备，FFT 后每秒推送给外壳。</summary>
+public sealed class SpectrumFeature : IAgentFeature
+{
+    private readonly SpectrumCapture _capture = new();
+    private AgentPipeServer? _server;
+    private Timer? _timer;
+    private volatile bool _started;
+
+    public bool Busy => _capture.Running;
+
+    public void Attach(AgentPipeServer server) => _server = server;
+
+    public Task<object?> HandleAsync(string method, System.Text.Json.JsonElement? args)
+    {
+        switch (method.ToLowerInvariant())
+        {
+            case "spectrum.start":
+                Start();
+                return Task.FromResult<object?>(_capture.Levels);
+            case "spectrum.levels":
+                return Task.FromResult<object?>(_capture.Levels);
+            case "spectrum.stop":
+                Stop();
+                return Task.FromResult<object?>(Array.Empty<double>());
+            default:
+                throw new InvalidOperationException("未知方法：" + method);
+        }
+    }
+
+    private void Start()
+    {
+        if (_started)
+        {
+            return;
+        }
+
+        _started = true;
+        _capture.Start();
+        _timer = new Timer(_ => Push(), null, 100, 100);
+    }
+
+    private void Push()
+    {
+        if (!_started)
+        {
+            return;
+        }
+
+        _ = _server?.PushAsync("spectrum", _capture.Levels);
+    }
+
+    private void Stop()
+    {
+        _started = false;
+        _timer?.Dispose();
+        _timer = null;
+        _capture.Stop();
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        Stop();
+        _capture.Dispose();
+        return ValueTask.CompletedTask;
     }
 }

@@ -45,6 +45,8 @@ internal static class Program
             "translate" => new TranslateFeature(),
             "clipboard" => new ClipboardFeature(),
             "media" => new MediaFeature(),
+            "messages" => new MessageFeature(),
+            "spectrum" => new SpectrumFeature(),
             _ => new NoopFeature(),
         };
 

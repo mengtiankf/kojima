@@ -1,5 +1,6 @@
 using Kojima.Core.Models;
 using Kojima.Shell.Services;
+using Kojima.Core.Models;
 
 namespace Kojima.Shell;
 
@@ -115,7 +116,7 @@ internal static class DemoData
         };
     }
 
-    public static IReadOnlyList<Kojima.Shell.Services.MessageItem> Messages() =>
+    public static IReadOnlyList<Kojima.Core.Models.MessageItem> Messages() =>
     [
         new("QQ", "qq", "设计组 · 阿岚", DateTime.Now.AddMinutes(-2), "toast"),
         new("微信", "wechat", "妈妈", DateTime.Now.AddMinutes(-18), "toast"),

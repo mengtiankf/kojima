@@ -13,8 +13,8 @@ public sealed class SpectrumView : FrameworkElement
     private readonly DispatcherTimer _timer = new(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
     private readonly Random _random = new(20261109);
     private Func<double[]>? _source;
-    private double[] _target = new double[Services.SpectrumService.Bands];
-    private double[] _shown = new double[Services.SpectrumService.Bands];
+    private double[] _target = new double[Services.SpectrumProxy.Bands];
+    private double[] _shown = new double[Services.SpectrumProxy.Bands];
 
     public SpectrumView()
     {
