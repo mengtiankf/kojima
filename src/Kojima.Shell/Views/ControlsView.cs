@@ -74,7 +74,7 @@ public sealed class ControlsView : UserControl
         // 快捷动作
         var actions = new UniformGrid { Rows = 1, Columns = 4 };
         actions.Children.Add(ActionTile("\uE924", "截图", () => Shell("ms-screenclip:")));
-        actions.Children.Add(ActionTile("\uE720", "字幕", () => Shell("ms-settings:easeofaccess-hearing")));
+        actions.Children.Add(ActionTile("\uE720", "字幕", OpenLiveCaptions));
         actions.Children.Add(ActionTile("\uE8D6", "音乐", () => Shell("ms-music:")));
         actions.Children.Add(ActionTile("\uE7E8", "锁屏", Lock));
         root.Children.Add(UiKit.Card(actions, padding: 8));
@@ -194,6 +194,15 @@ public sealed class ControlsView : UserControl
         }
 
         Shell("ms-music:");
+    }
+
+    /// <summary>「字幕」按钮：优先唤起 Windows 11 实时字幕，旧系统退回辅助功能设置。</summary>
+    private static void OpenLiveCaptions()
+    {
+        if (!LiveCaptions.Toggle())
+        {
+            Shell("ms-settings:easeofaccess-hearing");
+        }
     }
 
     private static void Shell(string target)

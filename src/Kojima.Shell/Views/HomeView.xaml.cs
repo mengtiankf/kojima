@@ -34,7 +34,7 @@ public partial class HomeView : UserControl
         ActSettings.MouseLeftButtonUp += (_, _) => OpenSettings();
         ActMute.MouseLeftButtonUp += (_, _) => ToggleMute();
         ActSnip.MouseLeftButtonUp += (_, _) => Run("ms-screenclip:");
-        ActSub.MouseLeftButtonUp += (_, _) => Run("ms-settings:easeofaccess-hearing");
+        ActSub.MouseLeftButtonUp += (_, _) => OpenLiveCaptions();
         WeatherCard.MouseLeftButtonUp += (_, _) => OpenSettings();
     }
 
@@ -138,6 +138,14 @@ public partial class HomeView : UserControl
         catch (Exception ex)
         {
             Core.Config.AppLog.Warn("静音切换失败：" + ex.Message);
+        }
+    }
+
+    private static void OpenLiveCaptions()
+    {
+        if (!Kojima.Shell.Interop.LiveCaptions.Toggle())
+        {
+            Run("ms-settings:easeofaccess-hearing");
         }
     }
 

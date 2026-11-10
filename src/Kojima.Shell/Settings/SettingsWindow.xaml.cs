@@ -41,7 +41,7 @@ public partial class SettingsWindow : Window
         ("stocks", "股票", "自选行情与涨跌"),
         ("clipboard", "剪贴板", "最近复制的文本与图片"),
         ("translate", "翻译", "选中文本的快速翻译"),
-        ("live", "实时字幕", "系统音频的实时转写"),
+        ("live", "实时字幕", "调用 Windows 11 实时字幕（Win+Ctrl+L）"),
     };
 
     private static readonly (string Key, string Label)[] SourceDefs =
