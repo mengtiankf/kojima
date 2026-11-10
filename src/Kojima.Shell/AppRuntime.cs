@@ -20,6 +20,7 @@ public sealed class AppRuntime
         Themes = new ThemeScheduler(this, dispatcher);
         Themes.Apply();
         Agents = new AgentSupervisor(Config.Feature("monitor").IdleExitSeconds);
+        Translate = new TranslateProxy(Agents, Config);
         Monitor = new MonitorService(Agents, dispatcher, Config);
         Usage = new UsageService(Agents, dispatcher, Config);
         Weather = new WeatherService(dispatcher, Agents);
@@ -44,6 +45,8 @@ public sealed class AppRuntime
     public ThemeScheduler Themes { get; }
 
     public AgentSupervisor Agents { get; }
+
+    public TranslateProxy Translate { get; }
 
     public MonitorService Monitor { get; }
 

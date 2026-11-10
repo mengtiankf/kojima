@@ -197,8 +197,7 @@ public partial class App : Application
             {
                 try
                 {
-                    var text = await Kojima.Shell.Services.TranslationService.TranslateAsync(
-                        probe, _runtime.Config.Translate).ConfigureAwait(false);
+                    var text = await _runtime.Translate.TranslateAsync(probe).ConfigureAwait(false);
                     AppLog.Info("翻译测试：" + text);
                 }
                 catch (Exception ex)

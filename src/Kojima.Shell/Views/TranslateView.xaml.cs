@@ -321,14 +321,12 @@ public partial class TranslateView : UserControl
             return;
         }
 
-        var settings = _runtime.Config.Translate;
-
         _translating = true;
         _translateLabel.Text = "翻译中…";
         SetResult("翻译中…", ResultKind.Hint);
         try
         {
-            var translated = await Services.TranslationService.TranslateAsync(text, settings);
+            var translated = await _runtime.Translate.TranslateAsync(text);
 
             if (translated.Trim().Length == 0)
             {

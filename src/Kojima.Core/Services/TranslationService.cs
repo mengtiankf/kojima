@@ -3,14 +3,16 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Runtime.Versioning;
 using Kojima.Core.Config;
 
-namespace Kojima.Shell.Services;
+namespace Kojima.Core.Services;
 
 /// <summary>
 /// 翻译引擎：自动 / 免费通道（MyMemory → Google）/ DeepSeek。
 /// 与界面无关，便于单独测试与复用。
 /// </summary>
+[SupportedOSPlatform("windows")]
 public static class TranslationService
 {
     public const string DeepSeekEndpoint = "https://api.deepseek.com/chat/completions";

@@ -42,6 +42,7 @@ internal static class Program
             "usage" => new UsageFeature(),
             "weather" => new WeatherFeature(),
             "stocks" => new StocksFeature(),
+            "translate" => new TranslateFeature(),
             _ => new NoopFeature(),
         };
 
