@@ -1,12 +1,15 @@
 using System.Globalization;
 using System.Text.Json;
 
+using System.Runtime.Versioning;
+
 namespace Kojima.Core.Themes;
 
 /// <summary>
 /// 从「背景 / 正文 / 强调色」三个种子派生出完整主题，规则与 BrimDeck 的派生色一致：
 /// 次要文字用透明度，分隔线与填充按明暗取黑/白叠加，强调色决定 onAccent 用黑还是白。
 /// </summary>
+[SupportedOSPlatform("windows")]
 public static class ThemeDerivation
 {
     public static ThemeDocument FromSeeds(

@@ -28,8 +28,9 @@ Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://gi
 | 剪贴板 | 400 ms 序列号轮询，最近 40 条文本，点击写回剪贴板 |
 | 翻译 | 中→日 / 中→英；引擎可选 Google 翻译 / MyMemory / 百度翻译 / 微软翻译 / DeepSeek / 自定义 OpenAI 兼容大模型（自动模式优先 DeepSeek，其次 Google） |
 | 消息 | 应用内通知中心：CPU 占用过高、天气变化、持仓提醒等 |
-| 主题 | 内置 11 套 BrimDeck 主题，支持 `%LOCALAPPDATA%\Kojima\themes` 放入自定义主题 |
+| 主题 | 内置 11 套 BrimDeck 主题，支持 `%LOCALAPPDATA%\Kojima\themes` 放入自定义主题；主题编辑器用底色 / 文字色 / 强调色派生整套配色；可跟随系统深浅色或按时间段自动切换，系统高对比度开启时自动使用高对比色板 |
 | 设置 | 独立设置窗口：通用 / 外观 / 功能 / 用量 / 关于；每个功能模块的详细配置在二级菜单里；主题即点即生效，滚动条为沉浸式细条；展开态右键也可打开 |
+| 更新 | 启动后每天检查一次 GitHub Release；安装版静默调用安装包，便携版解压替换后自动重启；构建产物附带 SHA-256 校验文件 |
 | 导航 | 悬停标签即切换页面，不需要点击；标签顺序可在「设置 → 功能」里用 ↑ ↓ 调整 |
 
 ## 架构
@@ -83,13 +84,13 @@ dotnet test tests/Kojima.Tests/Kojima.Tests.csproj
 dotnet run --project src/Kojima.Shell
 ```
 
-打安装包（publish → Inno Setup，仅 exe）：
+打安装包与便携版（publish → Inno Setup → zip + SHA-256）：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-需要 `ISCC.exe`（Inno Setup 6）在 PATH 中；脚本只产出 exe 安装包，不再构建 MSI。
+需要 Inno Setup 6（脚本会自动查找 `%LOCALAPPDATA%` 与 `Program Files` 下的 `ISCC.exe`）。产物在 `dist/`：`KojimaSetup-<版本>.exe` 安装版和 `Kojima-<版本>-portable.zip` 便携版，各带 `.sha256` 校验文件；不再构建 MSI。
 
 ## 开发钩子
 

@@ -23,7 +23,7 @@ public sealed class IslandSurface : FrameworkElement
 
     public double IndicatorThickness { get; set; } = 4;
 
-    public double Height { get; set; } = 34;
+    public new double Height { get; set; } = 34;
 
     public double Shoulder { get; set; } = 16;
 

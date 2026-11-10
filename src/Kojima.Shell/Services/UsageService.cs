@@ -44,7 +44,7 @@ public sealed class UsageService
             var results = await Task.WhenAll(tasks).ConfigureAwait(false);
             var snapshots = results.Where(r => r is not null).Select(r => r!).ToList();
 
-            _dispatcher.BeginInvoke(() =>
+            _ = _dispatcher.BeginInvoke(() =>
             {
                 Snapshots = snapshots;
                 UpdatedAt = DateTimeOffset.Now;
