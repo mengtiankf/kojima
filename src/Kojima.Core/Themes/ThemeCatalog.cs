@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Kojima.Core.Config;
@@ -173,6 +174,7 @@ public sealed class DeckPalette
     public Rgba SurfaceBottom => Dark ? Surface : Rgba.Blend(Surface, new Rgba(0, 0, 0), 0.035);
 }
 
+[SupportedOSPlatform("windows")]
 public static class ThemeCatalog
 {
     private static readonly JsonSerializerOptions Options = new()

@@ -193,6 +193,17 @@ public sealed class UsageCanvas : FrameworkElement
             card.Rows.Add(new CardRow { Label = "累计", Value = UsageFormat.Tokens(snap.Totals(null).Tokens) });
         }
 
+        // 额度 / 余额卡片也带上当前周期的 Token，满足「今日 / 本周 / 本月 Token 与额度」。
+        if (snap.Entries.Count > 0 && (snap.Quotas.Count > 0 || snap.Metrics.Count > 0))
+        {
+            card.Rows.Add(new CardRow
+            {
+                Label = PeriodLabel(_period),
+                Value = UsageFormat.Tokens(snap.Totals(Since(_period)).Tokens),
+                Suffix = " tokens",
+            });
+        }
+
         var footer = card.Error ? snap.Error ?? snap.Note : snap.Note;
         footer ??= SourceText(snap.Source);
         card.Footer = string.IsNullOrWhiteSpace(footer) ? null : footer.Trim();

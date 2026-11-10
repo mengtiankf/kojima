@@ -666,6 +666,16 @@
                             <TextBlock Text="已保存的密钥显示为 ••••••，不修改则不会覆盖；清空输入框并保存可删除。密钥使用 Windows DPAPI（当前用户）加密保存在 secrets.dat，不写入 config.json。"
                                        Style="{StaticResource Hint}" Margin="2,0,0,0" TextWrapping="Wrap"/>
 
+                            <TextBlock Text="站点地址" Style="{StaticResource GroupLabel}"/>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="NewAPI 站点（例如 https://api.example.com）" Style="{StaticResource Hint}"/>
+                                    <TextBox x:Name="NewApiSite" Style="{StaticResource Field}" Margin="0,6,0,14"/>
+                                    <TextBlock Text="Sub2API 站点（例如 https://sub.example.com）" Style="{StaticResource Hint}"/>
+                                    <TextBox x:Name="Sub2ApiSite" Style="{StaticResource Field}" Margin="0,6,0,2"/>
+                                </StackPanel>
+                            </Border>
+
                             <TextBlock Text="刷新" Style="{StaticResource GroupLabel}" Margin="2,22,0,8"/>
                             <Border Style="{StaticResource Card}">
                                 <Grid Style="{StaticResource SettingRow}">

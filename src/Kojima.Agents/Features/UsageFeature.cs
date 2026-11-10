@@ -6,7 +6,7 @@ using Kojima.Core.Models;
 
 namespace Kojima.Agents.Features;
 
-/// <summary>AI 用量：按来源读取本机日志，返回额度 / Token / 成本快照。</summary>
+/// <summary>AI 用量：按来源读取本机日志 / 数据库 / 在线额度，返回统一的用量快照。</summary>
 public sealed class UsageFeature : IAgentFeature
 {
     public bool Busy => false;
@@ -23,17 +23,18 @@ public sealed class UsageFeature : IAgentFeature
             {
                 var source = ReadString(args, "source") ?? "dsh";
                 var period = ReadString(args, "period") ?? "today";
-                var snapshot = await Task.Run(() => ReadSnapshot(source, period)).ConfigureAwait(false);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(24));
+                var snapshot = await ReadSnapshotAsync(source, period, cts.Token).ConfigureAwait(false);
                 return snapshot;
             }
             case "usage.sources":
-                return new[] { "dsh", "claude", "codex" };
+                return UsageCatalog.Ids;
             default:
                 return null;
         }
     }
 
-    private static UsageSnapshot ReadSnapshot(string source, string period)
+    private static async Task<UsageSnapshot> ReadSnapshotAsync(string source, string period, CancellationToken ct)
     {
         var now = DateTime.Now;
         var start = period switch
@@ -45,7 +46,10 @@ public sealed class UsageFeature : IAgentFeature
 
         try
         {
-            var snapshot = LocalUsage.Read(source, start, DateOnly.FromDateTime(now));
+            var settings = ConfigStore.Load().Usage;
+            var snapshot = await UsageProviders
+                .ReadAsync(source, start, DateOnly.FromDateTime(now), settings, ct)
+                .ConfigureAwait(false);
             snapshot.FetchedAt = now;
             return snapshot;
         }

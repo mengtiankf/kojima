@@ -66,7 +66,7 @@ public sealed class UsageService
         try
         {
             var snapshot = await _agents
-                .RequestAsync<UsageSnapshot>("usage", "usage.read", new { source, period }, 20000)
+                .RequestAsync<UsageSnapshot>("usage", "usage.read", new { source, period }, 30000)
                 .ConfigureAwait(false);
             AppLog.Info($"usage {source}: {(snapshot is null ? "null" : snapshot.Status + " entries=" + snapshot.Entries.Count)}");
             return snapshot;

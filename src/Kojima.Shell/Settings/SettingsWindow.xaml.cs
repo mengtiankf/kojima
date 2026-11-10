@@ -47,13 +47,12 @@ public partial class SettingsWindow : Window
     {
         ("claude", "Claude"), ("codex", "Codex"), ("cursor", "Cursor"), ("antigravity", "Antigravity"),
         ("dsh", "DSH"), ("kimi", "Kimi"), ("opencode", "OpenCode"), ("zcode", "ZCode"),
-        ("grokbot", "GrokBot"), ("deepseek", "DeepSeek"), ("openrouter", "OpenRouter"), ("glm", "GLM 智谱"),
+        ("deepseek", "DeepSeek"), ("openrouter", "OpenRouter"), ("glm", "GLM 智谱"),
         ("newapi", "NewAPI"), ("sub2api", "Sub2API"),
     };
 
     private static readonly (string Key, string Label)[] SecretDefs =
     {
-        ("claude", "Claude"), ("cursor", "Cursor"), ("zcode", "ZCode"), ("kimi", "Kimi"),
         ("deepseek", "DeepSeek"), ("openrouter", "OpenRouter"), ("glm", "GLM 智谱"),
         ("newapi", "NewAPI"), ("sub2api", "Sub2API"),
     };
@@ -276,6 +275,8 @@ public partial class SettingsWindow : Window
 
         IdleExitBox.Text = cfg.Feature("monitor").IdleExitSeconds.ToString(CultureInfo.InvariantCulture);
         RefreshBox.Text = cfg.Usage.RefreshSeconds.ToString(CultureInfo.InvariantCulture);
+        NewApiSite.Text = cfg.Usage.Sites.GetValueOrDefault("newapi") ?? "";
+        Sub2ApiSite.Text = cfg.Usage.Sites.GetValueOrDefault("sub2api") ?? "";
         ThemePathText.Text = ConfigStore.ThemesDirectory;
 
         BuildThemes();
@@ -742,6 +743,8 @@ public partial class SettingsWindow : Window
 
             cfg.Usage.Sources = sources;
             cfg.Usage.RefreshSeconds = Math.Clamp(ParseInt(RefreshBox.Text, cfg.Usage.RefreshSeconds), 30, 3600);
+            cfg.Usage.Sites["newapi"] = (NewApiSite.Text ?? "").Trim();
+            cfg.Usage.Sites["sub2api"] = (Sub2ApiSite.Text ?? "").Trim();
 
             var idle = Math.Clamp(ParseInt(IdleExitBox.Text, cfg.Feature("monitor").IdleExitSeconds), 0, 600);
             foreach (var feature in cfg.Features.Values)

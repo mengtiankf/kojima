@@ -1,8 +1,10 @@
+using System.Runtime.Versioning;
 using System.Text;
 
 namespace Kojima.Core.Config;
 
 /// <summary>极简日志：同时写 %LOCALAPPDATA%\Kojima\logs\shell.log。子进程各自写自己的文件。</summary>
+[SupportedOSPlatform("windows")]
 public static class AppLog
 {
     private static readonly object Gate = new();
