@@ -78,6 +78,7 @@ public static class UpdateService
         UpdateAsset asset,
         string path,
         IProgress<double>? progress = null,
+        IProgress<long>? bytes = null,
         CancellationToken ct = default)
     {
         using var http = CreateClient(TimeSpan.FromMinutes(30));
@@ -100,6 +101,7 @@ public static class UpdateService
             {
                 await target.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
                 written += read;
+                bytes?.Report(written);
                 if (total > 0)
                 {
                     progress?.Report((double)written / total);

@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Reflection;
+using System.Text.Json;
 using System.Windows;
 using Kojima.Core.Config;
 using Kojima.Core.Updates;
@@ -17,12 +18,14 @@ public sealed class UpdateCoordinator
 {
     private readonly NotifyCenter _notify;
     private readonly AgentSupervisor _agents;
+    private IProgress<double>? _downloadProgress;
     private bool _busy;
 
     public UpdateCoordinator(NotifyCenter notify, AgentSupervisor agents)
     {
         _notify = notify;
         _agents = agents;
+        _agents.EventReceived += OnAgentEvent;
     }
 
     public event Action<string>? StatusChanged;
@@ -120,10 +123,11 @@ public sealed class UpdateCoordinator
             Directory.CreateDirectory(folder);
             path = Path.Combine(folder, asset.Name);
             StatusChanged?.Invoke($"正在下载 {asset.Name}…");
-            progress?.Report(0);
+            _downloadProgress = progress;
             var shaUrl = release.Assets.FirstOrDefault(a => a.Name.Equals(asset.Name + ".sha256", StringComparison.OrdinalIgnoreCase))?.Url ?? "";
             var result = await _agents.RequestAsync<UpdateDownloadResult>("updates", "updates.download",
                 new { url = asset.Url, name = asset.Name, size = asset.Size, path, shaUrl }, 600000).ConfigureAwait(false);
+            _downloadProgress = null;
             progress?.Report(1);
             if (result is null || !result.Ok)
             {
@@ -134,6 +138,7 @@ public sealed class UpdateCoordinator
         }
         catch (Exception ex)
         {
+            _downloadProgress = null;
             AppLog.Warn("更新下载失败：" + ex.Message);
             StatusChanged?.Invoke("下载失败");
             _notify.Push("更新失败", ex.Message, "warn");
@@ -223,6 +228,32 @@ public sealed class UpdateCoordinator
     public void ShutdownForUpdate()
     {
         Application.Current?.Shutdown();
+    }
+
+    private void OnAgentEvent(string feature, string name, JsonElement data)
+    {
+        if (feature != "updates" || name != "updates.progress" || _downloadProgress is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!data.TryGetProperty("read", out var readValue) || !readValue.TryGetInt64(out var read))
+            {
+                return;
+            }
+
+            var total = data.TryGetProperty("total", out var totalValue) && totalValue.TryGetInt64(out var t) ? t : 0;
+            if (total > 0)
+            {
+                _downloadProgress.Report(Math.Clamp((double)read / total, 0, 1));
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Warn("更新进度解析失败：" + ex.Message);
+        }
     }
 }
 

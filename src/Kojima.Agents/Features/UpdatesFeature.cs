@@ -13,10 +13,13 @@ public sealed class UpdatesFeature : IAgentFeature
         Timeout = TimeSpan.FromSeconds(30),
     };
 
+    private AgentPipeServer? _server;
+
     public bool Busy => false;
 
     public void Attach(AgentPipeServer server)
     {
+        _server = server;
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -48,7 +51,7 @@ public sealed class UpdatesFeature : IAgentFeature
         return await UpdateService.CheckAsync(current, Http).ConfigureAwait(false);
     }
 
-    private static async Task<object> DownloadAsync(JsonElement args)
+    private async Task<object> DownloadAsync(JsonElement args)
     {
         var url = String(args, "url");
         var name = String(args, "name");
@@ -60,7 +63,20 @@ public sealed class UpdatesFeature : IAgentFeature
 
         var size = args.TryGetProperty("size", out var sizeValue) && sizeValue.TryGetInt64(out var bytes) ? bytes : 0;
         var asset = new UpdateAsset(name, url, size);
-        await UpdateService.DownloadAsync(asset, path).ConfigureAwait(false);
+        var lastReport = 0L;
+        var progress = new Progress<long>(read =>
+        {
+            var now = Environment.TickCount64;
+            if (now - lastReport < 100)
+            {
+                return;
+            }
+
+            lastReport = now;
+            _ = _server?.PushAsync("updates.progress", new { read, total = size });
+        });
+        await UpdateService.DownloadAsync(asset, path, bytes: progress).ConfigureAwait(false);
+        _ = _server?.PushAsync("updates.progress", new { read = size, total = size });
 
         var shaUrl = String(args, "shaUrl");
         if (shaUrl.Length == 0)

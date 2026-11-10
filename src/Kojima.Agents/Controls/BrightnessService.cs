@@ -1,7 +1,7 @@
 using System.Management;
 using Kojima.Core.Config;
 
-namespace Kojima.Shell.Services;
+namespace Kojima.Agents.Controls;
 
 /// <summary>屏幕亮度：WMI root\wmi 的 WmiMonitorBrightness(Methods)。</summary>
 public static class BrightnessService

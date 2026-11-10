@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Kojima.Shell.Interop;
+namespace Kojima.Agents.Controls;
 
 /// <summary>系统默认输出设备的音量 / 静音控制（Core Audio，手写 COM 接口）。</summary>
 public sealed class AudioEndpoints
@@ -91,6 +91,12 @@ public sealed class AudioEndpoints
         var next = !mute;
         volume.SetMute(next, Guid.Empty);
         return next;
+    }
+
+    public void SetMute(bool muted)
+    {
+        var volume = Open();
+        volume?.SetMute(muted, Guid.Empty);
     }
 
     public float GetVolume()
