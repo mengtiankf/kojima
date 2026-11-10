@@ -331,6 +331,18 @@ public partial class IslandWindow : Window
     }
 
     /// <summary>按设置里的模块顺序排标签；主页固定在最前，控制固定在末尾。</summary>
+    /// <summary>股票设置变更后重载行情页（自选/刷新间隔）。</summary>
+    public void ReloadStocks()
+    {
+        foreach (var page in _pages)
+        {
+            if (page.Key == "stocks" && page.View is Views.StocksView view)
+            {
+                view.Surface.Reload();
+            }
+        }
+    }
+
     private IEnumerable<IslandPage> OrderedPages()
     {
         var home = _pages.FirstOrDefault(p => p.Key == "home");

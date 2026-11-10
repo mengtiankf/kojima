@@ -912,6 +912,7 @@ public partial class SettingsWindow : Window
             _runtime.SaveConfig();
             _runtime.Themes.Apply();
             App.RefreshIsland();
+            App.RefreshStocks();
             App.RebuildDecks();
             UpdateCurrentThemeText();
             foreach (var (key, enabled) in changed)

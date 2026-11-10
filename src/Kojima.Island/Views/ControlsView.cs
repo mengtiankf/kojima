@@ -89,6 +89,47 @@ public sealed class ControlsView : UserControl
         slider.TickFrequency = 0;
         slider.VerticalAlignment = VerticalAlignment.Center;
         slider.Background = Brushes.Transparent;
+        slider.Template = SliderTemplate();
+        slider.ApplyTemplate();
+        ApplySliderResources(slider);
+    }
+
+    /// <summary>主题化的滑杆：细轨道 + 圆点滑块，避免默认 WPF 的方块拇指。</summary>
+    private static ControlTemplate SliderTemplate()
+    {
+        return (ControlTemplate)System.Windows.Markup.XamlReader.Parse(SliderXaml);
+    }
+
+    private const string SliderXaml = """
+        <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                                 TargetType="{x:Type Slider}">
+            <Grid Height="22">
+                <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
+                        Background="{DynamicResource SliderTrack}"/>
+                <Track x:Name="PART_Track" Height="22">
+                    <Track.Thumb>
+                        <Thumb>
+                            <Thumb.Template>
+                                <ControlTemplate TargetType="{x:Type Thumb}">
+                                    <Border Width="14" Height="14" CornerRadius="7"
+                                            Background="{DynamicResource SliderFill}"
+                                            BorderBrush="{DynamicResource SliderSurface}"
+                                            BorderThickness="2"/>
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </Track.Thumb>
+                </Track>
+            </Grid>
+        </ControlTemplate>
+        """;
+
+    private static void ApplySliderResources(Slider slider)
+    {
+        slider.Resources["SliderTrack"] = ThemeRuntime.Track;
+        slider.Resources["SliderFill"] = ThemeRuntime.Accent;
+        slider.Resources["SliderSurface"] = ThemeRuntime.Surface;
     }
 
     private Border ActionTile(string glyph, string title, Action onClick)
@@ -240,6 +281,8 @@ public sealed class ControlsView : UserControl
 
     private void ApplyTheme()
     {
+        ApplySliderResources(_volume);
+        ApplySliderResources(_brightness);
         Sync();
     }
 }

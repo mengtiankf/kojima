@@ -546,6 +546,19 @@ public partial class App : Application
     }
 
     /// <summary>设置里改了“其他显示器也显示”后，重建副岛窗口。</summary>
+    /// <summary>设置保存后，让岛上的股票页同步自选列表。</summary>
+    public static void RefreshStocks()
+    {
+        if (Application.Current is App app)
+        {
+            app._island?.ReloadStocks();
+            foreach (var extra in app._extraIslands)
+            {
+                extra.ReloadStocks();
+            }
+        }
+    }
+
     public static void RebuildDecks()
     {
         if (Application.Current is App app)

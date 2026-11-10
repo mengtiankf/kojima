@@ -72,14 +72,9 @@ public sealed class StocksSurface : FrameworkElement
         UseLayoutRounding = true;
         ClipToBounds = true;
 
-        var cfg = AppRuntime.Current?.Config.Stocks;
-        var symbols = cfg?.Symbols is { Count: > 0 } list ? list : Watch.Select(w => w.Code).ToList();
-        foreach (var code in symbols)
-        {
-            var known = Watch.FirstOrDefault(w => w.Code.Equals(code, StringComparison.OrdinalIgnoreCase));
-            _rows.Add(new Row { Code = code, Name = known.Code is null ? code.ToUpperInvariant() : known.Name });
-        }
+        BuildRows();
 
+        var cfg = AppRuntime.Current?.Config.Stocks;
         var seconds = Math.Clamp(cfg?.RefreshSeconds ?? 15, 5, 600);
         _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(seconds) };
         _timer.Tick += async (_, _) => await RefreshAsync();
@@ -89,6 +84,34 @@ public sealed class StocksSurface : FrameworkElement
 
     /// <summary>是否随页面显示自动轮询。</summary>
     public bool AutoRefresh { get; set; } = true;
+
+    /// <summary>设置里改了自选或刷新间隔后，岛上的股票页立即跟上。</summary>
+    public void Reload()
+    {
+        _rows.Clear();
+        BuildRows();
+        var cfg = AppRuntime.Current?.Config.Stocks;
+        _timer.Interval = TimeSpan.FromSeconds(Math.Clamp(cfg?.RefreshSeconds ?? 15, 5, 600));
+        _status = "尚未更新";
+        _updatedAt = null;
+        _error = false;
+        InvalidateVisual();
+        if (IsLoaded)
+        {
+            _ = RefreshAsync();
+        }
+    }
+
+    private void BuildRows()
+    {
+        var cfg = AppRuntime.Current?.Config.Stocks;
+        var symbols = cfg?.Symbols is { Count: > 0 } list ? list : Watch.Select(w => w.Code).ToList();
+        foreach (var code in symbols)
+        {
+            var known = Watch.FirstOrDefault(w => w.Code.Equals(code, StringComparison.OrdinalIgnoreCase));
+            _rows.Add(new Row { Code = code, Name = known.Code is null ? code.ToUpperInvariant() : known.Name });
+        }
+    }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
