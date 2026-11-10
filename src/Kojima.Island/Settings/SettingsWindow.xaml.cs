@@ -798,9 +798,23 @@ public partial class SettingsWindow : Window
             var previousMonitorSource = cfg.Monitor.Source;
             var previousIdle = cfg.Feature("monitor").IdleExitSeconds;
             var previousHotkeys = HotkeySignature(cfg.Hotkeys);
-            cfg.Hotkeys.Toggle = (HotkeyToggle.Text ?? "").Trim();
-            cfg.Hotkeys.Settings = (HotkeySettings.Text ?? "").Trim();
-            cfg.Hotkeys.Monitor = (HotkeyMonitor.Text ?? "").Trim();
+            var hotkeyToggle = (HotkeyToggle.Text ?? "").Trim();
+            var hotkeySettings = (HotkeySettings.Text ?? "").Trim();
+            var hotkeyMonitor = (HotkeyMonitor.Text ?? "").Trim();
+            if (!ValidHotkey(hotkeyToggle) || !ValidHotkey(hotkeySettings) || !ValidHotkey(hotkeyMonitor))
+            {
+                AppDialog.Notify(
+                    this,
+                    "快捷键格式不对",
+                    "请使用 Ctrl+Alt+K 这样的组合；留空表示不注册。",
+                    "知道了",
+                    DialogTone.Warning);
+                return;
+            }
+
+            cfg.Hotkeys.Toggle = hotkeyToggle;
+            cfg.Hotkeys.Settings = hotkeySettings;
+            cfg.Hotkeys.Monitor = hotkeyMonitor;
             cfg.StartWithWindows = StartSwitch.IsChecked == true;
             StartupRegistration.Apply(cfg.StartWithWindows);
 
@@ -1042,6 +1056,17 @@ public partial class SettingsWindow : Window
 
     private static string HotkeySignature(HotkeySettings keys) =>
         $"{keys.Toggle}|{keys.Settings}|{keys.Monitor}";
+
+    private static bool ValidHotkey(string text)
+    {
+        if (text.Length == 0)
+        {
+            return true;
+        }
+
+        var parts = text.Split('+', StringSplitOptions.TrimEntries);
+        return parts.Length >= 2 && parts.All(part => part.Length > 0 && !part.Contains(' '));
+    }
 
     private sealed class FeatureRow(string key, CheckBox toggle, bool initial)
     {

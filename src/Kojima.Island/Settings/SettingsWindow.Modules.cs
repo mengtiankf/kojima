@@ -159,6 +159,16 @@ public partial class SettingsWindow
                 }
                 actions.Children.Add(open);
             }
+            else
+            {
+                actions.Children.Add(new TextBlock
+                {
+                    Text = "无需设置",
+                    Style = (Style)FindResource("Hint"),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(8, 0, 8, 0),
+                });
+            }
 
             var toggleHost = new StackPanel
             {
