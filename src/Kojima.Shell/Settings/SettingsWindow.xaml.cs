@@ -212,7 +212,6 @@ public partial class SettingsWindow : Window
         var cfg = _runtime.Config;
 
         StartSwitch.IsChecked = StartupRegistration.IsEnabled() || cfg.StartWithWindows;
-        (string.Equals(cfg.Language, "en-US", StringComparison.OrdinalIgnoreCase) ? LanguageEn : LanguageZh).IsChecked = true;
 
         PosCenter.IsChecked = cfg.Island.Position == IslandPosition.TopCenter;
         PosLeft.IsChecked = cfg.Island.Position == IslandPosition.TopLeft;
@@ -674,7 +673,6 @@ public partial class SettingsWindow : Window
             var cfg = _runtime.Config;
             cfg.StartWithWindows = StartSwitch.IsChecked == true;
             StartupRegistration.Apply(cfg.StartWithWindows);
-            cfg.Language = LanguageEn.IsChecked == true ? "en-US" : "zh-CN";
 
             cfg.Island.Position = PosLeft.IsChecked == true ? IslandPosition.TopLeft
                 : PosRight.IsChecked == true ? IslandPosition.TopRight

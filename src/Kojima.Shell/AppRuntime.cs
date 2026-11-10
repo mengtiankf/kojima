@@ -23,6 +23,7 @@ public sealed class AppRuntime
         Usage = new UsageService(Agents, dispatcher, Config);
         Weather = new WeatherService(dispatcher);
         Notify = new NotifyCenter(dispatcher);
+        StockAlerts = new StockAlertService(Notify, Config);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardService() : null;
         Media = new MediaSessionService();
         Spectrum = new SpectrumService();
@@ -46,6 +47,8 @@ public sealed class AppRuntime
     public WeatherService Weather { get; }
 
     public NotifyCenter Notify { get; }
+
+    public StockAlertService StockAlerts { get; }
 
     public ClipboardService? Clipboard { get; }
 
@@ -95,10 +98,18 @@ public sealed class AppRuntime
         if (!enabled)
         {
             await Agents.StopAsync(key).ConfigureAwait(false);
+            if (key == "stocks")
+            {
+                StockAlerts.Stop();
+            }
         }
         else if (key == "monitor")
         {
             await Monitor.StartAsync().ConfigureAwait(false);
+        }
+        else if (key == "stocks")
+        {
+            StockAlerts.Start();
         }
     }
 
@@ -156,6 +167,10 @@ public sealed class AppRuntime
         }
 
         Messages.Start();
+        if (Config.Feature("stocks").Enabled)
+        {
+            StockAlerts.Start();
+        }
     }
 
     internal void OnAgentEvent(string feature, string name, JsonElement data)
@@ -175,6 +190,7 @@ public sealed class AppRuntime
             Media.Dispose();
             Spectrum.Dispose();
             Messages.Dispose();
+            StockAlerts.Dispose();
             Weather.Dispose();
             await Monitor.StopAsync().ConfigureAwait(false);
         }

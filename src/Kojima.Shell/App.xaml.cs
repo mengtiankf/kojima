@@ -38,6 +38,7 @@ public partial class App : Application
         }
 
         AppLog.Init("shell");
+        HookCrashLogging();
         ThemeCatalog.Reload();
 
         _runtime = new AppRuntime(Dispatcher);
@@ -53,6 +54,20 @@ public partial class App : Application
         CreateTray();
         ApplyDevHooks();
         AppLog.Info("Kojima 启动完成");
+    }
+
+    /// <summary>把未处理异常写进 logs/shell.log，便于用户回报问题。</summary>
+    private void HookCrashLogging()
+    {
+        DispatcherUnhandledException += (_, args) =>
+            AppLog.Error("界面异常：" + args.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            AppLog.Error("未处理异常：" + args.ExceptionObject);
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            AppLog.Error("后台任务异常：" + args.Exception.GetBaseException());
+            args.SetObserved();
+        };
     }
 
     /// <summary>开发/截图钩子：KOJIMA_PREVIEW 指定页面，KOJIMA_SHOT 输出窗口 PNG。</summary>

@@ -1,4 +1,4 @@
-# Build Kojima: publish -> Inno Setup exe -> WiX msi
+# Build Kojima: publish -> Inno Setup exe
 # Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.2.1]
 
 param(

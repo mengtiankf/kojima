@@ -164,25 +164,6 @@
                                         <CheckBox x:Name="StartSwitch" Grid.Column="1" Style="{StaticResource Switch}"
                                                   VerticalAlignment="Center" Margin="24,0,0,0"/>
                                     </Grid>
-                                    <Border Style="{StaticResource RowDivider}"/>
-                                    <Grid Style="{StaticResource SettingRow}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
-                                            <TextBlock Text="界面语言" Style="{StaticResource RowTitle}"/>
-                                            <TextBlock Text="切换后需要重新打开设置窗口" Style="{StaticResource RowDesc}"/>
-                                        </StackPanel>
-                                        <Border Grid.Column="1" Style="{StaticResource SegmentGroup}" Margin="24,0,0,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <RadioButton x:Name="LanguageZh" GroupName="Lang" Style="{StaticResource Segment}"
-                                                             Content="简体中文"/>
-                                                <RadioButton x:Name="LanguageEn" GroupName="Lang" Style="{StaticResource Segment}"
-                                                             Content="English"/>
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
                                 </StackPanel>
                             </Border>
 
