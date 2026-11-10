@@ -40,6 +40,8 @@ internal static class Program
         {
             "monitor" => new MonitorFeature(),
             "usage" => new UsageFeature(),
+            "weather" => new WeatherFeature(),
+            "stocks" => new StocksFeature(),
             _ => new NoopFeature(),
         };
 

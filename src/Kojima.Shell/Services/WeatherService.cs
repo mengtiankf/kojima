@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Net.Http;
 using System.Text.Json;
 using System.Windows.Threading;
 using Kojima.Core.Config;
@@ -9,17 +8,15 @@ namespace Kojima.Shell.Services;
 /// <summary>天气：wttr.in 免费接口，可指定城市（留空则按 IP 定位），默认 20 分钟刷新一次。</summary>
 public sealed class WeatherService : IDisposable
 {
-    private static readonly HttpClient Http = new()
-    {
-        Timeout = TimeSpan.FromSeconds(12),
-    };
-
     private readonly DispatcherTimer _timer;
     private bool _busy;
     private bool _started;
 
-    public WeatherService(Dispatcher dispatcher)
+    private readonly AgentSupervisor _agents;
+
+    public WeatherService(Dispatcher dispatcher, AgentSupervisor agents)
     {
+        _agents = agents;
         _timer = new DispatcherTimer(DispatcherPriority.Background, dispatcher)
         {
             Interval = TimeSpan.FromMinutes(20),
@@ -72,17 +69,15 @@ public sealed class WeatherService : IDisposable
         try
         {
             Location = (ConfigStore.Load().Weather.Location ?? "").Trim();
-            var target = Location.Length == 0 ? "" : Uri.EscapeDataString(Location);
-            var url = $"https://wttr.in/{target}?format=j1&lang=zh-cn";
-            using var response = await Http.GetAsync(url).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
+            var body = await _agents.RequestAsync<string>("weather", "weather.read",
+                new { location = Location }, 20000).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(body))
             {
-                AppLog.Warn($"天气请求失败：HTTP {(int)response.StatusCode} ({Location})");
+                AppLog.Warn("天气请求失败：子进程返回空数据");
                 return;
             }
 
-            await using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            using var document = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            using var document = JsonDocument.Parse(body);
             var info = Parse(document.RootElement);
             if (info is null)
             {

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Net.Http;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,11 +30,9 @@ public partial class StocksView : UserControl
 /// <summary>股票画布：标题、状态、自绘行情行。</summary>
 public sealed class StocksSurface : FrameworkElement
 {
-    private const string UrlPrefix = "https://qt.gtimg.cn/q=";
     private const double PageWidth = 640, PageHeight = 300, HeaderH = 30, HeaderGap = 10, RowH = 40,
         CapsuleW = 64, CapsuleH = 20, RefreshW = 28;
 
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(12) };
     private static readonly (string Code, string Name)[] Watch =
     [
         ("sh000001", "上证指数"),
@@ -240,9 +237,11 @@ public sealed class StocksSurface : FrameworkElement
         InvalidateVisual();
         try
         {
-            var url = UrlPrefix + string.Join(",", _rows.Select(r => r.Code));
-            var bytes = await Http.GetByteArrayAsync(url);
-            var quotes = Parse(Gbk.GetString(bytes));
+            var agents = AppRuntime.Current?.Agents
+                         ?? throw new InvalidOperationException("运行时尚未就绪");
+            var text = await agents.RequestAsync<string>("stocks", "stocks.read",
+                new { codes = _rows.Select(r => r.Code).ToArray() }, 20000);
+            var quotes = Parse(text ?? "");
             if (quotes.Count == 0) { throw new InvalidOperationException("行情返回为空"); }
             foreach (var row in _rows)
             {

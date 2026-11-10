@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Net.Http;
-using System.Text;
 using System.Windows.Threading;
 using Kojima.Core.Config;
 
@@ -9,26 +7,18 @@ namespace Kojima.Shell.Services;
 /// <summary>自选股异动提醒：后台每 60 秒抓一次腾讯行情，单日涨跌幅越过 ±5% 时进消息中心。</summary>
 public sealed class StockAlertService : IDisposable
 {
-    private const string UrlPrefix = "https://qt.gtimg.cn/q=";
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(12) };
-    private static readonly Encoding Gbk;
-
     private readonly DispatcherTimer _timer = new(DispatcherPriority.Background);
+    private readonly AgentSupervisor _agents;
     private readonly NotifyCenter _notify;
     private readonly KojimaConfig _config;
     private readonly HashSet<string> _alerted = new(StringComparer.OrdinalIgnoreCase);
     private DateOnly _day = DateOnly.FromDateTime(DateTime.Today);
     private bool _busy;
 
-    static StockAlertService()
-    {
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        Gbk = Encoding.GetEncoding(936);
-    }
-
-    public StockAlertService(NotifyCenter notify, KojimaConfig config)
+    public StockAlertService(NotifyCenter notify, KojimaConfig config, AgentSupervisor agents)
     {
         _notify = notify;
+        _agents = agents;
         _config = config;
         _timer.Interval = TimeSpan.FromSeconds(60);
         _timer.Tick += async (_, _) => await CheckAsync();
@@ -60,8 +50,9 @@ public sealed class StockAlertService : IDisposable
         _busy = true;
         try
         {
-            var bytes = await Http.GetByteArrayAsync(UrlPrefix + string.Join(",", symbols));
-            var quotes = Parse(Gbk.GetString(bytes));
+            var text = await _agents.RequestAsync<string>("stocks", "stocks.read",
+                new { codes = symbols.ToArray() }, 20000);
+            var quotes = Parse(text ?? "");
             var today = DateOnly.FromDateTime(DateTime.Today);
             if (today != _day)
             {

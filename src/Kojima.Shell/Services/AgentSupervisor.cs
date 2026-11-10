@@ -16,6 +16,8 @@ public sealed class AgentSupervisor : IAsyncDisposable
     private readonly int _shellPid = Environment.ProcessId;
     private readonly string _exePath;
     private readonly int _idleSeconds;
+    private readonly Dictionary<string, int> _startFailures = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DateTime> _retryAfter = new(StringComparer.OrdinalIgnoreCase);
 
     public AgentSupervisor(int idleSeconds = 90)
     {
@@ -50,7 +52,13 @@ public sealed class AgentSupervisor : IAsyncDisposable
         host.LastUsed = DateTime.UtcNow;
         try
         {
-            return await host.Client.RequestAsync(method, args, timeoutMs).ConfigureAwait(false);
+            var result = await host.Client.RequestAsync(method, args, timeoutMs).ConfigureAwait(false);
+            if (DateTime.UtcNow - host.StartedAt > TimeSpan.FromSeconds(30))
+            {
+                ClearStartFailures(feature);
+            }
+
+            return result;
         }
         catch
         {
@@ -118,12 +126,37 @@ public sealed class AgentSupervisor : IAsyncDisposable
             {
                 return existing;
             }
+
+            if (_retryAfter.TryGetValue(feature, out var until) && DateTime.UtcNow < until)
+            {
+                var left = Math.Max(1, (int)Math.Ceiling((until - DateTime.UtcNow).TotalSeconds));
+                throw new InvalidOperationException($"子进程 {feature} 连续启动失败，{left} 秒后自动重试");
+            }
         }
 
         if (!File.Exists(_exePath))
         {
+            RecordStartFailure(feature, "找不到子进程可执行文件：" + _exePath);
             throw new FileNotFoundException("找不到子进程可执行文件：" + _exePath);
         }
+
+        try
+        {
+            host = await StartCoreAsync(feature, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            RecordStartFailure(feature, ex.Message);
+            throw;
+        }
+
+        ClearStartFailures(feature);
+        return host;
+    }
+
+    private async Task<AgentHost> StartCoreAsync(string feature, CancellationToken ct)
+    {
+        AgentHost host;
 
         var pipeName = IpcJson.PipeName(feature, _shellPid);
         var startInfo = new ProcessStartInfo(_exePath)
@@ -145,6 +178,8 @@ public sealed class AgentSupervisor : IAsyncDisposable
         var client = await AgentPipeClient.ConnectAsync(pipeName, TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
 
         host = new AgentHost(feature, process, client);
+        host.Process.EnableRaisingEvents = true;
+        host.Process.Exited += (_, _) => OnHostExited(host);
         client.EventReceived += (name, data) => EventReceived?.Invoke(feature, name, data);
         client.Closed += () =>
         {
@@ -196,7 +231,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
         }
     }
 
-    /// <summary>回收空闲子进程；由外壳的计时器周期性调用。</summary>
+    /// <summary>回收空闲或已经退出的子进程；由外壳的计时器周期性调用。</summary>
     public async Task ReapIdleAsync(TimeSpan idle)
     {
         List<AgentHost> stale = [];
@@ -204,6 +239,12 @@ public sealed class AgentSupervisor : IAsyncDisposable
         {
             foreach (var host in _hosts.Values)
             {
+                if (host.Process.HasExited)
+                {
+                    stale.Add(host);
+                    continue;
+                }
+
                 if (host.Busy)
                 {
                     continue;
@@ -223,9 +264,66 @@ public sealed class AgentSupervisor : IAsyncDisposable
 
         foreach (var host in stale)
         {
-            AppLog.Info($"空闲回收子进程：{host.Feature}");
+            AppLog.Info(host.Process.HasExited
+                ? $"清理已退出的子进程：{host.Feature}"
+                : $"空闲回收子进程：{host.Feature}");
             await DisposeHostAsync(host).ConfigureAwait(false);
         }
+    }
+
+    private void RecordStartFailure(string feature, string reason)
+    {
+        int failures;
+        TimeSpan delay;
+        lock (_gate)
+        {
+            _startFailures.TryGetValue(feature, out var previous);
+            failures = previous + 1;
+            _startFailures[feature] = failures;
+            delay = TimeSpan.FromSeconds(Math.Min(30, Math.Pow(2, Math.Min(failures, 5))));
+            _retryAfter[feature] = DateTime.UtcNow + delay;
+        }
+
+        AppLog.Warn($"子进程异常（{feature}，第 {failures} 次）：{reason}；{(int)delay.TotalSeconds} 秒后允许重启");
+    }
+
+    private void ClearStartFailures(string feature)
+    {
+        lock (_gate)
+        {
+            _startFailures.Remove(feature);
+            _retryAfter.Remove(feature);
+        }
+    }
+
+    private void OnHostExited(AgentHost host)
+    {
+        if (host.Stopping)
+        {
+            return;
+        }
+
+        var code = -1;
+        try
+        {
+            code = host.Process.ExitCode;
+        }
+        catch
+        {
+            // 进程对象可能已释放
+        }
+
+        AppLog.Warn($"子进程意外退出：{host.Feature} code={code}");
+        lock (_gate)
+        {
+            if (_hosts.TryGetValue(host.Feature, out var current) && ReferenceEquals(current, host))
+            {
+                _hosts.Remove(host.Feature);
+            }
+        }
+
+        StateChanged?.Invoke(host.Feature, false);
+        RecordStartFailure(host.Feature, $"子进程退出 code={code}");
     }
 
     public void SetBusy(string feature, bool busy)
@@ -242,6 +340,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
 
     private static async Task DisposeHostAsync(AgentHost host)
     {
+        host.Stopping = true;
         try
         {
             await host.Client.DisposeAsync().ConfigureAwait(false);
@@ -310,6 +409,8 @@ public sealed class AgentSupervisor : IAsyncDisposable
         public Process Process { get; } = process;
         public AgentPipeClient Client { get; } = client;
         public DateTime LastUsed { get; set; } = DateTime.UtcNow;
+        public DateTime StartedAt { get; } = DateTime.UtcNow;
         public bool Busy { get; set; }
+        public bool Stopping { get; set; }
     }
 }

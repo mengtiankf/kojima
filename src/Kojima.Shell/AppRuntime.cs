@@ -22,9 +22,9 @@ public sealed class AppRuntime
         Agents = new AgentSupervisor(Config.Feature("monitor").IdleExitSeconds);
         Monitor = new MonitorService(Agents, dispatcher, Config);
         Usage = new UsageService(Agents, dispatcher, Config);
-        Weather = new WeatherService(dispatcher);
+        Weather = new WeatherService(dispatcher, Agents);
         Notify = new NotifyCenter(dispatcher);
-        StockAlerts = new StockAlertService(Notify, Config);
+        StockAlerts = new StockAlertService(Notify, Config, Agents);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardService() : null;
         Media = new MediaSessionService();
         Spectrum = new SpectrumService();
