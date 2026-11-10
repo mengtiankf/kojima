@@ -43,6 +43,7 @@ internal static class Program
             "weather" => new WeatherFeature(),
             "stocks" => new StocksFeature(),
             "translate" => new TranslateFeature(),
+            "clipboard" => new ClipboardFeature(),
             _ => new NoopFeature(),
         };
 

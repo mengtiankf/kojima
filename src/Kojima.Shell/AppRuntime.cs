@@ -27,7 +27,7 @@ public sealed class AppRuntime
         Notify = new NotifyCenter(dispatcher);
         Updates = new UpdateCoordinator(Notify);
         StockAlerts = new StockAlertService(Notify, Config, Agents);
-        Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardService() : null;
+        Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardProxy(Agents, dispatcher) : null;
         Media = new MediaSessionService();
         Spectrum = new SpectrumService();
         Messages = new MessageCenter(dispatcher, Config);
@@ -60,7 +60,7 @@ public sealed class AppRuntime
 
     public StockAlertService StockAlerts { get; }
 
-    public ClipboardService? Clipboard { get; }
+    public ClipboardProxy? Clipboard { get; }
 
     public MessageCenter Messages { get; }
 
