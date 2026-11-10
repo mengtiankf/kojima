@@ -43,7 +43,6 @@ public partial class App : Application
 
         _runtime = new AppRuntime(Dispatcher);
         AppRuntime.Current = _runtime;
-        ThemeRuntime.Apply(_runtime.Config.Island.Theme);
 
         _island = new IslandWindow(_runtime);
         _island.Loaded += (_, _) => HookHotkeys();
@@ -417,7 +416,7 @@ public partial class App : Application
             return;
         }
 
-        ThemeRuntime.Apply(_runtime.Config.Island.Theme);
+        _runtime.Themes.Apply();
         _island?.RefreshAppearance();
     }
 

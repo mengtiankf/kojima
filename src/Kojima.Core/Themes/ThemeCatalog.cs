@@ -11,15 +11,21 @@ public readonly record struct Rgba(byte R, byte G, byte B, byte A = 255)
 {
     public static Rgba Parse(string? text, Rgba fallback)
     {
+        return TryParse(text, out var parsed) ? parsed : fallback;
+    }
+
+    public static bool TryParse(string? text, out Rgba color)
+    {
+        color = default;
         if (string.IsNullOrWhiteSpace(text))
         {
-            return fallback;
+            return false;
         }
 
         var s = text.Trim().TrimStart('#');
         try
         {
-            return s.Length switch
+            color = s.Length switch
             {
                 3 => new Rgba(
                     (byte)(Convert.ToInt32(new string(s[0], 2), 16)),
@@ -34,12 +40,13 @@ public readonly record struct Rgba(byte R, byte G, byte B, byte A = 255)
                     Convert.ToByte(s.Substring(4, 2), 16),
                     Convert.ToByte(s.Substring(6, 2), 16),
                     Convert.ToByte(s.Substring(0, 2), 16)),
-                _ => fallback,
+                _ => default,
             };
+            return s.Length is 3 or 6 or 8;
         }
         catch
         {
-            return fallback;
+            return false;
         }
     }
 

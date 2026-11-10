@@ -168,6 +168,22 @@ public sealed class TranslateSettings
     public bool Reversed { get; set; }
 }
 
+public sealed class AppearanceSettings
+{
+    /// <summary>manual / system / daylight</summary>
+    public string Mode { get; set; } = "manual";
+
+    public string LightTheme { get; set; } = "deck-light";
+
+    public string DarkTheme { get; set; } = "deck-dark";
+
+    public bool FollowHighContrast { get; set; } = true;
+
+    public int DayStartHour { get; set; } = 7;
+
+    public int DayEndHour { get; set; } = 19;
+}
+
 public sealed class KojimaConfig
 {
     public int Version { get; set; } = SettingsMigrations.CurrentVersion;
@@ -175,6 +191,8 @@ public sealed class KojimaConfig
     public bool StartWithWindows { get; set; }
 
     public string Language { get; set; } = "zh-CN";
+
+    public AppearanceSettings Appearance { get; set; } = new();
 
     public IslandSettings Island { get; set; } = new();
 

@@ -279,7 +279,17 @@ public partial class SettingsWindow : Window
         Sub2ApiSite.Text = cfg.Usage.Sites.GetValueOrDefault("sub2api") ?? "";
         ThemePathText.Text = ConfigStore.ThemesDirectory;
 
+        var appearance = cfg.Appearance ??= new AppearanceSettings();
+        (appearance.Mode switch
+        {
+            "system" => ModeSystem,
+            "daylight" => ModeDaylight,
+            _ => ModeManual,
+        }).IsChecked = true;
+        HighContrastSwitch.IsChecked = appearance.FollowHighContrast;
+
         BuildThemes();
+        BuildThemeChoices(appearance);
         UpdateCurrentThemeText();
         BuildFeatures();
         BuildSources();
@@ -296,11 +306,75 @@ public partial class SettingsWindow : Window
             string.Equals(c.Id, _runtime.Config.Island.Theme, StringComparison.OrdinalIgnoreCase));
     }
 
+    private void BuildThemeChoices(AppearanceSettings appearance)
+    {
+        var cards = ThemeCatalog.All.Select(ThemeCard.From).ToList();
+        LightThemeBox.ItemsSource = cards;
+        LightThemeBox.DisplayMemberPath = nameof(ThemeCard.DisplayName);
+        LightThemeBox.SelectedItem = cards.FirstOrDefault(c =>
+            string.Equals(c.Id, appearance.LightTheme, StringComparison.OrdinalIgnoreCase)) ?? cards.FirstOrDefault();
+
+        DarkThemeBox.ItemsSource = cards;
+        DarkThemeBox.DisplayMemberPath = nameof(ThemeCard.DisplayName);
+        DarkThemeBox.SelectedItem = cards.FirstOrDefault(c =>
+            string.Equals(c.Id, appearance.DarkTheme, StringComparison.OrdinalIgnoreCase)) ?? cards.FirstOrDefault();
+    }
+
+    private void OnLoadCurrentThemeClick(object sender, RoutedEventArgs e)
+    {
+        var palette = ThemeRuntime.Palette;
+        EditThemeName.Text = palette.Name + " 副本";
+        EditSurface.Text = palette.Surface.Hex;
+        EditText.Text = palette.Text.Hex;
+        EditAccent.Text = palette.Accent.Hex;
+        StatusText.Text = "已取当前主题颜色，可继续微调后保存。";
+    }
+
+    private void OnSaveThemeEditorClick(object sender, RoutedEventArgs e)
+    {
+        if (!Rgba.TryParse(EditSurface.Text, out var surface) ||
+            !Rgba.TryParse(EditText.Text, out var text) ||
+            !Rgba.TryParse(EditAccent.Text, out var accent))
+        {
+            StatusText.Text = "颜色格式不正确：#RGB / #RRGGBB / #AARRGGBB";
+            return;
+        }
+
+        var name = string.IsNullOrWhiteSpace(EditThemeName.Text) ? "我的主题" : EditThemeName.Text.Trim();
+        try
+        {
+            var document = ThemeDerivation.FromSeeds(name, surface.Hex, text.Hex, accent.Hex);
+            ThemeDerivation.Save(document);
+            ThemeCatalog.Reload();
+            _runtime.Config.Appearance.Mode = "manual";
+            _runtime.Config.Island.Theme = document.Id;
+            BuildThemes();
+            BuildThemeChoices(_runtime.Config.Appearance);
+            ThemeList.SelectedItem = (ThemeList.ItemsSource as IEnumerable<ThemeCard>)?
+                .FirstOrDefault(c => string.Equals(c.Id, document.Id, StringComparison.OrdinalIgnoreCase));
+            _runtime.ApplyTheme(document.Id);
+            UpdateCurrentThemeText();
+            StatusText.Text = $"已保存并应用主题：{document.Name}";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "保存主题失败：" + ex.Message;
+        }
+    }
+
     private void UpdateCurrentThemeText()
     {
-        var palette = ThemeCatalog.Get(_runtime.Config.Island.Theme);
+        var palette = ThemeRuntime.Palette;
         var byLine = string.IsNullOrWhiteSpace(palette.Author) ? "Kojima 内置" : palette.Author;
-        CurrentThemeText.Text = $"{palette.Name} · {byLine}";
+        var mode = _runtime.Config.Appearance.Mode switch
+        {
+            "system" => "跟随系统",
+            "daylight" => "白天/夜晚",
+            _ => null,
+        };
+        CurrentThemeText.Text = mode is null
+            ? $"{palette.Name} · {byLine}"
+            : $"{palette.Name} · {byLine} · {mode}";
     }
 
     private void BuildFeatures()
@@ -690,6 +764,21 @@ public partial class SettingsWindow : Window
                 : CompactNone.IsChecked == true ? "none"
                 : "clockWeather";
 
+            cfg.Appearance.Mode = ModeSystem.IsChecked == true ? "system"
+                : ModeDaylight.IsChecked == true ? "daylight"
+                : "manual";
+            if (LightThemeBox.SelectedItem is ThemeCard lightCard)
+            {
+                cfg.Appearance.LightTheme = lightCard.Id;
+            }
+
+            if (DarkThemeBox.SelectedItem is ThemeCard darkCard)
+            {
+                cfg.Appearance.DarkTheme = darkCard.Id;
+            }
+
+            cfg.Appearance.FollowHighContrast = HighContrastSwitch.IsChecked == true;
+
             cfg.Monitor.Source = MonitorInternal.IsChecked == true ? "internal"
                 : MonitorLhm.IsChecked == true ? "lhm"
                 : MonitorOhm.IsChecked == true ? "ohm"
@@ -774,6 +863,8 @@ public partial class SettingsWindow : Window
             }
 
             _runtime.SaveConfig();
+            _runtime.Themes.Apply();
+            UpdateCurrentThemeText();
             foreach (var (key, enabled) in changed)
             {
                 try

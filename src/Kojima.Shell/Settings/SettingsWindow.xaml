@@ -390,6 +390,115 @@
                             </Border>
                             <TextBlock Text="把 .json 主题放进该目录后重新打开设置窗口即可看到。"
                                        Style="{StaticResource Hint}" Margin="2,0,0,0"/>
+
+                            <TextBlock Text="自动切换" Style="{StaticResource GroupLabel}"/>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="切换方式" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="跟随系统明暗，或按本地时间在浅色/深色主题间切换"
+                                                       Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <Border Grid.Column="1" Style="{StaticResource SegmentGroup}" Margin="24,0,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton x:Name="ModeManual" GroupName="ThemeMode"
+                                                             Style="{StaticResource Segment}" Content="手动"/>
+                                                <RadioButton x:Name="ModeSystem" GroupName="ThemeMode"
+                                                             Style="{StaticResource Segment}" Content="跟随系统"/>
+                                                <RadioButton x:Name="ModeDaylight" GroupName="ThemeMode"
+                                                             Style="{StaticResource Segment}" Content="白天/夜晚"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                    <Border Style="{StaticResource RowDivider}"/>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="浅色 / 深色主题" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="定时模式默认 07:00–19:00 使用浅色主题"
+                                                       Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="24,0,0,0"
+                                                    VerticalAlignment="Center">
+                                            <ComboBox x:Name="LightThemeBox" Width="150" Margin="0,0,8,0"/>
+                                            <ComboBox x:Name="DarkThemeBox" Width="150"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Border Style="{StaticResource RowDivider}"/>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="跟随系统高对比度" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="开启后使用系统窗口色/高亮色，优先保证可读性"
+                                                       Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <CheckBox x:Name="HighContrastSwitch" Grid.Column="1"
+                                                  Style="{StaticResource Switch}" VerticalAlignment="Center"
+                                                  Margin="24,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="主题编辑器" Style="{StaticResource GroupLabel}"/>
+                            <Border Style="{StaticResource Card}" Padding="16,14">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="名称" Style="{StaticResource Hint}" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="EditThemeName" Grid.Column="1" Style="{StaticResource Field}"
+                                                 Text="我的主题"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="背景" Style="{StaticResource Hint}" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="EditSurface" Grid.Column="1" Style="{StaticResource Field}"
+                                                 Text="#101014"/>
+                                        <TextBlock Grid.Column="2" Text="正文" Style="{StaticResource Hint}"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBox x:Name="EditText" Grid.Column="3" Style="{StaticResource Field}"
+                                                 Text="#F5F5F7"/>
+                                        <TextBlock Grid.Column="4" Text="强调" Style="{StaticResource Hint}"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                        <TextBox x:Name="EditAccent" Grid.Column="5" Style="{StaticResource Field}"
+                                                 Text="#0A84FF"/>
+                                    </Grid>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="颜色支持 #RGB / #RRGGBB / #AARRGGBB；次要文字与分隔线自动派生。"
+                                                   Style="{StaticResource Hint}" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Style="{StaticResource GhostButton}" Margin="10,0,8,0"
+                                                    Click="OnLoadCurrentThemeClick" Content="取当前主题"/>
+                                            <Button Style="{StaticResource PrimaryButton}"
+                                                    Click="OnSaveThemeEditorClick" Content="保存并应用"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
 

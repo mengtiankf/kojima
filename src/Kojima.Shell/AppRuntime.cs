@@ -17,7 +17,8 @@ public sealed class AppRuntime
     {
         _dispatcher = dispatcher;
         Config = ConfigStore.Load();
-        ThemeRuntime.Apply(Config.Island.Theme);
+        Themes = new ThemeScheduler(this, dispatcher);
+        Themes.Apply();
         Agents = new AgentSupervisor(Config.Feature("monitor").IdleExitSeconds);
         Monitor = new MonitorService(Agents, dispatcher, Config);
         Usage = new UsageService(Agents, dispatcher, Config);
@@ -37,6 +38,8 @@ public sealed class AppRuntime
     public static AppRuntime? Current { get => _current; set => _current = value; }
 
     public KojimaConfig Config { get; }
+
+    public ThemeScheduler Themes { get; }
 
     public AgentSupervisor Agents { get; }
 
@@ -69,11 +72,13 @@ public sealed class AppRuntime
 
     public void ApplyTheme(string id)
     {
+        Config.Appearance.Mode = "manual";
         Config.Island.Theme = id;
-        ThemeRuntime.Apply(id);
-        ThemeChanged?.Invoke(id);
+        Themes.Apply();
         SaveConfig();
     }
+
+    internal void RaiseThemeChanged(string id) => ThemeChanged?.Invoke(id);
 
     public void SaveConfig()
     {
@@ -186,6 +191,7 @@ public sealed class AppRuntime
     {
         try
         {
+            Themes.Dispose();
             Clipboard?.Dispose();
             Media.Dispose();
             Spectrum.Dispose();

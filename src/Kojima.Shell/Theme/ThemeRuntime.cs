@@ -75,6 +75,42 @@ public static class ThemeRuntime
     }
 
     private static DeckPalette Fallback() => ThemeCatalog.Get("deck-dark") ?? new DeckPalette();
+
+    /// <summary>系统高对比度主题：直接用系统窗口 / 文本 / 高亮色，保证可读性优先。</summary>
+    public static DeckPalette HighContrastPalette()
+    {
+        var surface = ToRgba(SystemColors.WindowColor);
+        var text = ToRgba(SystemColors.WindowTextColor);
+        var accent = ToRgba(SystemColors.HighlightColor);
+        var onAccent = ToRgba(SystemColors.HighlightTextColor);
+        var dark = surface.Luminance < 0.5;
+        var overlay = dark ? new Rgba(255, 255, 255) : new Rgba(0, 0, 0);
+
+        return new DeckPalette
+        {
+            Id = "system-high-contrast",
+            Name = "系统高对比度",
+            Author = "Windows",
+            Dark = dark,
+            Surface = surface,
+            Text = text,
+            Text2 = text,
+            Text3 = text,
+            Accent = accent,
+            OnAccent = onAccent,
+            Danger = ToRgba(SystemColors.HighlightColor),
+            Hairline = overlay.WithAlpha(0.45),
+            Track = overlay.WithAlpha(0.35),
+            Fill = overlay.WithAlpha(0.28),
+            Hover = overlay.WithAlpha(0.35),
+            Pressed = overlay.WithAlpha(0.5),
+            Outline = text,
+            Indicator = accent,
+            Effects = new ThemeEffects { RimWidth = 1.4, ShadowBlur = 0, ShadowDepth = 0, ShadowOpacity = 0 },
+        };
+    }
+
+    private static Rgba ToRgba(Color color) => new(color.R, color.G, color.B, color.A);
 }
 
 internal static class RgbaExtensions
