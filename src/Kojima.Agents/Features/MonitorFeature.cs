@@ -124,12 +124,15 @@ public sealed class MonitorFeature : IAgentFeature
     public ValueTask DisposeAsync()
     {
         StopStream();
+        _sampler.Dispose();
         return ValueTask.CompletedTask;
     }
 
     /// <summary>无状态采样器：内部保存上一帧做差。</summary>
     private sealed class Sampler
     {
+        private readonly FrameRates _frames = new();
+        private bool _framesWanted;
         private ulong _prevIdle;
         private ulong _prevKernel;
         private ulong _prevUser;
@@ -171,6 +174,23 @@ public sealed class MonitorFeature : IAgentFeature
             sample.Processes = ReadProcesses(dt, cores);
             sample.UptimeSeconds = MonitorNative.UptimeSeconds();
 
+            if (!_framesWanted)
+            {
+                _frames.Want(true);
+                _framesWanted = true;
+            }
+
+            var clock = Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
+            if (_frames.Sample(clock).TryGet(out var frame))
+            {
+                sample.Frames = new FrameReading
+                {
+                    PerSecond = frame.PerSecond,
+                    Program = frame.Program,
+                    Refresh = frame.Refresh,
+                };
+            }
+
             var threads = ReadThreads();
             if (threads > 0)
             {
@@ -179,6 +199,11 @@ public sealed class MonitorFeature : IAgentFeature
 
             _prevTick = now;
             return sample;
+        }
+
+        public void Dispose()
+        {
+            _frames.Dispose();
         }
 
         private CpuReading ReadCpu(double dt, int cores)

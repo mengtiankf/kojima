@@ -291,6 +291,14 @@ public sealed class MonitorSurface : FrameworkElement
             footer.Add(text);
         }
 
+        if (sample.Frames is { PerSecond: > 0 } frames)
+        {
+            var program = string.IsNullOrWhiteSpace(frames.Program)
+                ? "前台"
+                : System.IO.Path.GetFileNameWithoutExtension(frames.Program);
+            footer.Add($"{program} {frames.PerSecond:0} FPS");
+        }
+
         footer.Add($"运行 {FormatUptime(sample.UptimeSeconds)}");
         DrawText(dc, string.Join(" · ", footer), 10, ThemeRuntime.Text3, new Point(x, height - 14));
     }

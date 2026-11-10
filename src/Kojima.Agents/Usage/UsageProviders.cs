@@ -112,15 +112,15 @@ public static class UsageProviders
         snapshot.FetchedAt = DateTimeOffset.Now;
         ModelPricing.Fill(snapshot.Entries);
 
-        if (!local && !quota && snapshot.Note.Length == 0)
+        if (!local && !quota && string.IsNullOrEmpty(snapshot.Note))
         {
             snapshot.Note = "已关闭本机记录与账户额度";
         }
-        else if (!local && snapshot.Note.Length == 0)
+        else if (!local && string.IsNullOrEmpty(snapshot.Note))
         {
             snapshot.Note = "已关闭本机记录";
         }
-        else if (!quota && snapshot.Note.Length == 0)
+        else if (!quota && string.IsNullOrEmpty(snapshot.Note))
         {
             snapshot.Note = "已关闭账户额度查询";
         }

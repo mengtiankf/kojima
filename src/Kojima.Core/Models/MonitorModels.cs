@@ -86,5 +86,14 @@ public sealed class MonitorSample
     public TempReading Temp { get; set; } = new();
     public PowerReading Power { get; set; } = new();
     public List<ProcReading> Processes { get; set; } = [];
+    /// <summary>前台程序提交的帧率；没有权限或没有读数时为 null。</summary>
+    public FrameReading? Frames { get; set; }
     public double UptimeSeconds { get; set; }
+}
+
+public sealed class FrameReading
+{
+    public double PerSecond { get; set; }
+    public string Program { get; set; } = "";
+    public double? Refresh { get; set; }
 }
