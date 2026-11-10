@@ -107,6 +107,86 @@ internal static class MonitorNative
         }
     }
 
+    /// <summary>WMI：电池设计容量与满充容量，得到健康度。桌面机返回 null。</summary>
+    public static double? BatteryHealthPercent()
+    {
+        try
+        {
+            var design = 0.0;
+            var full = 0.0;
+            using (var searcher = new ManagementObjectSearcher(
+                @"root\wmi", "SELECT DesignedCapacity FROM BatteryStaticData"))
+            {
+                foreach (ManagementObject item in searcher.Get())
+                {
+                    design = Math.Max(design, ToDouble(item["DesignedCapacity"]));
+                }
+            }
+
+            using (var searcher = new ManagementObjectSearcher(
+                @"root\wmi", "SELECT FullChargedCapacity FROM BatteryFullChargedCapacity"))
+            {
+                foreach (ManagementObject item in searcher.Get())
+                {
+                    full = Math.Max(full, ToDouble(item["FullChargedCapacity"]));
+                }
+            }
+
+            return design > 0 && full > 0
+                ? Math.Clamp(full / design * 100.0, 0, 100)
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>WMI：GPU 引擎利用率（非 NVIDIA 显卡也能拿到 3D 引擎占用）。</summary>
+    public static (string Name, double Util)? GpuEngineUtil()
+    {
+        try
+        {
+            var best = 0.0;
+            using (var searcher = new ManagementObjectSearcher(
+                "SELECT Name, UtilizationPercentage FROM Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine"))
+            {
+                foreach (ManagementObject item in searcher.Get())
+                {
+                    var name = item["Name"] as string ?? "";
+                    if (!name.Contains("engtype_3D", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    best = Math.Max(best, ToDouble(item["UtilizationPercentage"]));
+                }
+            }
+
+            var adapter = "";
+            using (var searcher = new ManagementObjectSearcher(
+                "SELECT Name FROM Win32_VideoController"))
+            {
+                foreach (ManagementObject item in searcher.Get())
+                {
+                    adapter = (item["Name"] as string ?? "").Trim();
+                    if (adapter.Length > 0)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return best > 0 || adapter.Length > 0
+                ? (adapter.Length > 0 ? adapter : "GPU", Math.Clamp(best, 0, 100))
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public static double UptimeSeconds()
     {
         try

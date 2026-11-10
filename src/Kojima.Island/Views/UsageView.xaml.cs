@@ -42,12 +42,14 @@ public sealed class UsageCanvas : FrameworkElement
     private const string Today = "today", Week = "week", Month = "month";
     private const double PageWidth = 616, Gutter = 8, PadX = 14, PadY = 12, TitleH = 20, TitleGap = 9,
         RowGap = 6, FooterGap = 8, FooterH = 14, HeaderH = 28, HeaderGap = 12, SegW = 56, OthersH = 32,
+        ModelHeaderH = 18, ModelRowH = 19,
         RefreshW = 28;
     private static readonly string[] PeriodIds = [Today, Week, Month];
     private static readonly string[] PeriodLabels = ["今日", "本周", "本月"];
     private static readonly Brush Warn = new SolidColorBrush(ThemeRuntime.ColorOf("#FF9F0A"));
     private readonly List<Card> _cards = [];
     private readonly List<UsageSnapshot> _others = [];
+    private readonly List<(string Model, long Tokens, double Cost)> _models = [];
     private readonly Rect[] _segBounds = [Rect.Empty, Rect.Empty, Rect.Empty];
     private readonly DispatcherTimer _spinTimer;
     private IReadOnlyList<UsageSnapshot> _snapshots = [];
@@ -55,7 +57,7 @@ public sealed class UsageCanvas : FrameworkElement
     private string _period = Today;
     private bool _busy, _dirty = true, _loaded;
     private double _spin, _dpi = 1.0, _layoutWidth = -1, _contentW, _x0, _contentH = 260;
-    private Rect _refreshRect = Rect.Empty, _othersRect = Rect.Empty;
+    private Rect _refreshRect = Rect.Empty, _othersRect = Rect.Empty, _modelsRect = Rect.Empty;
 
     public UsageCanvas()
     {
@@ -122,6 +124,7 @@ public sealed class UsageCanvas : FrameworkElement
         if (_cards.Count == 0 && _others.Count == 0) { DrawEmpty(dc, Math.Max(ActualHeight, _contentH)); return; }
         foreach (var card in _cards) { DrawCard(dc, card); }
         if (!_othersRect.IsEmpty) { DrawOthers(dc); }
+        if (!_modelsRect.IsEmpty) { DrawModels(dc); }
     }
 
     // ── 布局 ────────────────────────────────────────────────────────────────
@@ -164,6 +167,31 @@ public sealed class UsageCanvas : FrameworkElement
             y += OthersH + Gutter;
         }
 
+        _models.Clear();
+        var since = Since(_period);
+        var merged = new Dictionary<string, (long Tokens, double Cost)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var snap in _snapshots)
+        {
+            foreach (var model in snap.ByModel(since, 8))
+            {
+                var key = string.IsNullOrWhiteSpace(model.Model) ? "未知" : model.Model;
+                merged.TryGetValue(key, out var row);
+                merged[key] = (row.Tokens + model.Tokens, row.Cost + model.Cost);
+            }
+        }
+
+        foreach (var pair in merged.OrderByDescending(p => p.Value.Tokens).Take(6))
+        {
+            _models.Add((pair.Key, pair.Value.Tokens, pair.Value.Cost));
+        }
+
+        _modelsRect = Rect.Empty;
+        if (_models.Count > 0)
+        {
+            _modelsRect = new Rect(_x0, y + 4, _contentW, ModelHeaderH + _models.Count * ModelRowH);
+            y = _modelsRect.Bottom + Gutter;
+        }
+
         _contentH = Math.Max(260, y);
     }
     private Card BuildCard(UsageSnapshot snap)
@@ -191,18 +219,32 @@ public sealed class UsageCanvas : FrameworkElement
         }
         else if (!card.Error)
         {
-            card.Rows.Add(new CardRow { Label = PeriodLabel(_period), Value = UsageFormat.Tokens(snap.Totals(Since(_period)).Tokens) });
-            card.Rows.Add(new CardRow { Label = "累计", Value = UsageFormat.Tokens(snap.Totals(null).Tokens) });
-        }
-
-        // 额度 / 余额卡片也带上当前周期的 Token，满足「今日 / 本周 / 本月 Token 与额度」。
-        if (snap.Entries.Count > 0 && (snap.Quotas.Count > 0 || snap.Metrics.Count > 0))
-        {
+            var periodTotals = snap.Totals(Since(_period));
+            var allTotals = snap.Totals(null);
             card.Rows.Add(new CardRow
             {
                 Label = PeriodLabel(_period),
-                Value = UsageFormat.Tokens(snap.Totals(Since(_period)).Tokens),
+                Value = UsageFormat.Tokens(periodTotals.Tokens),
+                Side = periodTotals.Cost > 0 ? UsageFormat.Money(periodTotals.Cost, "USD") : null,
+            });
+            card.Rows.Add(new CardRow
+            {
+                Label = "累计",
+                Value = UsageFormat.Tokens(allTotals.Tokens),
+                Side = allTotals.Cost > 0 ? UsageFormat.Money(allTotals.Cost, "USD") : null,
+            });
+        }
+
+        // 额度 / 余额卡片也带上当前周期的 Token 与估算成本，满足「今日 / 本周 / 本月 Token 与额度」。
+        if (snap.Entries.Count > 0 && (snap.Quotas.Count > 0 || snap.Metrics.Count > 0))
+        {
+            var totals = snap.Totals(Since(_period));
+            card.Rows.Add(new CardRow
+            {
+                Label = PeriodLabel(_period),
+                Value = UsageFormat.Tokens(totals.Tokens),
                 Suffix = " tokens",
+                Side = totals.Cost > 0 ? UsageFormat.Money(totals.Cost, "USD") : null,
             });
         }
 
@@ -346,10 +388,18 @@ public sealed class UsageCanvas : FrameworkElement
         if (row.Percent < 0)
         {
             var value = Make(row.Value, 12, ThemeRuntime.Text, FontWeights.SemiBold, true);
+            var costText = Make(row.Side ?? "", 11, ThemeRuntime.Text3, FontWeights.Normal, false);
+            var costW = costText.WidthIncludingTrailingWhitespace;
             var valueW = value.WidthIncludingTrailingWhitespace;
-            dc.DrawText(value, new Point(right - valueW, y));
+            var valueRight = right - (costW > 0 ? costW + 8 : 0);
+            dc.DrawText(value, new Point(valueRight - valueW, y));
+            if (costW > 0)
+            {
+                dc.DrawText(costText, new Point(right - costW, y + 1));
+            }
+
             dc.DrawText(Make(row.Label, 12, ThemeRuntime.Text2, FontWeights.Normal, false,
-                Math.Max(20, right - left - valueW - 12)), new Point(left, y));
+                Math.Max(20, valueRight - valueW - left - 10)), new Point(left, y));
             return;
         }
 
@@ -384,6 +434,33 @@ public sealed class UsageCanvas : FrameworkElement
             FontWeights.Normal, false, rect.Width - 24);
         dc.DrawText(text, new Point(rect.Left + 12, rect.Top + (rect.Height - text.Height) / 2));
     }
+    private void DrawModels(DrawingContext dc)
+    {
+        var rect = _modelsRect;
+        var title = Make("模型明细 · " + PeriodLabel(_period), 11, ThemeRuntime.Text2, FontWeights.SemiBold, false);
+        dc.DrawText(title, new Point(rect.Left, rect.Top));
+        var hint = Make("按 Token 排序", 10, ThemeRuntime.Text3, FontWeights.Normal, false);
+        dc.DrawText(hint, new Point(rect.Right - hint.Width, rect.Top + 1));
+
+        var y = rect.Top + ModelHeaderH;
+        foreach (var (model, tokens, cost) in _models)
+        {
+            var name = Make(model, 10.5, ThemeRuntime.Text, FontWeights.Normal, false, rect.Width * 0.52);
+            dc.DrawText(name, new Point(rect.Left, y));
+
+            var tokenText = Make(UsageFormat.Tokens(tokens), 10.5, ThemeRuntime.Text2, FontWeights.Normal, true);
+            dc.DrawText(tokenText, new Point(rect.Left + rect.Width * 0.78 - tokenText.Width, y));
+
+            if (cost > 0)
+            {
+                var costText = Make(UsageFormat.Money(cost, "USD"), 10.5, ThemeRuntime.Text3, FontWeights.Normal, true);
+                dc.DrawText(costText, new Point(rect.Right - costText.Width, y));
+            }
+
+            y += ModelRowH;
+        }
+    }
+
     private void DrawEmpty(DrawingContext dc, double height)
     {
         var top = HeaderH + HeaderGap;

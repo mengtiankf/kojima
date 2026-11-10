@@ -40,6 +40,7 @@ public static class UsageProviders
         snapshot.Name = info?.Name ?? snapshot.Name;
         snapshot.Source ??= info?.Group ?? "本机";
         snapshot.FetchedAt = DateTimeOffset.Now;
+        ModelPricing.Fill(snapshot.Entries);
 
         if (snapshot.Status is not ("error" or "unknown") &&
             snapshot.Entries.Count == 0 &&

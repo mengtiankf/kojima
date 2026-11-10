@@ -62,6 +62,8 @@ public sealed class PowerReading
     public bool Plugged { get; set; }
     public int? SecondsLeft { get; set; }
     public double? DrainW { get; set; }
+    /// <summary>电池健康度（满充容量 / 设计容量），桌面机为 null。</summary>
+    public double? HealthPercent { get; set; }
 }
 
 public sealed class ProcReading

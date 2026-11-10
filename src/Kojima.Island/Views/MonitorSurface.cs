@@ -271,6 +271,26 @@ public sealed class MonitorSurface : FrameworkElement
             footer.Add($"{tempPower:0} W");
         }
 
+        if (sample.Power.BatteryPercent is { } battery)
+        {
+            var text = $"电池 {battery}%";
+            if (sample.Power.Plugged)
+            {
+                text += " 充电中";
+            }
+            else if (sample.Power.SecondsLeft is > 0 and var secondsLeft)
+            {
+                text += $" 剩余 {FormatSpan(TimeSpan.FromSeconds(secondsLeft))}";
+            }
+
+            if (sample.Power.HealthPercent is { } health)
+            {
+                text += $" · 健康 {health:0}%";
+            }
+
+            footer.Add(text);
+        }
+
         footer.Add($"运行 {FormatUptime(sample.UptimeSeconds)}");
         DrawText(dc, string.Join(" · ", footer), 10, ThemeRuntime.Text3, new Point(x, height - 14));
     }
@@ -416,6 +436,16 @@ public sealed class MonitorSurface : FrameworkElement
         }
 
         return $"{bytes:0} B/s";
+    }
+
+    private static string FormatSpan(TimeSpan span)
+    {
+        if (span.TotalHours >= 1)
+        {
+            return $"{(int)span.TotalHours} 小时 {span.Minutes} 分";
+        }
+
+        return $"{Math.Max(1, span.Minutes)} 分";
     }
 
     private static string FormatUptime(double seconds)

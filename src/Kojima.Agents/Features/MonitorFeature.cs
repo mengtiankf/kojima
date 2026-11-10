@@ -323,6 +323,12 @@ public sealed class MonitorFeature : IAgentFeature
                     }).ToList();
                     _gpuAt = DateTime.UtcNow;
                 }
+                else if (MonitorNative.GpuEngineUtil() is { } engine)
+                {
+                    // 没有 nvidia-smi 时用系统 GPU 引擎计数器，AMD / Intel 也能显示 3D 占用。
+                    _gpuCache = [new GpuReading { Name = engine.Name, Util = engine.Util }];
+                    _gpuAt = DateTime.UtcNow;
+                }
             }
             catch (Exception ex)
             {
@@ -473,7 +479,10 @@ public sealed class MonitorFeature : IAgentFeature
             return reading;
         }
 
-        private static PowerReading ReadPower(List<GpuReading> gpus)
+        private double? _batteryHealth;
+        private DateTime _batteryHealthAt = DateTime.MinValue;
+
+        private PowerReading ReadPower(List<GpuReading> gpus)
         {
             var reading = new PowerReading();
             try
@@ -482,6 +491,14 @@ public sealed class MonitorFeature : IAgentFeature
                 reading.BatteryPercent = percent;
                 reading.Plugged = plugged;
                 reading.SecondsLeft = seconds;
+                if (percent is not null
+                    && (_batteryHealthAt == DateTime.MinValue || (DateTime.UtcNow - _batteryHealthAt).TotalMinutes > 5))
+                {
+                    _batteryHealth = MonitorNative.BatteryHealthPercent();
+                    _batteryHealthAt = DateTime.UtcNow;
+                }
+
+                reading.HealthPercent = _batteryHealth;
                 if (gpus.Count > 0 && gpus[0].Power is { } power)
                 {
                     reading.DrainW = power;
