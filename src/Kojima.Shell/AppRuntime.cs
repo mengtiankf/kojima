@@ -25,7 +25,7 @@ public sealed class AppRuntime
         Usage = new UsageService(Agents, dispatcher, Config);
         Weather = new WeatherService(dispatcher, Agents);
         Notify = new NotifyCenter(dispatcher);
-        Updates = new UpdateCoordinator(Notify);
+        Updates = new UpdateCoordinator(Notify, Agents);
         StockAlerts = new StockAlertService(Agents);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardProxy(Agents, dispatcher) : null;
         Media = new MediaProxy(Agents, dispatcher);

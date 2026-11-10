@@ -12,7 +12,7 @@ public sealed record UpdateRelease(
     string Version,
     string PageUrl,
     string Notes,
-    IReadOnlyList<UpdateAsset> Assets);
+    List<UpdateAsset> Assets);
 
 /// <summary>GitHub Releases 检查与下载；不依赖 WPF，便于测试。</summary>
 public static class UpdateService

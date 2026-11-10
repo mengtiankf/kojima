@@ -13,6 +13,7 @@ public enum FeatureId
     Live,
     Messages,
     Spectrum,
+    Updates,
 }
 
 public static class FeatureIds
@@ -29,6 +30,7 @@ public static class FeatureIds
         FeatureId.Live => "live",
         FeatureId.Messages => "messages",
         FeatureId.Spectrum => "spectrum",
+        FeatureId.Updates => "updates",
         _ => throw new ArgumentOutOfRangeException(nameof(id)),
     };
 
@@ -44,6 +46,7 @@ public static class FeatureIds
         FeatureId.Live => "实时字幕",
         FeatureId.Messages => "通知中心",
         FeatureId.Spectrum => "音频频谱",
+        FeatureId.Updates => "应用更新",
         _ => id.ToString(),
     };
 

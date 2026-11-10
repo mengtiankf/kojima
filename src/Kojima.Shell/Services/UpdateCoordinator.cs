@@ -16,12 +16,13 @@ namespace Kojima.Shell.Services;
 public sealed class UpdateCoordinator
 {
     private readonly NotifyCenter _notify;
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(25) };
+    private readonly AgentSupervisor _agents;
     private bool _busy;
 
-    public UpdateCoordinator(NotifyCenter notify)
+    public UpdateCoordinator(NotifyCenter notify, AgentSupervisor agents)
     {
         _notify = notify;
+        _agents = agents;
     }
 
     public event Action<string>? StatusChanged;
@@ -64,8 +65,10 @@ public sealed class UpdateCoordinator
         _busy = true;
         try
         {
+            AppLog.Info("开始检查更新：" + CurrentVersionText);
             StatusChanged?.Invoke("正在检查更新…");
-            var release = await UpdateService.CheckAsync(CurrentVersion, _http).ConfigureAwait(false);
+            var release = await _agents.RequestAsync<UpdateRelease?>("updates", "updates.check",
+                new { currentVersion = CurrentVersionText }, 40000).ConfigureAwait(false);
             Pending = release;
             if (release is null)
             {
@@ -117,19 +120,16 @@ public sealed class UpdateCoordinator
             Directory.CreateDirectory(folder);
             path = Path.Combine(folder, asset.Name);
             StatusChanged?.Invoke($"正在下载 {asset.Name}…");
-            await UpdateService.DownloadAsync(asset, path, progress).ConfigureAwait(false);
-
-            var expected = await UpdateService.TryReadSha256Async(release, asset, _http).ConfigureAwait(false);
-            if (expected is not null)
+            progress?.Report(0);
+            var shaUrl = release.Assets.FirstOrDefault(a => a.Name.Equals(asset.Name + ".sha256", StringComparison.OrdinalIgnoreCase))?.Url ?? "";
+            var result = await _agents.RequestAsync<UpdateDownloadResult>("updates", "updates.download",
+                new { url = asset.Url, name = asset.Name, size = asset.Size, path, shaUrl }, 600000).ConfigureAwait(false);
+            progress?.Report(1);
+            if (result is null || !result.Ok)
             {
-                var actual = UpdateService.Sha256File(path);
-                if (!actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
-                {
-                    File.Delete(path);
-                    StatusChanged?.Invoke("安装包校验失败");
-                    _notify.Push("更新失败", "下载文件的 SHA-256 校验不通过，已删除。", "warn");
-                    return false;
-                }
+                StatusChanged?.Invoke("安装包下载失败");
+                _notify.Push("更新失败", result?.Error ?? "下载失败", "warn");
+                return false;
             }
         }
         catch (Exception ex)
@@ -225,3 +225,5 @@ public sealed class UpdateCoordinator
         Application.Current?.Shutdown();
     }
 }
+
+internal sealed record UpdateDownloadResult(bool Ok, string? Error);

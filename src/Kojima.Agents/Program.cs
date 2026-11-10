@@ -47,6 +47,7 @@ internal static class Program
             "media" => new MediaFeature(),
             "messages" => new MessageFeature(),
             "spectrum" => new SpectrumFeature(),
+            "updates" => new UpdatesFeature(),
             _ => new NoopFeature(),
         };
 
