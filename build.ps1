@@ -48,7 +48,7 @@ $zip = Join-Path $dist "Kojima-$Version-portable.zip"
 Compress-Archive -Path (Join-Path $publish "*") -DestinationPath $zip -Force
 foreach ($file in Get-ChildItem $dist -File) {
     $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-    Set-Content -Path "$($file.FullName).sha256" -Value "$hash  $($file.Name)" -Encoding ASCII
+    [System.IO.File]::WriteAllText("$($file.FullName).sha256", "$hash  $($file.Name)`n", [System.Text.Encoding]::ASCII)
 }
 
 Write-Host "== done (installer exe + portable zip, with .sha256) =="
