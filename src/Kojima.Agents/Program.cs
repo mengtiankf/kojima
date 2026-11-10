@@ -44,6 +44,7 @@ internal static class Program
             "stocks" => new StocksFeature(),
             "translate" => new TranslateFeature(),
             "clipboard" => new ClipboardFeature(),
+            "media" => new MediaFeature(),
             _ => new NoopFeature(),
         };
 

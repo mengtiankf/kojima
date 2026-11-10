@@ -11,7 +11,7 @@ namespace Kojima.Shell.Views;
 /// <summary>首页媒体卡：封面、曲目信息、进度与播放控制。</summary>
 public sealed class MediaWidget : UserControl
 {
-    private readonly MediaSessionService _service;
+    private readonly MediaProxy? _service;
 
     private readonly Border _cover = new();
     private readonly TextBlock _coverGlyph;
@@ -29,11 +29,11 @@ public sealed class MediaWidget : UserControl
 
     /// <summary>XAML 用：从全局运行时取媒体服务。</summary>
     public MediaWidget()
-        : this(AppRuntime.Current?.Media ?? new MediaSessionService())
+        : this(AppRuntime.Current?.Media)
     {
     }
 
-    public MediaWidget(MediaSessionService service)
+    public MediaWidget(MediaProxy? service)
     {
         _service = service;
         Height = 210;
@@ -88,10 +88,10 @@ public sealed class MediaWidget : UserControl
         _playButton.Child = _playGlyph;
         _playButton.Cursor = Cursors.Hand;
         _playButton.HorizontalAlignment = HorizontalAlignment.Center;
-        _playButton.MouseLeftButtonUp += (_, _) => _ = _service.TogglePlayPauseAsync();
+        _playButton.MouseLeftButtonUp += (_, _) => { if (_service is not null) { _ = _service.TogglePlayPauseAsync(); } };
 
-        var prev = GlyphButton(_prevGlyph, () => _ = _service.PreviousAsync());
-        var next = GlyphButton(_nextGlyph, () => _ = _service.NextAsync());
+        var prev = GlyphButton(_prevGlyph, () => { if (_service is not null) { _ = _service.PreviousAsync(); } });
+        var next = GlyphButton(_nextGlyph, () => { if (_service is not null) { _ = _service.NextAsync(); } });
 
         var controls = new Grid { Margin = new Thickness(0, 8, 0, 0) };
         controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -141,8 +141,8 @@ public sealed class MediaWidget : UserControl
         Content = root;
 
         _spectrum.SetSource(() => AppRuntime.Current?.Spectrum?.Levels);
-        _service.Changed += OnChanged;
-        Unloaded += (_, _) => _service.Changed -= OnChanged;
+        if (_service is not null) { _service.Changed += OnChanged; }
+        Unloaded += (_, _) => { if (_service is not null) { _service.Changed -= OnChanged; } };
         ThemeRuntime.Changed += OnTheme;
         Unloaded += (_, _) => ThemeRuntime.Changed -= OnTheme;
         Render();
@@ -198,7 +198,7 @@ public sealed class MediaWidget : UserControl
 
     private void RenderInfo(MediaInfo? overrideInfo)
     {
-        var info = overrideInfo ?? _service.Current;
+        var info = overrideInfo ?? _service?.Current;
         var hasMedia = info is not null;
 
         _empty.Visibility = hasMedia ? Visibility.Collapsed : Visibility.Visible;

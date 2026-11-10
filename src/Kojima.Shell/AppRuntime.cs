@@ -28,7 +28,7 @@ public sealed class AppRuntime
         Updates = new UpdateCoordinator(Notify);
         StockAlerts = new StockAlertService(Notify, Config, Agents);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardProxy(Agents, dispatcher) : null;
-        Media = new MediaSessionService();
+        Media = new MediaProxy(Agents, dispatcher);
         Spectrum = new SpectrumService();
         Messages = new MessageCenter(dispatcher, Config);
         Agents.EventReceived += OnAgentEvent;
@@ -68,7 +68,7 @@ public sealed class AppRuntime
     /// <summary>灵岛窗口（由 App 启动时挂上），用于保存设置后热刷新。</summary>
     public Kojima.Shell.Island.IslandWindow? Island { get; set; }
 
-    public MediaSessionService Media { get; }
+    public MediaProxy Media { get; }
 
     /// <summary>系统输出频谱（WASAPI 环回）。</summary>
     public SpectrumService Spectrum { get; }
@@ -174,9 +174,10 @@ public sealed class AppRuntime
         if (Config.Feature("clipboard").Enabled)
         {
             Clipboard?.Start();
-            Media.Start();
-            Spectrum.Start();
         }
+
+        Media.Start();
+        Spectrum.Start();
 
         Messages.Start();
         if (Config.Feature("stocks").Enabled)
