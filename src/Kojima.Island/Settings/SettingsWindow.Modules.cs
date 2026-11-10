@@ -18,6 +18,7 @@ public partial class SettingsWindow
         ["media"] = ["ModuleMusic", "外部程序", "控制页「音乐」按钮启动的程序。"],
         ["translate"] = ["ModuleTranslate", "翻译", "翻译引擎与各引擎的凭据。"],
         ["stocks"] = ["ModuleStocks", "股票", "自选股与刷新间隔。"],
+        ["messages"] = ["ModuleMessages", "通知中心", "通知读取频率与历史。"],
         ["usage"] = ["", "AI 用量", "来源、密钥与刷新间隔。"],
     };
 
@@ -289,7 +290,7 @@ public partial class SettingsWindow
             return;
         }
 
-        foreach (var name in new[] { "ModuleMonitor", "ModuleWeather", "ModuleMusic", "ModuleTranslate", "ModuleStocks" })
+        foreach (var name in new[] { "ModuleMonitor", "ModuleWeather", "ModuleMusic", "ModuleTranslate", "ModuleStocks", "ModuleMessages" })
         {
             if (FindName(name) is FrameworkElement element)
             {
@@ -301,6 +302,12 @@ public partial class SettingsWindow
         PageDescText.Text = info[2];
         NavFeatures.IsChecked = true;
         ShowPage(5);
+    }
+
+    private void OnClearMessages(object sender, RoutedEventArgs e)
+    {
+        AppRuntime.Current?.Messages.Clear();
+        ClearMessagesButton.Content = "已清空";
     }
 
     private void OnModuleBack(object sender, RoutedEventArgs e)

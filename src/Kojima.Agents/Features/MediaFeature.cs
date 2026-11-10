@@ -60,6 +60,17 @@ public sealed class MediaFeature : IAgentFeature
                     : 0;
                 await SeekAsync(TimeSpan.FromMilliseconds(Math.Max(0, milliseconds))).ConfigureAwait(false);
                 return _snapshot;
+            case "media.lyrics":
+                var title = "";
+                var artist = "";
+                var duration = 0L;
+                if (args is { ValueKind: JsonValueKind.Object } request)
+                {
+                    if (request.TryGetProperty("title", out var t)) { title = t.GetString() ?? ""; }
+                    if (request.TryGetProperty("artist", out var a)) { artist = a.GetString() ?? ""; }
+                    if (request.TryGetProperty("durationMs", out var d)) { duration = d.GetInt64(); }
+                }
+                return await LyricsProvider.FetchAsync(title, artist, duration, CancellationToken.None).ConfigureAwait(false);
             default:
                 throw new InvalidOperationException("未知方法：" + method);
         }

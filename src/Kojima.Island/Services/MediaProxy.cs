@@ -26,6 +26,9 @@ public sealed class MediaProxy : IDisposable
     private readonly Dispatcher _dispatcher;
     private MediaInfo? _current;
     private Task? _starting;
+    private LyricsResult? _lyrics;
+    private string _lyricsKey = "";
+    private bool _lyricsLoading;
 
     public MediaProxy(AgentSupervisor agents, Dispatcher dispatcher)
     {
@@ -35,6 +38,42 @@ public sealed class MediaProxy : IDisposable
     }
 
     public MediaInfo? Current => _current;
+
+    /// <summary>当前曲目的歌词；没有歌词源时为 null。</summary>
+    public LyricsResult? Lyrics => _lyrics;
+
+    /// <summary>按当前进度取一行歌词（无时间轴时取第一行）。</summary>
+    public string? CurrentLyricLine
+    {
+        get
+        {
+            if (_lyrics is null || _current is null || _lyrics.Lines.Count == 0)
+            {
+                return null;
+            }
+
+            if (!_lyrics.HasTimeline)
+            {
+                return _lyrics.Lines[0].Text;
+            }
+
+            var position = _current.Position.TotalMilliseconds;
+            LyricLine? current = null;
+            foreach (var line in _lyrics.Lines)
+            {
+                if (line.TimeMs <= position)
+                {
+                    current = line;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return current?.Text;
+        }
+    }
 
     /// <summary>媒体信息变化（已切回 UI 线程）。</summary>
     public event Action? Changed;
@@ -114,6 +153,17 @@ public sealed class MediaProxy : IDisposable
                     TimeSpan.FromMilliseconds(snapshot.PositionMs),
                     TimeSpan.FromMilliseconds(snapshot.DurationMs),
                     ToImage(snapshot.Artwork));
+
+                var key = (snapshot.Title ?? "") + "|" + (snapshot.Artist ?? "");
+                if (!key.Equals(_lyricsKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    _lyricsKey = key;
+                    _lyrics = null;
+                    if (!string.IsNullOrWhiteSpace(snapshot.Title))
+                    {
+                        _ = LoadLyricsAsync(snapshot);
+                    }
+                }
             }
 
             Changed?.Invoke();
@@ -126,6 +176,42 @@ public sealed class MediaProxy : IDisposable
         else
         {
             _dispatcher.BeginInvoke(Update);
+        }
+    }
+
+    private async Task LoadLyricsAsync(MediaSnapshot snapshot)
+    {
+        if (_lyricsLoading)
+        {
+            return;
+        }
+
+        _lyricsLoading = true;
+        try
+        {
+            var result = await _agents.RequestAsync<LyricsResult?>(
+                "media",
+                "media.lyrics",
+                new
+                {
+                    title = snapshot.Title ?? "",
+                    artist = snapshot.Artist ?? "",
+                    durationMs = snapshot.DurationMs,
+                },
+                20000).ConfigureAwait(false);
+            _ = _dispatcher.BeginInvoke(() =>
+            {
+                _lyrics = result;
+                Changed?.Invoke();
+            });
+        }
+        catch (Exception ex)
+        {
+            Core.Config.AppLog.Warn("读取歌词失败：" + ex.Message);
+        }
+        finally
+        {
+            _lyricsLoading = false;
         }
     }
 

@@ -53,18 +53,12 @@
             <!-- 快捷操作 -->
             <Border x:Name="ActionCard" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" CornerRadius="16"
                     Padding="8">
-                <UniformGrid Rows="1" Columns="4">
+                <UniformGrid Rows="1" Columns="3">
                     <StackPanel x:Name="ActMute" Orientation="Horizontal" VerticalAlignment="Center"
                                 HorizontalAlignment="Center" Cursor="Hand">
                         <TextBlock x:Name="ActMuteGlyph" Text="&#xE767;" FontFamily="Segoe Fluent Icons"
                                    FontSize="15" Margin="0,0,7,0" VerticalAlignment="Center" />
                         <TextBlock x:Name="ActMuteText" Text="静音" FontSize="11.5" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <StackPanel x:Name="ActSub" Orientation="Horizontal" VerticalAlignment="Center"
-                                HorizontalAlignment="Center" Cursor="Hand">
-                        <TextBlock Text="&#xE720;" FontFamily="Segoe Fluent Icons" FontSize="15" Margin="0,0,7,0"
-                                   VerticalAlignment="Center" />
-                        <TextBlock Text="实时字幕" FontSize="11.5" VerticalAlignment="Center" />
                     </StackPanel>
                     <StackPanel x:Name="ActSnip" Orientation="Horizontal" VerticalAlignment="Center"
                                 HorizontalAlignment="Center" Cursor="Hand">

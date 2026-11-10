@@ -18,6 +18,7 @@ public sealed class MediaWidget : UserControl
     private readonly TextBlock _title;
     private readonly TextBlock _artist;
     private readonly TextBlock _album;
+    private readonly TextBlock _lyric;
     private readonly TextBlock _position;
     private readonly TextBlock _duration;
     private readonly SpectrumView _spectrum = new();
@@ -52,11 +53,15 @@ public sealed class MediaWidget : UserControl
         _artist.TextTrimming = TextTrimming.CharacterEllipsis;
         _album = UiKit.T("", 11, ThemeRuntime.Text3);
         _album.TextTrimming = TextTrimming.CharacterEllipsis;
+        _lyric = UiKit.T("", 11, ThemeRuntime.Text2);
+        _lyric.TextTrimming = TextTrimming.CharacterEllipsis;
+        _lyric.Margin = new Thickness(0, 3, 0, 0);
 
         var info = new StackPanel { Margin = new Thickness(14, 2, 0, 0) };
         info.Children.Add(_title);
         info.Children.Add(_artist);
         info.Children.Add(_album);
+        info.Children.Add(_lyric);
 
         var top = new Grid();
         top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -184,6 +189,7 @@ public sealed class MediaWidget : UserControl
             _title.Foreground = ThemeRuntime.Text;
             _artist.Foreground = ThemeRuntime.Text2;
             _album.Foreground = ThemeRuntime.Text3;
+            _lyric.Foreground = ThemeRuntime.Text2;
             _position.Foreground = ThemeRuntime.Text3;
             _duration.Foreground = ThemeRuntime.Text3;
             _prevGlyph.Foreground = ThemeRuntime.Text2;
@@ -215,6 +221,9 @@ public sealed class MediaWidget : UserControl
             ? (string.IsNullOrWhiteSpace(info!.Artist) ? info.AppId : info.Artist)
             : "打开任意播放器试试";
         _album.Text = hasMedia ? info!.Album : "";
+        var lyric = overrideInfo is null ? _service?.CurrentLyricLine : null;
+        _lyric.Text = hasMedia && !string.IsNullOrWhiteSpace(lyric) ? lyric : "";
+        _lyric.Visibility = _lyric.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         _playGlyph.Text = hasMedia && info!.IsPlaying ? "\uE769" : "\uE768";
         _playButton.Background = hasMedia ? ThemeRuntime.Accent : ThemeRuntime.Track;
         _playButton.IsEnabled = hasMedia;

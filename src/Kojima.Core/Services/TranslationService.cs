@@ -9,7 +9,7 @@ using Kojima.Core.Config;
 namespace Kojima.Core.Services;
 
 /// <summary>
-/// 翻译引擎：自动 / 免费通道（MyMemory → Google）/ DeepSeek。
+/// 翻译引擎：自动 / 腾讯翻译君（大陆免费）/ MyMemory / Google / DeepSeek。
 /// 与界面无关，便于单独测试与复用。
 /// </summary>
 [SupportedOSPlatform("windows")]
@@ -21,7 +21,7 @@ public static class TranslationService
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
 
-    /// <summary>按设置里的引擎翻译：auto / google / mymemory / deepseek / baidu / microsoft / custom。</summary>
+    /// <summary>按设置里的引擎翻译：auto / tencent / google / mymemory / deepseek / baidu / microsoft / custom。</summary>
     public static Task<string> TranslateAsync(
         string text,
         Kojima.Core.Config.TranslateSettings settings,
@@ -36,6 +36,7 @@ public static class TranslationService
             "microsoft" => MicrosoftAsync(text, target, settings, ct),
             "custom" => CustomAsync(text, target, settings, ct),
             "deepseek" => DeepSeekAsync(text, target, settings.Reversed, deepSeekKey, ct),
+            "tencent" => TencentAsync(text, target, settings.Reversed, ct),
             "google" => GoogleAsync(text, target, settings.Reversed, ct),
             "mymemory" => MyMemoryAsync(text, target, settings.Reversed, ct),
             "free" => FreeAsync(text, target, settings.Reversed, ct),
@@ -230,14 +231,22 @@ public static class TranslationService
         return ExtractDeepSeek(body);
     }
 
-    /// <summary>免费通道：MyMemory 优先，失败回退 Google 公共端点。</summary>
-    /// <summary>免费通道：先 MyMemory，失败再 Google。</summary>
+    /// <summary>免费通道：腾讯翻译君优先（大陆可直连），失败回退 MyMemory。</summary>
     public static async Task<string> FreeAsync(
         string text,
         string target,
         bool reversed,
         CancellationToken ct = default)
     {
+        try
+        {
+            return await TencentAsync(text, target, reversed, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            AppLog.Warn("腾讯翻译失败，改用 MyMemory：" + ex.Message);
+        }
+
         try
         {
             return await MyMemoryAsync(text, target, reversed, ct).ConfigureAwait(false);
@@ -247,6 +256,61 @@ public static class TranslationService
             AppLog.Warn("MyMemory 失败，改用 Google：" + ex.Message);
             return await GoogleAsync(text, target, reversed, ct).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>腾讯翻译君免费接口（transmart），大陆网络可直连。</summary>
+    public static async Task<string> TencentAsync(
+        string text,
+        string target,
+        bool reversed,
+        CancellationToken ct = default)
+    {
+        var foreign = target == "日" ? "ja" : "en";
+        var source = reversed ? foreign : "zh";
+        var destination = reversed ? "zh" : foreign;
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            header = new
+            {
+                fn = "auto_translation",
+                client_key = "browser-chrome-126.0.0-Windows 10",
+            },
+            type = "plain",
+            model_category = "normal",
+            source = new { lang = source, text_list = new[] { text } },
+            target = new { lang = destination },
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://transmart.qq.com/api/imt");
+        request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+        request.Headers.Referrer = new Uri("https://transmart.qq.com/zh-CN/index");
+        using var response = await Http.SendAsync(request, ct).ConfigureAwait(false);
+        var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(ErrorText(body, response.StatusCode));
+        }
+
+        using var document = JsonDocument.Parse(body);
+        var root = document.RootElement;
+        if (root.TryGetProperty("header", out var header)
+            && header.TryGetProperty("ret_code", out var code)
+            && code.GetString() is { Length: > 0 } status
+            && status != "succ")
+        {
+            throw new InvalidOperationException("腾讯翻译返回 " + status);
+        }
+
+        if (!root.TryGetProperty("auto_translation", out var translated)
+            || translated.ValueKind != JsonValueKind.Array
+            || translated.GetArrayLength() == 0
+            || translated[0].GetString() is not { Length: > 0 } result)
+        {
+            throw new InvalidOperationException("腾讯翻译返回为空");
+        }
+
+        return result;
     }
 
     /// <summary>MyMemory 免费接口。</summary>

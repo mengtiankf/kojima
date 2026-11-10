@@ -38,26 +38,13 @@ public partial class SettingsWindow : Window
         ("usage", "AI 用量", "Claude、Codex、Cursor 等来源的额度与消耗"),
         ("monitor", "系统监控", "CPU、内存、温度与功耗"),
         ("media", "媒体", "正在播放的封面与播放控制"),
+        ("messages", "通知中心", "QQ、微信等应用通知与系统提醒"),
         ("weather", "天气", "当前天气与短期预报"),
         ("stocks", "股票", "自选行情与涨跌"),
         ("clipboard", "剪贴板", "最近复制的文本与图片"),
         ("translate", "翻译", "选中文本的快速翻译"),
-        ("live", "实时字幕", "调用 Windows 11 实时字幕（Win+Ctrl+L）"),
     };
 
-    private static readonly (string Key, string Label)[] SourceDefs =
-    {
-        ("claude", "Claude"), ("codex", "Codex"), ("cursor", "Cursor"), ("antigravity", "Antigravity"),
-        ("dsh", "DSH"), ("kimi", "Kimi"), ("opencode", "OpenCode"), ("zcode", "ZCode"),
-        ("deepseek", "DeepSeek"), ("openrouter", "OpenRouter"), ("glm", "GLM 智谱"),
-        ("newapi", "NewAPI"), ("sub2api", "Sub2API"),
-    };
-
-    private static readonly (string Key, string Label)[] SecretDefs =
-    {
-        ("deepseek", "DeepSeek"), ("openrouter", "OpenRouter"), ("glm", "GLM 智谱"),
-        ("newapi", "NewAPI"), ("sub2api", "Sub2API"),
-    };
 
     private static readonly (string Title, string Desc)[] PageMeta =
     {
@@ -71,8 +58,6 @@ public partial class SettingsWindow : Window
 
     private readonly AppRuntime _runtime;
     private readonly List<FeatureRow> _features = new();
-    private readonly List<SourceRow> _sources = new();
-    private readonly List<SecretRow> _secrets = new();
     private readonly Dictionary<ScrollViewer, ScrollBar> _bars = new();
     private readonly Dictionary<ScrollViewer, DispatcherTimer> _hideTimers = new();
     private ScrollViewer[] _pages = Array.Empty<ScrollViewer>();
@@ -249,14 +234,15 @@ public partial class SettingsWindow : Window
             ? "检测到：" + string.Join("、", cfg.Monitor.DetectedSources)
             : "未检测到外部监控软件";
 
-        StockSymbols.Text = string.Join(",", cfg.Stocks.Symbols);
-        StockRefresh.Text = cfg.Stocks.RefreshSeconds.ToString(CultureInfo.InvariantCulture);
+        LoadStockSettings(cfg.Stocks);
+        MessagePoll.Text = cfg.Messages.PollMs.ToString(CultureInfo.InvariantCulture);
         WeatherLocation.Text = cfg.Weather.Location ?? "";
         MusicPath.Text = cfg.Apps.Music ?? "";
         var engine = (cfg.Translate.Engine ?? "auto").Trim().ToLowerInvariant();
         (engine switch
         {
-            "free" => TranslateGoogle,
+            "free" => TranslateTencent,
+            "tencent" => TranslateTencent,
             "google" => TranslateGoogle,
             "mymemory" => TranslateMyMemory,
             "deepseek" => TranslateDeepSeek,
@@ -276,8 +262,6 @@ public partial class SettingsWindow : Window
 
         IdleExitBox.Text = cfg.Feature("monitor").IdleExitSeconds.ToString(CultureInfo.InvariantCulture);
         RefreshBox.Text = cfg.Usage.RefreshSeconds.ToString(CultureInfo.InvariantCulture);
-        NewApiSite.Text = cfg.Usage.Sites.GetValueOrDefault("newapi") ?? "";
-        Sub2ApiSite.Text = cfg.Usage.Sites.GetValueOrDefault("sub2api") ?? "";
         ThemePathText.Text = ConfigStore.ThemesDirectory;
 
         var displays = DisplayInfo.All();
@@ -305,8 +289,7 @@ public partial class SettingsWindow : Window
         BuildThemeChoices(appearance);
         UpdateCurrentThemeText();
         BuildFeatures();
-        BuildSources();
-        BuildSecrets();
+        BuildUsageSources(cfg);
 
         NavGeneral.IsChecked = true;
     }
@@ -445,58 +428,6 @@ public partial class SettingsWindow : Window
 
         BuildModuleOrder();
         RebuildFeatureList();
-    }
-
-    private void BuildSources()
-    {
-        var selected = new HashSet<string>(
-            _runtime.Config.Usage.Sources ?? new List<string>(),
-            StringComparer.OrdinalIgnoreCase);
-
-        foreach (var (key, label) in SourceDefs)
-        {
-            var check = new CheckBox
-            {
-                Style = (Style)FindResource("Check"),
-                Content = label,
-                IsChecked = selected.Contains(key),
-                Margin = new Thickness(0, 0, 18, 12),
-            };
-            SourceList.Children.Add(check);
-            _sources.Add(new SourceRow(key, check));
-        }
-    }
-
-    private void BuildSecrets()
-    {
-        foreach (var (key, label) in SecretDefs)
-        {
-            var box = new PasswordBox
-            {
-                Style = (Style)FindResource("PwdField"),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-
-            SetSecret(box, SecretNames.Usage(key));
-
-            var row = new Grid { Margin = new Thickness(0, 7, 0, 7) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
-            row.ColumnDefinitions.Add(new ColumnDefinition());
-
-            var caption = new TextBlock
-            {
-                Text = label,
-                FontSize = 12.5,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            caption.SetResourceReference(TextBlock.ForegroundProperty, "Text2Brush");
-
-            row.Children.Add(caption);
-            Grid.SetColumn(box, 1);
-            row.Children.Add(box);
-            SecretsHost.Children.Add(row);
-            _secrets.Add(new SecretRow(key, box));
-        }
     }
 
     /// <summary>
@@ -921,22 +852,17 @@ public partial class SettingsWindow : Window
                 : MonitorOhm.IsChecked == true ? "ohm"
                 : "auto";
 
-            var symbols = (StockSymbols.Text ?? "")
-                .Split([',', '，', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .ToList();
-            if (symbols.Count > 0)
-            {
-                cfg.Stocks.Symbols = symbols;
-            }
+            ApplyStockSettings(cfg.Stocks);
 
-            if (int.TryParse(StockRefresh.Text, out var refreshSeconds))
+            if (int.TryParse(MessagePoll.Text, out var pollMs))
             {
-                cfg.Stocks.RefreshSeconds = Math.Clamp(refreshSeconds, 5, 600);
+                cfg.Messages.PollMs = Math.Clamp(pollMs, 500, 10000);
             }
 
             cfg.Weather.Location = (WeatherLocation.Text ?? "").Trim();
             cfg.Apps.Music = (MusicPath.Text ?? "").Trim();
-            cfg.Translate.Engine = TranslateGoogle.IsChecked == true ? "google"
+            cfg.Translate.Engine = TranslateTencent.IsChecked == true ? "tencent"
+                : TranslateGoogle.IsChecked == true ? "google"
                 : TranslateMyMemory.IsChecked == true ? "mymemory"
                 : TranslateDeepSeek.IsChecked == true ? "deepseek"
                 : TranslateBaidu.IsChecked == true ? "baidu"
@@ -956,21 +882,8 @@ public partial class SettingsWindow : Window
 
             cfg.Island.NavOrder = _order.ToList();
 
-            // 数据源：保留清单外的历史来源，避免升级后丢失
-            var known = new HashSet<string>(_sources.Select(s => s.Key), StringComparer.OrdinalIgnoreCase);
-            var sources = _sources.Where(s => s.Toggle.IsChecked == true).Select(s => s.Key).ToList();
-            foreach (var extra in cfg.Usage.Sources ?? new List<string>())
-            {
-                if (!known.Contains(extra))
-                {
-                    sources.Add(extra);
-                }
-            }
-
-            cfg.Usage.Sources = sources;
+            ApplyUsageSettings(cfg, secretUpdates);
             cfg.Usage.RefreshSeconds = Math.Clamp(ParseInt(RefreshBox.Text, cfg.Usage.RefreshSeconds), 30, 3600);
-            cfg.Usage.Sites["newapi"] = (NewApiSite.Text ?? "").Trim();
-            cfg.Usage.Sites["sub2api"] = (Sub2ApiSite.Text ?? "").Trim();
 
             var idle = Math.Clamp(ParseInt(IdleExitBox.Text, cfg.Feature("monitor").IdleExitSeconds), 0, 600);
             foreach (var feature in cfg.Features.Values)
@@ -978,10 +891,6 @@ public partial class SettingsWindow : Window
                 feature.IdleExitSeconds = idle;
             }
 
-            foreach (var secret in _secrets)
-            {
-                CollectSecret(secretUpdates, secret.Box, SecretNames.Usage(secret.Key));
-            }
 
             if (secretUpdates.Count > 0)
             {
@@ -1107,9 +1016,6 @@ public partial class SettingsWindow : Window
         public bool Initial { get; set; } = initial;
     }
 
-    private sealed record SourceRow(string Key, CheckBox Toggle);
-
-    private sealed record SecretRow(string Key, PasswordBox Box);
 
     private sealed record ThemeCard(string Id, string DisplayName, string ByLine, Brush SurfaceSwatch, Brush TextSwatch, Brush AccentSwatch)
     {

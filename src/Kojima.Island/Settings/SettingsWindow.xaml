@@ -673,12 +673,14 @@
                                 <Border Style="{StaticResource Card}" Padding="18,16">
                                     <StackPanel>
                                         <TextBlock Text="翻译引擎" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="自动：填了 DeepSeek Key 就优先用它，否则走 Google 翻译（失败退回 MyMemory）。"
+                                        <TextBlock Text="自动：填了 DeepSeek Key 就优先用它，否则走腾讯翻译君（大陆直连，失败再退 MyMemory）。"
                                                    Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
                                         <Border Style="{StaticResource SegmentGroup}">
                                             <StackPanel Orientation="Horizontal">
                                                 <RadioButton x:Name="TranslateAuto" GroupName="TranslateEngine"
                                                              Style="{StaticResource SegmentTight}" Content="自动"/>
+                                                <RadioButton x:Name="TranslateTencent" GroupName="TranslateEngine"
+                                                             Style="{StaticResource SegmentTight}" Content="腾讯翻译君"/>
                                                 <RadioButton x:Name="TranslateGoogle" GroupName="TranslateEngine"
                                                              Style="{StaticResource SegmentTight}" Content="Google 翻译"/>
                                                 <RadioButton x:Name="TranslateMyMemory" GroupName="TranslateEngine"
@@ -774,22 +776,94 @@
                                 <TextBlock Text="股票" Style="{StaticResource GroupLabel}"/>
                                 <Border Style="{StaticResource Card}" Padding="18,16">
                                     <StackPanel>
-                                        <TextBlock Text="自选股" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="腾讯行情代码，用英文逗号分隔，例如 sh600519,hk00700。留空则使用默认六只。"
+                                        <TextBlock Text="行情来源" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="自动模式会按腾讯 → 新浪 → 东方财富依次尝试；某个源超时会自动换下一个。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
+                                        <Border Style="{StaticResource SegmentGroup}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton x:Name="StockSourceAuto" GroupName="StockSource"
+                                                             Style="{StaticResource SegmentTight}" Content="自动"/>
+                                                <RadioButton x:Name="StockSourceTencent" GroupName="StockSource"
+                                                             Style="{StaticResource SegmentTight}" Content="腾讯"/>
+                                                <RadioButton x:Name="StockSourceSina" GroupName="StockSource"
+                                                             Style="{StaticResource SegmentTight}" Content="新浪"/>
+                                                <RadioButton x:Name="StockSourceEastMoney" GroupName="StockSource"
+                                                             Style="{StaticResource SegmentTight}" Content="东方财富"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="添加自选" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="输入名称、代码或拼音，例如：茅台、600519、腾讯。"
                                                    Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
-                                        <TextBox x:Name="StockSymbols" Style="{StaticResource Field}"
-                                                 AcceptsReturn="False" Height="34"/>
-                                        <Grid Margin="0,14,0,0">
+                                        <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="StockSearch" Grid.Column="0" Style="{StaticResource Field}"
+                                                     Height="34" KeyDown="OnStockSearchKeyDown"/>
+                                            <Button x:Name="StockSearchButton" Grid.Column="2" Content="搜索"
+                                                    Click="OnStockSearchClick" Style="{StaticResource GhostButton}"
+                                                    Height="34" Padding="16,0"/>
+                                        </Grid>
+                                        <StackPanel x:Name="StockSearchResults" Margin="0,8,0,0"/>
+                                        <TextBlock Text="常用" Style="{StaticResource Hint}" Margin="2,14,0,6"/>
+                                        <WrapPanel x:Name="StockPresets"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="我的自选" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="点右侧「移除」即可删除；保存后灵动岛页面同步更新。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,8"/>
+                                        <StackPanel x:Name="StockWatchList"/>
+                                        <Grid Margin="0,14,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="8"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="刷新间隔（秒）" Style="{StaticResource Hint}" Margin="2,0,0,6"/>
-                                                <TextBox x:Name="StockRefresh" Style="{StaticResource Field}"/>
-                                            </StackPanel>
+                                            <TextBlock Grid.Column="0" Text="刷新间隔（秒）" Style="{StaticResource Hint}"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBox x:Name="StockRefresh" Grid.Column="2" Width="90"
+                                                     HorizontalAlignment="Left" Style="{StaticResource Field}"/>
                                         </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                            <StackPanel x:Name="ModuleMessages" Visibility="Collapsed">
+                                <TextBlock Text="通知中心" Style="{StaticResource GroupLabel}"/>
+                                <Border Style="{StaticResource Card}" Padding="18,16">
+                                    <StackPanel>
+                                        <TextBlock Text="读取频率" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="通知由独立子进程读取 Windows 通知数据库；间隔越短越及时，也越耗电。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="140"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="MessagePoll" Grid.Column="0" Style="{StaticResource Field}"/>
+                                            <TextBlock Grid.Column="2" Text="毫秒（500 - 10000）" Style="{StaticResource Hint}"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="清空历史" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="只清空 Kojima 通知中心里的记录，不影响系统通知。"
+                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
+                                        <Button x:Name="ClearMessagesButton" Content="清空通知" Click="OnClearMessages"
+                                                Style="{StaticResource GhostButton}" HorizontalAlignment="Left"
+                                                Height="32" Padding="14,0"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -800,31 +874,10 @@
                     <ScrollViewer x:Name="PageUsage" Style="{StaticResource PageScroll}" Margin="30,0,18,0"
                                   Visibility="Collapsed">
                         <StackPanel Margin="0,2,0,26">
-                            <TextBlock Text="数据来源" Style="{StaticResource GroupLabel}"/>
-                            <Border Style="{StaticResource Card}" Padding="18,16">
-                                <StackPanel>
-                                    <TextBlock Text="勾选需要汇总的来源；未勾选的来源不会启动子进程。"
-                                               Style="{StaticResource Hint}" Margin="0,0,0,4"/>
-                                    <UniformGrid x:Name="SourceList" Columns="3" Margin="0,8,0,0"/>
-                                </StackPanel>
-                            </Border>
-
-                            <TextBlock Text="来源密钥" Style="{StaticResource GroupLabel}"/>
-                            <Border Style="{StaticResource Card}">
-                                <StackPanel x:Name="SecretsHost"/>
-                            </Border>
-                            <TextBlock Text="已保存的密钥显示为 ••••••，不修改则不会覆盖；清空输入框并保存可删除。密钥使用 Windows DPAPI（当前用户）加密保存在 secrets.dat，不写入 config.json。"
-                                       Style="{StaticResource Hint}" Margin="2,0,0,0" TextWrapping="Wrap"/>
-
-                            <TextBlock Text="站点地址" Style="{StaticResource GroupLabel}"/>
-                            <Border Style="{StaticResource Card}">
-                                <StackPanel>
-                                    <TextBlock Text="NewAPI 站点（例如 https://api.example.com）" Style="{StaticResource Hint}"/>
-                                    <TextBox x:Name="NewApiSite" Style="{StaticResource Field}" Margin="0,6,0,14"/>
-                                    <TextBlock Text="Sub2API 站点（例如 https://sub.example.com）" Style="{StaticResource Hint}"/>
-                                    <TextBox x:Name="Sub2ApiSite" Style="{StaticResource Field}" Margin="0,6,0,2"/>
-                                </StackPanel>
-                            </Border>
+                            <TextBlock Text="AI 用量" Style="{StaticResource GroupLabel}"/>
+                            <TextBlock Text="每个来源一张卡片：打开后才会参与汇总。需要密钥的来源直接在卡片里填写；密钥用 Windows DPAPI 加密保存在 secrets.dat，不写进 config.json。"
+                                       Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="2,0,0,10"/>
+                            <StackPanel x:Name="UsageSourceList"/>
 
                             <TextBlock Text="刷新" Style="{StaticResource GroupLabel}" Margin="2,22,0,8"/>
                             <Border Style="{StaticResource Card}">

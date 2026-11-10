@@ -1,28 +1,13 @@
-using System.Globalization;
-using System.Net.Http;
-using System.Text;
 using System.Text.Json;
 using Kojima.Core.Config;
 using Kojima.Core.Ipc;
+using Kojima.Core.Models;
 
 namespace Kojima.Agents.Features;
 
-/// <summary>股票行情与异动提醒都放在子进程：行情 GBK 解码、60 秒轮询、单日 ±5% 推送 notice。</summary>
+/// <summary>股票行情与异动提醒都放在子进程：多行情源、60 秒轮询、单日 ±5% 推送 notice。</summary>
 public sealed class StocksFeature : IAgentFeature
 {
-    private static readonly HttpClient Http = new()
-    {
-        Timeout = TimeSpan.FromSeconds(12),
-    };
-
-    private static readonly Encoding Gbk;
-
-    static StocksFeature()
-    {
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        Gbk = Encoding.GetEncoding(936);
-    }
-
     private readonly HashSet<string> _alerted = new(StringComparer.OrdinalIgnoreCase);
     private AgentPipeServer? _server;
     private Timer? _timer;
@@ -47,6 +32,9 @@ public sealed class StocksFeature : IAgentFeature
         {
             case "stocks.read":
                 return await ReadAsync(Codes(args)).ConfigureAwait(false);
+            case "stocks.search":
+                return await StockSources.SearchAsync(Text(args, "keyword"), CancellationToken.None)
+                    .ConfigureAwait(false);
             case "stocks.alerts.start":
                 StartAlerts();
                 return new { ok = true };
@@ -69,7 +57,7 @@ public sealed class StocksFeature : IAgentFeature
                 var code = item.GetString()?.Trim();
                 if (!string.IsNullOrEmpty(code))
                 {
-                    codes.Add(code);
+                    codes.Add(StockSources.Normalize(code));
                 }
             }
         }
@@ -77,18 +65,23 @@ public sealed class StocksFeature : IAgentFeature
         return codes;
     }
 
-    private static async Task<string> ReadAsync(List<string> codes)
+    private static string Text(JsonElement? args, string name)
+    {
+        return args is { ValueKind: JsonValueKind.Object } payload && payload.TryGetProperty(name, out var value) &&
+               value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? ""
+            : "";
+    }
+
+    private static async Task<List<StockQuote>> ReadAsync(List<string> codes)
     {
         if (codes.Count == 0)
         {
-            return "";
+            return [];
         }
 
-        var url = "https://qt.gtimg.cn/q=" + string.Join(",", codes);
-        using var response = await Http.GetAsync(url).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-        return Gbk.GetString(bytes);
+        var settings = ConfigStore.Load().Stocks;
+        return await StockSources.ReadAsync(settings.Source, codes, CancellationToken.None).ConfigureAwait(false);
     }
 
     private void StartAlerts()
@@ -131,7 +124,7 @@ public sealed class StocksFeature : IAgentFeature
                 return;
             }
 
-            var text = await ReadAsync(symbols).ConfigureAwait(false);
+            var quotes = await ReadAsync(symbols).ConfigureAwait(false);
             var today = DateOnly.FromDateTime(DateTime.Today);
             if (today != _day)
             {
@@ -144,9 +137,9 @@ public sealed class StocksFeature : IAgentFeature
                 return;
             }
 
-            foreach (var (code, quote) in Parse(text))
+            foreach (var quote in quotes)
             {
-                if (quote.Percent is not { } percent || Math.Abs(percent) < 5 || !_alerted.Add(code))
+                if (quote.Percent is not { } percent || Math.Abs(percent) < 5 || !_alerted.Add(quote.Code))
                 {
                     continue;
                 }
@@ -170,53 +163,4 @@ public sealed class StocksFeature : IAgentFeature
             Interlocked.Exchange(ref _busy, 0);
         }
     }
-
-    /// <summary>解析 v_xxx="1~名称~代码~现价~昨收~…~涨跌幅~…"。</summary>
-    private static Dictionary<string, Quote> Parse(string text)
-    {
-        var quotes = new Dictionary<string, Quote>(StringComparer.OrdinalIgnoreCase);
-        foreach (var line in text.Split(';', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var start = line.IndexOf('"');
-            var end = line.LastIndexOf('"');
-            if (start <= 0 || end <= start)
-            {
-                continue;
-            }
-
-            var code = line[..start].Trim();
-            if (code.StartsWith("v_", StringComparison.OrdinalIgnoreCase))
-            {
-                code = code[2..];
-            }
-
-            if (code.EndsWith('='))
-            {
-                code = code[..^1].Trim();
-            }
-
-            var fields = line[(start + 1)..end].Split('~');
-            if (fields.Length < 6)
-            {
-                continue;
-            }
-
-            var price = Num(fields[3]);
-            var previous = Num(fields[4]);
-            var percent = fields.Length > 32 ? Num(fields[32]) : null;
-            if (percent is null && price is { } current && previous is { } close && close != 0)
-            {
-                percent = (current - close) / close * 100;
-            }
-
-            quotes[code] = new Quote(fields[1].Trim(), price, percent);
-        }
-
-        return quotes;
-    }
-
-    private static double? Num(string value) =>
-        double.TryParse(value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
-
-    private sealed record Quote(string Name, double? Price, double? Percent);
 }

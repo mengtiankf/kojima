@@ -249,7 +249,10 @@ public partial class IslandWindow : Window
             _pages.Add(new IslandPage("translate", "", "翻译", translate, 300));
         }
 
-        _pages.Add(new IslandPage("msg", "", "消息", new MessagesView(_runtime), 286));
+        if (_runtime.FeatureEnabled("messages"))
+        {
+            _pages.Add(new IslandPage("msg", "\uE8BD", "消息", new MessagesView(_runtime), 286));
+        }
 
         if (_runtime.FeatureEnabled("monitor"))
         {
@@ -345,6 +348,7 @@ public partial class IslandWindow : Window
             ["weather"] = "weather",
             ["clipboard"] = "clip",
             ["translate"] = "translate",
+            ["messages"] = "msg",
         };
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "home", "ctl" };

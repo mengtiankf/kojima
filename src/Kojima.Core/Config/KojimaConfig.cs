@@ -135,6 +135,9 @@ public sealed class StockSettings
         "sh000001", "sz399001", "sh600519", "sz300750", "sz002594", "hk00700",
     ];
 
+    /// <summary>行情源：auto / tencent / sina / eastmoney。</summary>
+    public string Source { get; set; } = "auto";
+
     /// <summary>刷新间隔（秒）。</summary>
     public int RefreshSeconds { get; set; } = 15;
 }
@@ -233,7 +236,6 @@ public sealed class KojimaConfig
         ["stocks"] = new FeatureSettings(),
         ["clipboard"] = new FeatureSettings { Enabled = false },
         ["translate"] = new FeatureSettings { Enabled = false },
-        ["live"] = new FeatureSettings { Enabled = false },
     };
 
     public FeatureSettings Feature(string key)

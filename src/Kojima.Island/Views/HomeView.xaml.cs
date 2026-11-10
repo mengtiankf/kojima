@@ -35,7 +35,6 @@ public partial class HomeView : UserControl
         ActSettings.MouseLeftButtonUp += (_, _) => OpenSettings();
         ActMute.MouseLeftButtonUp += (_, _) => ToggleMute();
         ActSnip.MouseLeftButtonUp += (_, _) => Run("ms-screenclip:");
-        ActSub.MouseLeftButtonUp += (_, _) => OpenLiveCaptions();
         WeatherCard.MouseLeftButtonUp += (_, _) => OpenSettings();
     }
 
@@ -137,14 +136,6 @@ public partial class HomeView : UserControl
 
         ActMuteText.Text = muted.Value ? "已静音" : "静音";
         ActMuteGlyph.Text = muted.Value ? "\uE74F" : "\uE767";
-    }
-
-    private static void OpenLiveCaptions()
-    {
-        if (!Kojima.Island.Interop.LiveCaptions.Toggle())
-        {
-            Run("ms-settings:easeofaccess-hearing");
-        }
     }
 
     private static void Run(string target)

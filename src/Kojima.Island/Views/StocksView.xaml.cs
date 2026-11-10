@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Kojima.Core.Config;
+using Kojima.Core.Models;
 using Kojima.Island.Theme;
 using Brush = System.Windows.Media.Brush;
 using Cursors = System.Windows.Input.Cursors;
@@ -241,13 +242,13 @@ public sealed class StocksSurface : FrameworkElement
         {
             var agents = AppRuntime.Current?.Agents
                          ?? throw new InvalidOperationException("运行时尚未就绪");
-            var text = await agents.RequestAsync<string>("stocks", "stocks.read",
-                new { codes = _rows.Select(r => r.Code).ToArray() }, 20000);
-            var quotes = Parse(text ?? "");
+            var quotes = await agents.RequestAsync<List<StockQuote>>("stocks", "stocks.read",
+                new { codes = _rows.Select(r => r.Code).ToArray() }, 20000) ?? [];
             if (quotes.Count == 0) { throw new InvalidOperationException("行情返回为空"); }
             foreach (var row in _rows)
             {
-                if (!quotes.TryGetValue(row.Code, out var quote))
+                var quote = quotes.FirstOrDefault(q => q.Code.Equals(row.Code, StringComparison.OrdinalIgnoreCase));
+                if (quote is null)
                 {
                     row.Price = null;
                     row.Percent = null;
@@ -277,37 +278,6 @@ public sealed class StocksSurface : FrameworkElement
         }
     }
 
-    /// <summary>解析 v_xxx="1~名称~代码~现价~昨收~今开~…~涨跌~涨跌幅~最高~最低~…";</summary>
-    private static Dictionary<string, Quote> Parse(string text)
-    {
-        var quotes = new Dictionary<string, Quote>(StringComparer.OrdinalIgnoreCase);
-        foreach (var line in text.Split(';', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var start = line.IndexOf('"');
-            var end = line.LastIndexOf('"');
-            if (start <= 0 || end <= start) { continue; }
-            var code = line[..start].Trim();
-            if (code.StartsWith("v_", StringComparison.OrdinalIgnoreCase)) { code = code[2..]; }
-            if (code.EndsWith("=", StringComparison.Ordinal)) { code = code[..^1].Trim(); }
-            var fields = line[(start + 1)..end].Split('~');
-            if (fields.Length < 6) { continue; }
-
-            var price = Num(fields[3]);
-            var previous = Num(fields[4]);
-            var percent = fields.Length > 32 ? Num(fields[32]) : null;
-            if (percent is null && price is { } current && previous is { } close && close != 0)
-            {
-                percent = (current - close) / close * 100;
-            }
-
-            quotes[code] = new Quote(fields[1].Trim(), price, percent);
-        }
-
-        return quotes;
-    }
-
-    private static double? Num(string value) =>
-        double.TryParse(value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
 
     protected override void OnMouseMove(MouseEventArgs e) =>
         Cursor = _refreshRect.Contains(e.GetPosition(this)) ? Cursors.Hand : null;
@@ -320,7 +290,6 @@ public sealed class StocksSurface : FrameworkElement
         _ = RefreshAsync();
     }
 
-    private readonly record struct Quote(string Name, double? Price, double? Percent);
 
     private sealed class Row
     {
