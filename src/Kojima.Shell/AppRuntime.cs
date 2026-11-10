@@ -31,6 +31,7 @@ public sealed class AppRuntime
         Spectrum = new SpectrumService();
         Messages = new MessageCenter(dispatcher, Config);
         Agents.EventReceived += OnAgentEvent;
+        Agents.Failed += (feature, reason) => Notify.Push("后台功能异常", $"子进程 {feature} 连续失败：{reason}", "warn");
         Weather.Updated += OnWeather;
         Monitor.Sample += OnMonitorSample;
         _current = this;

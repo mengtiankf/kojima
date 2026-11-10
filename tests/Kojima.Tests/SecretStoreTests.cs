@@ -188,4 +188,16 @@ public sealed class SecretMigrationTests : IDisposable
 
         Assert.Equal("custom-theme", cfg.Island.Theme);
     }
+
+    [Fact]
+    public void ExtraMonitorDeckListRoundTrips()
+    {
+        var cfg = new KojimaConfig();
+        cfg.Island.ExtraMonitors = [@"\\.\DISPLAY2", @"\\.\DISPLAY3"];
+        ConfigStore.Save(cfg);
+
+        var loaded = ConfigStore.Load();
+
+        Assert.Equal([@"\\.\DISPLAY2", @"\\.\DISPLAY3"], loaded.Island.ExtraMonitors);
+    }
 }

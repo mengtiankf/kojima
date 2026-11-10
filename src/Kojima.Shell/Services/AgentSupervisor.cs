@@ -31,6 +31,9 @@ public sealed class AgentSupervisor : IAsyncDisposable
     /// <summary>子进程状态变化（feature, running）。</summary>
     public event Action<string, bool>? StateChanged;
 
+    /// <summary>连续启动/运行失败达到阈值时通知界面（配置了“后台功能异常”提醒）。</summary>
+    public event Action<string, string>? Failed;
+
     public string AgentPath => _exePath;
 
     public bool IsRunning(string feature)
@@ -163,6 +166,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
         {
             UseShellExecute = false,
             CreateNoWindow = true,
+            RedirectStandardError = true,
             WorkingDirectory = Path.GetDirectoryName(_exePath) ?? AppContext.BaseDirectory,
         };
         startInfo.ArgumentList.Add("--feature");
@@ -175,6 +179,14 @@ public sealed class AgentSupervisor : IAsyncDisposable
         startInfo.ArgumentList.Add(_idleSeconds.ToString());
 
         var process = Process.Start(startInfo) ?? throw new InvalidOperationException("子进程启动失败");
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+            {
+                AppLog.Warn($"子进程 {feature} stderr: {e.Data}");
+            }
+        };
+        process.BeginErrorReadLine();
         var client = await AgentPipeClient.ConnectAsync(pipeName, TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
 
         host = new AgentHost(feature, process, client);
@@ -285,6 +297,10 @@ public sealed class AgentSupervisor : IAsyncDisposable
         }
 
         AppLog.Warn($"子进程异常（{feature}，第 {failures} 次）：{reason}；{(int)delay.TotalSeconds} 秒后允许重启");
+        if (failures >= 3)
+        {
+            Failed?.Invoke(feature, reason);
+        }
     }
 
     private void ClearStartFailures(string feature)
