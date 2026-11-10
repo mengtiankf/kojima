@@ -140,7 +140,7 @@ public sealed class MediaWidget : UserControl
         root.Children.Add(_empty);
         Content = root;
 
-        _spectrum.SetSource(() => AppRuntime.Current?.Spectrum?.Levels);
+        _spectrum.SetSource(() => AppRuntime.Current?.Spectrum?.Levels ?? Array.Empty<double>());
         if (_service is not null) { _service.Changed += OnChanged; }
         Unloaded += (_, _) => { if (_service is not null) { _service.Changed -= OnChanged; } };
         ThemeRuntime.Changed += OnTheme;

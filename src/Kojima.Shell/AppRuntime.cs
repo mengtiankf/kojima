@@ -26,15 +26,13 @@ public sealed class AppRuntime
         Weather = new WeatherService(dispatcher, Agents);
         Notify = new NotifyCenter(dispatcher);
         Updates = new UpdateCoordinator(Notify);
-        StockAlerts = new StockAlertService(Notify, Config, Agents);
+        StockAlerts = new StockAlertService(Agents);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardProxy(Agents, dispatcher) : null;
         Media = new MediaProxy(Agents, dispatcher);
         Spectrum = new SpectrumProxy(Agents);
         Messages = new MessageProxy(Agents, dispatcher, Config);
         Agents.EventReceived += OnAgentEvent;
         Agents.Failed += (feature, reason) => Notify.Push("后台功能异常", $"子进程 {feature} 连续失败：{reason}", "warn");
-        Weather.Updated += OnWeather;
-        Monitor.Sample += OnMonitorSample;
         _current = this;
     }
 
@@ -125,34 +123,6 @@ public sealed class AppRuntime
         }
     }
 
-    private DateTime _lastCpuAlert = DateTime.MinValue;
-    private DateTime _lastWeatherAlert = DateTime.MinValue;
-
-    private void OnMonitorSample(MonitorSample sample)
-    {
-        if (sample.Cpu.Percent < 90 || DateTime.Now - _lastCpuAlert < TimeSpan.FromMinutes(10))
-        {
-            return;
-        }
-
-        _lastCpuAlert = DateTime.Now;
-        Notify.Push("CPU 占用过高", $"当前 {sample.Cpu.Percent:0}% ，可打开监控页查看占用进程。", "warn");
-    }
-
-    private void OnWeather(WeatherInfo info)
-    {
-        if (DateTime.Now - _lastWeatherAlert < TimeSpan.FromHours(3))
-        {
-            return;
-        }
-
-        if (info.Description.Contains('雨') || info.Description.Contains('雪'))
-        {
-            _lastWeatherAlert = DateTime.Now;
-            Notify.Push("天气提醒", $"{info.Description}，{info.TemperatureText}，出门记得带伞。", "weather");
-        }
-    }
-
     /// <summary>启动时探测外部监控软件并写回配置（设置页展示用）。</summary>
     public async Task DetectMonitorSourcesAsync()
     {
@@ -188,6 +158,23 @@ public sealed class AppRuntime
 
     internal void OnAgentEvent(string feature, string name, JsonElement data)
     {
+        if (name == "notice")
+        {
+            try
+            {
+                var title = data.TryGetProperty("title", out var t) ? t.GetString() ?? "提醒" : "提醒";
+                var body = data.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
+                var kind = data.TryGetProperty("kind", out var k) ? k.GetString() ?? "info" : "info";
+                Notify.Push(title, body, kind);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("处理子进程提醒失败：" + ex.Message);
+            }
+
+            return;
+        }
+
         if (feature == "monitor" && name == "sample")
         {
             Monitor.OnSampleEvent(data);

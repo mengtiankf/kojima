@@ -17,6 +17,7 @@ public sealed class MonitorFeature : IAgentFeature
     private AgentPipeServer? _pipe;
     private CancellationTokenSource? _stream;
     private int _intervals;
+    private DateTime _lastCpuAlert = DateTime.MinValue;
 
     public bool Busy => _stream is { IsCancellationRequested: false };
 
@@ -113,6 +114,11 @@ public sealed class MonitorFeature : IAgentFeature
 
         var sample = _sampler.Sample();
         await pipe.PushAsync("sample", new { id, sample }).ConfigureAwait(false);
+        if (sample.Cpu.Percent >= 90 && DateTime.Now - _lastCpuAlert > TimeSpan.FromMinutes(10))
+        {
+            _lastCpuAlert = DateTime.Now;
+            await pipe.PushAsync("notice", new { title = "CPU 占用过高", body = $"当前 {sample.Cpu.Percent:0}%，可打开监控页查看占用进程。", kind = "warn" }).ConfigureAwait(false);
+        }
     }
 
     public ValueTask DisposeAsync()
