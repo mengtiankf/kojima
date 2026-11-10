@@ -45,7 +45,8 @@ Kojima.Shell (WPF, 主进程)             Kojima.Agents (子进程, 按需拉起
                                          ├─ clipboard 剪贴板轮询与历史
                                          ├─ translate 翻译请求
                                          ├─ messages  Windows 通知库读取
-                                         └─ spectrum  WASAPI 环回频谱
+                                         ├─ spectrum  WASAPI 环回频谱
+                                         └─ updates   GitHub Release 检查与安装包下载
 ```
 
 - 子进程只在功能被真正使用时由 `AgentSupervisor` 拉起，空闲 `IdleExitSeconds`（默认 90 秒）后自行退出；关闭功能开关会立即回收。
