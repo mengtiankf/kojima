@@ -36,8 +36,9 @@ internal static class StartupRegistration
             if (enabled)
             {
                 var exe = Environment.ProcessPath;
-                if (string.IsNullOrWhiteSpace(exe) ||
-                    !Path.GetFileName(exe).Equals("Kojima.Shell.exe", StringComparison.OrdinalIgnoreCase))
+                var file = string.IsNullOrWhiteSpace(exe) ? "" : Path.GetFileName(exe);
+                if (!file.Equals("Kojima.exe", StringComparison.OrdinalIgnoreCase) &&
+                    !file.Equals("Kojima.Shell.exe", StringComparison.OrdinalIgnoreCase))
                 {
                     // 开发环境（dotnet run / 测试宿主）不写启动项，避免把调试路径固化。
                     return;
