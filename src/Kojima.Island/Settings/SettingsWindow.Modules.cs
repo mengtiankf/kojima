@@ -310,6 +310,13 @@ public partial class SettingsWindow
         ClearMessagesButton.Content = "已清空";
     }
 
+    private void OnTranslateAdvanced(object sender, RoutedEventArgs e)
+    {
+        var show = TranslateAdvanced.Visibility != Visibility.Visible;
+        TranslateAdvanced.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        TranslateAdvancedToggle.Content = show ? "收起第三方账号" : "填写第三方账号（可选）";
+    }
+
     private void OnModuleBack(object sender, RoutedEventArgs e)
     {
         ShowPage(2);
