@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace Kojima.Core.Config;
@@ -68,11 +69,24 @@ public static class ConfigStore
                 // 先把旧版明文密钥搬进 secrets.dat；随后保存配置即可清除 json 中的密钥。
                 var migratedSecrets = SecretMigration.ExtractFromConfig(json);
 
+                // 再按版本迁移配置结构；迁移前留一份原始备份。
+                var migratedSettings = false;
+                if (JsonNode.Parse(json) is JsonObject root)
+                {
+                    var before = root["version"]?.GetValue<int>() ?? 1;
+                    if (SettingsMigrations.Apply(root))
+                    {
+                        BackupMigration(before);
+                        json = root.ToJsonString(Options);
+                        migratedSettings = true;
+                    }
+                }
+
                 var config = JsonSerializer.Deserialize<KojimaConfig>(json, Options);
                 if (config is not null)
                 {
                     var normalized = Normalize(config);
-                    if (migratedSecrets)
+                    if (migratedSecrets || migratedSettings)
                     {
                         Save(normalized);
                     }
@@ -99,6 +113,22 @@ public static class ConfigStore
         var tmp = ConfigPath + ".tmp";
         File.WriteAllText(tmp, json);
         File.Move(tmp, ConfigPath, overwrite: true);
+    }
+
+    private static void BackupMigration(int fromVersion)
+    {
+        try
+        {
+            if (File.Exists(ConfigPath))
+            {
+                var backup = Path.Combine(RootDirectory, $"config.v{fromVersion}.bak");
+                File.Copy(ConfigPath, backup, overwrite: true);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AppLog.Warn("config migration backup failed: " + ex.Message);
+        }
     }
 
     private static KojimaConfig Normalize(KojimaConfig config)

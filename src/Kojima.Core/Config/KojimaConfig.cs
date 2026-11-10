@@ -170,7 +170,7 @@ public sealed class TranslateSettings
 
 public sealed class KojimaConfig
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = SettingsMigrations.CurrentVersion;
 
     public bool StartWithWindows { get; set; }
 

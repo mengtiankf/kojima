@@ -129,7 +129,7 @@ public sealed class SecretMigrationTests : IDisposable
 
         var config = ConfigStore.Load();
 
-        Assert.Equal("dracula", config.Island.Theme);
+        Assert.Equal("deck-dracula", config.Island.Theme);
         Assert.Equal("sk-deepseek-plain", SecretStore.Get(SecretNames.DeepSeek));
         Assert.Equal("baidu-plain", SecretStore.Get(SecretNames.TranslateBaiduKey));
         Assert.Equal("microsoft-plain", SecretStore.Get(SecretNames.TranslateMicrosoftKey));
@@ -162,5 +162,30 @@ public sealed class SecretMigrationTests : IDisposable
     {
         Assert.Equal("deck-dark", new KojimaConfig().Island.Theme);
         Assert.Equal("deck-dark", Kojima.Core.Themes.ThemeCatalog.Get("no-such-theme").Id);
+    }
+
+    [Fact]
+    public void Version1ConfigMigratesThemeIdAndKeepsBackup()
+    {
+        File.WriteAllText(ConfigStore.ConfigPath,
+            """{"version":1,"island":{"theme":"dark","position":"topCenter"}}""");
+
+        var cfg = ConfigStore.Load();
+
+        Assert.Equal("deck-dark", cfg.Island.Theme);
+        Assert.Equal(SettingsMigrations.CurrentVersion, cfg.Version);
+        Assert.True(File.Exists(Path.Combine(_root, "config.v1.bak")));
+        Assert.Contains("\"deck-dark\"", File.ReadAllText(ConfigStore.ConfigPath));
+    }
+
+    [Fact]
+    public void NewerConfigVersionIsLeftAlone()
+    {
+        File.WriteAllText(ConfigStore.ConfigPath,
+            """{"version":99,"island":{"theme":"custom-theme"}}""");
+
+        var cfg = ConfigStore.Load();
+
+        Assert.Equal("custom-theme", cfg.Island.Theme);
     }
 }
