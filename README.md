@@ -61,7 +61,7 @@ Kojima.Island.exe (WPF, UI 进程)           ├─ stocks    腾讯行情、GBK
 
 从 [Releases](https://github.com/mengtiankf/kojima/releases) 下载，或本地构建后从 `dist/` 取用：
 
-- `dist/KojimaSetup-1.3.0.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
+- `dist/KojimaSetup-1.3.1.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
 - `publish/`：绿色版，运行 `Kojima.exe`（Shell 会自动拉起 `Kojima.Island.exe`）
 
 配置与日志在 `%LOCALAPPDATA%\Kojima`：

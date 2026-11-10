@@ -123,6 +123,12 @@ public sealed class UsageToggle
 {
     public bool Local { get; set; } = true;
     public bool Quota { get; set; } = true;
+
+    /// <summary>用量数据取自哪个来源；留空表示本列自身。</summary>
+    public string UsageFrom { get; set; } = "";
+
+    /// <summary>额度数据取自哪个来源；留空表示本列自身。</summary>
+    public string QuotaFrom { get; set; } = "";
 }
 
 public sealed class MonitorSettings

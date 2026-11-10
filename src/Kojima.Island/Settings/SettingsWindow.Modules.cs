@@ -317,6 +317,79 @@ public partial class SettingsWindow
         TranslateAdvancedToggle.Content = show ? "收起第三方账号" : "填写第三方账号（可选）";
     }
 
+    private void OnMonitorWizardPick(object sender, RoutedEventArgs e)
+    {
+        var tag = (sender as FrameworkElement)?.Tag as string ?? "auto";
+        switch (tag)
+        {
+            case "lhm":
+                MonitorLhm.IsChecked = true;
+                break;
+            case "ohm":
+                MonitorOhm.IsChecked = true;
+                break;
+            case "internal":
+                MonitorInternal.IsChecked = true;
+                break;
+            default:
+                MonitorAuto.IsChecked = true;
+                break;
+        }
+
+        MonitorWizardSummary.Text = tag switch
+        {
+            "lhm" => "将读取 LibreHardwareMonitor 的温度与功耗；它需要正在运行并暴露 WMI 数据。",
+            "ohm" => "将读取 OpenHardwareMonitor 的温度与功耗；它需要正在运行并暴露 WMI 数据。",
+            "internal" => "只使用系统自带接口：不需要额外软件，但部分主板读不到温度。",
+            _ => "自动：检测到外部监控软件就用它，否则使用系统自带接口，不需要手动改。",
+        };
+        MonitorWizardStep1.Visibility = Visibility.Collapsed;
+        MonitorWizardStep2.Visibility = Visibility.Visible;
+    }
+
+    private void OnMonitorWizardBack(object sender, RoutedEventArgs e)
+    {
+        MonitorWizardStep2.Visibility = Visibility.Collapsed;
+        MonitorWizardStep1.Visibility = Visibility.Visible;
+    }
+
+    private void OnTranslateWizardPick(object sender, RoutedEventArgs e)
+    {
+        var tag = (sender as FrameworkElement)?.Tag as string ?? "auto";
+        switch (tag)
+        {
+            case "tencent":
+                TranslateTencent.IsChecked = true;
+                break;
+            case "deepseek":
+                TranslateDeepSeek.IsChecked = true;
+                break;
+            case "more":
+                break;
+            default:
+                TranslateAuto.IsChecked = true;
+                break;
+        }
+
+        TranslateEngines.Visibility = tag == "more" ? Visibility.Visible : Visibility.Collapsed;
+        TranslateWizardSummary.Text = tag switch
+        {
+            "tencent" => "使用腾讯翻译君：大陆直连、免费，适合日常中英与中日互译。",
+            "deepseek" => "使用 DeepSeek：译文更自然，需要在「用量」页填写 DeepSeek Key。",
+            "more" => "在下面选择具体引擎；百度、微软、自定义大模型还需要在下方第三方账号里填写凭据。",
+            _ => "自动：有 DeepSeek Key 就优先用 DeepSeek，否则用腾讯翻译君；都失败时退到 MyMemory。",
+        };
+        TranslateWizardStep1.Visibility = Visibility.Collapsed;
+        TranslateWizardStep2.Visibility = Visibility.Visible;
+    }
+
+    private void OnTranslateWizardBack(object sender, RoutedEventArgs e)
+    {
+        TranslateWizardStep2.Visibility = Visibility.Collapsed;
+        TranslateWizardStep1.Visibility = Visibility.Visible;
+        TranslateEngines.Visibility = Visibility.Collapsed;
+    }
+
     private void OnModuleBack(object sender, RoutedEventArgs e)
     {
         ShowPage(2);

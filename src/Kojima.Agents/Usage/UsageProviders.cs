@@ -5,8 +5,8 @@ namespace Kojima.Agents.Usage;
 
 /// <summary>
 /// 用量来源调度：把 13 个来源分别映射到本机日志、本机数据库或在线额度接口。
-/// 每个来源都会返回一个带说明的 snapshot，不再用 unknown 静默糊弄。
-/// 每个来源可以分别关闭“本机记录”和“账户额度”（与 BrimDeck 的用量/额度分列配置对应）。
+/// 每一列可以独立选择“用量来源”和“额度来源”（与 BrimDeck 的用量/额度分列配置对应），
+/// 例如：列显示 Claude，用量读 Codex 的本机日志，额度查 Claude 的账户接口。
 /// </summary>
 public static class UsageProviders
 {
@@ -20,110 +20,55 @@ public static class UsageProviders
         var id = (source ?? "").Trim().ToLowerInvariant();
         var info = UsageCatalog.Find(id);
         var toggle = Toggle(settings, id);
-        var local = toggle.Local;
-        var quota = toggle.Quota;
 
-        UsageSnapshot snapshot;
-        switch (id)
+        var localFrom = toggle.Local ? Pick(toggle.UsageFrom, id, SupportsLocal) : null;
+        var quotaFrom = toggle.Quota ? Pick(toggle.QuotaFrom, id, SupportsQuota) : null;
+
+        var snapshot = localFrom is null
+            ? Blank(id, info)
+            : await ReadLocalAsync(localFrom, start, end, id, info).ConfigureAwait(false);
+
+        if (quotaFrom is not null)
         {
-            case "claude":
-                snapshot = local ? LocalUsage.Read("claude", start, end) : Blank(id, info);
-                if (quota)
-                {
-                    await QuotaGateway.ApplyAsync("claude", snapshot, null, ct).ConfigureAwait(false);
-                }
-                break;
-            case "codex":
-                snapshot = local ? LocalUsage.Read("codex", start, end) : Blank(id, info);
-                if (quota)
-                {
-                    await QuotaGateway.ApplyAsync("codex", snapshot, null, ct).ConfigureAwait(false);
-                }
-                break;
-            case "kimi":
-                snapshot = local ? LocalUsageExtra.ReadKimi(start, end) : Blank(id, info);
-                if (quota)
-                {
-                    await QuotaGateway.ApplyAsync("kimi", snapshot, null, ct).ConfigureAwait(false);
-                }
-                break;
-            case "cursor":
-                snapshot = Blank(id, info);
-                if (quota)
-                {
-                    await QuotaGateway.ApplyAsync("cursor", snapshot, null, ct).ConfigureAwait(false);
-                }
-                break;
-            case "antigravity":
-                snapshot = local ? AntigravityUsage.Read(start, end) : Blank(id, info);
-                break;
-            case "dsh":
-                snapshot = local ? LocalUsage.Read("dsh", start, end) : Blank(id, info);
-                break;
-            case "opencode":
-                snapshot = local ? LocalUsageExtra.ReadOpenCode(start, end) : Blank(id, info);
-                break;
-            case "zcode":
-                snapshot = local ? LocalUsageExtra.ReadZCode(start, end) : Blank(id, info);
-                break;
-            case "deepseek":
-                snapshot = Blank(id, info);
-                if (quota)
-                {
-                    await QuotaGateway.ApplyAsync("deepseek", snapshot, null, ct).ConfigureAwait(false);
-                }
-                break;
-            case "openrouter":
-                snapshot = Blank(id, info);
-                if (quota)
-                {
-                    await QuotaGateway.ApplyAsync("openrouter", snapshot, null, ct).ConfigureAwait(false);
-                }
-                break;
-            case "glm":
-                snapshot = Blank(id, info);
-                if (quota)
-                {
-                    await QuotaGateway.ApplyAsync("glm", snapshot, null, ct).ConfigureAwait(false);
-                }
-                break;
-            case "newapi":
-                snapshot = Blank(id, info);
-                if (quota)
-                {
-                    await QuotaGateway.ApplyAsync("newapi", snapshot, settings, ct).ConfigureAwait(false);
-                }
-                break;
-            case "sub2api":
-                snapshot = Blank(id, info);
-                if (quota)
-                {
-                    await QuotaGateway.ApplyAsync("sub2api", snapshot, settings, ct).ConfigureAwait(false);
-                }
-                break;
-            default:
-                snapshot = new UsageSnapshot { Status = "unknown", Note = "未知的用量来源" };
-                break;
+            await QuotaGateway.ApplyAsync(quotaFrom, snapshot, settings, ct).ConfigureAwait(false);
         }
 
         snapshot.Pid = id;
         snapshot.Name = info?.Name ?? snapshot.Name;
-        snapshot.Source ??= info?.Group ?? "本机";
+        snapshot.Source = info?.Group ?? snapshot.Source ?? "本机";
         snapshot.FetchedAt = DateTimeOffset.Now;
         ModelPricing.Fill(snapshot.Entries);
 
-        if (!local && !quota && string.IsNullOrEmpty(snapshot.Note))
+        var notes = new List<string>();
+        if (!string.IsNullOrWhiteSpace(snapshot.Note))
         {
-            snapshot.Note = "已关闭本机记录与账户额度";
+            notes.Add(snapshot.Note);
         }
-        else if (!local && string.IsNullOrEmpty(snapshot.Note))
+
+        if (localFrom is not null && localFrom != id)
         {
-            snapshot.Note = "已关闭本机记录";
+            notes.Add($"用量来自 {Name(localFrom)}");
         }
-        else if (!quota && string.IsNullOrEmpty(snapshot.Note))
+
+        if (quotaFrom is not null && quotaFrom != id)
         {
-            snapshot.Note = "已关闭账户额度查询";
+            notes.Add($"额度来自 {Name(quotaFrom)}");
         }
+
+        if (!toggle.Local && !toggle.Quota)
+        {
+            notes.Add("已关闭本机记录与账户额度");
+        }
+        else if (!toggle.Local)
+        {
+            notes.Add("已关闭用量记录");
+        }
+        else if (!toggle.Quota)
+        {
+            notes.Add("已关闭额度查询");
+        }
+
+        snapshot.Note = notes.Count > 0 ? string.Join(" · ", notes) : null;
 
         if (snapshot.Status is not ("error" or "unknown") &&
             snapshot.Entries.Count == 0 &&
@@ -136,6 +81,47 @@ public static class UsageProviders
 
         return snapshot;
     }
+
+    private static async Task<UsageSnapshot> ReadLocalAsync(
+        string id,
+        DateOnly start,
+        DateOnly end,
+        string columnId,
+        UsageSourceInfo? column)
+    {
+        var snapshot = id switch
+        {
+            "claude" or "codex" or "dsh" => LocalUsage.Read(id, start, end),
+            "kimi" => LocalUsageExtra.ReadKimi(start, end),
+            "opencode" => LocalUsageExtra.ReadOpenCode(start, end),
+            "zcode" => LocalUsageExtra.ReadZCode(start, end),
+            "antigravity" => AntigravityUsage.Read(start, end),
+            _ => Blank(columnId, column),
+        };
+
+        // 本机读取器会写自己的名字；这一列可能借用别的来源，统一改回列自己的标题。
+        snapshot.Pid = columnId;
+        snapshot.Name = column?.Name ?? snapshot.Name;
+        snapshot.Source = column?.Group ?? snapshot.Source;
+        return snapshot;
+    }
+
+    private static string? Pick(string? chosen, string id, Func<string, bool> supported)
+    {
+        var want = string.IsNullOrWhiteSpace(chosen) ? id : chosen.Trim().ToLowerInvariant();
+        if (supported(want))
+        {
+            return want;
+        }
+
+        return supported(id) ? id : null;
+    }
+
+    private static bool SupportsLocal(string id) => UsageCatalog.Find(id)?.SupportsLocal == true;
+
+    private static bool SupportsQuota(string id) => UsageCatalog.Find(id)?.SupportsQuota == true;
+
+    private static string Name(string id) => UsageCatalog.Find(id)?.Name ?? id;
 
     private static UsageToggle Toggle(UsageSettings settings, string id)
     {

@@ -613,21 +613,45 @@
                                 <TextBlock Text="系统监控" Style="{StaticResource GroupLabel}"/>
                                 <Border Style="{StaticResource Card}" Padding="18,16">
                                     <StackPanel>
-                                        <TextBlock Text="监控数据源" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="一般保持「自动」即可：会自动识别已安装的监控软件，没有就使用系统自带接口。"
-                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
-                                        <Border Style="{StaticResource SegmentGroup}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <RadioButton x:Name="MonitorAuto" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
-                                                             Content="自动"/>
-                                                <RadioButton x:Name="MonitorInternal" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
-                                                             Content="内置"/>
-                                                <RadioButton x:Name="MonitorLhm" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
-                                                             Content="LibreHardwareMonitor"/>
-                                                <RadioButton x:Name="MonitorOhm" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
-                                                             Content="OpenHardwareMonitor"/>
-                                            </StackPanel>
-                                        </Border>
+                                        <StackPanel x:Name="MonitorWizardStep1">
+                                            <TextBlock Text="向导：温度与功耗从哪里读取？" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="不确定就选第一项，Kojima 会自动识别；之后随时可以回来改。"
+                                                       Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
+                                            <WrapPanel>
+                                                <Button Content="不确定 / 没装（推荐）" Tag="auto" Click="OnMonitorWizardPick"
+                                                        Style="{StaticResource GhostButton}" Height="34" Padding="14,0" Margin="0,0,8,8"/>
+                                                <Button Content="装了 LibreHardwareMonitor" Tag="lhm" Click="OnMonitorWizardPick"
+                                                        Style="{StaticResource GhostButton}" Height="34" Padding="14,0" Margin="0,0,8,8"/>
+                                                <Button Content="装了 OpenHardwareMonitor" Tag="ohm" Click="OnMonitorWizardPick"
+                                                        Style="{StaticResource GhostButton}" Height="34" Padding="14,0" Margin="0,0,8,8"/>
+                                                <Button Content="只用系统接口" Tag="internal" Click="OnMonitorWizardPick"
+                                                        Style="{StaticResource GhostButton}" Height="34" Padding="14,0" Margin="0,0,8,8"/>
+                                            </WrapPanel>
+                                        </StackPanel>
+
+                                        <StackPanel x:Name="MonitorWizardStep2" Visibility="Collapsed">
+                                            <TextBlock x:Name="MonitorWizardSummary" Style="{StaticResource RowDesc}" TextWrapping="Wrap"/>
+                                            <Button Content="重新选择" Click="OnMonitorWizardBack"
+                                                    Style="{StaticResource GhostButton}" Height="30" Padding="12,0"
+                                                    HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                                        </StackPanel>
+
+                                        <StackPanel x:Name="MonitorAdvanced" Visibility="Collapsed">
+                                            <TextBlock Text="高级：手动指定数据源" Style="{StaticResource RowTitle}" Margin="0,14,0,0"/>
+                                            <Border Style="{StaticResource SegmentGroup}" Margin="0,8,0,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <RadioButton x:Name="MonitorAuto" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
+                                                                 Content="自动"/>
+                                                    <RadioButton x:Name="MonitorInternal" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
+                                                                 Content="内置"/>
+                                                    <RadioButton x:Name="MonitorLhm" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
+                                                                 Content="LibreHardwareMonitor"/>
+                                                    <RadioButton x:Name="MonitorOhm" GroupName="MonitorSource" Style="{StaticResource SegmentTight}"
+                                                                 Content="OpenHardwareMonitor"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+
                                         <TextBlock x:Name="DetectedSourcesText" Style="{StaticResource Hint}" Margin="2,12,0,0"
                                                    Text="未检测到外部监控软件"/>
                                     </StackPanel>
@@ -672,29 +696,52 @@
                                 <TextBlock Text="翻译" Style="{StaticResource GroupLabel}"/>
                                 <Border Style="{StaticResource Card}" Padding="18,16">
                                     <StackPanel>
-                                        <TextBlock Text="翻译引擎" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="自动：填了 DeepSeek Key 就优先用它，否则走腾讯翻译君（大陆直连，失败再退 MyMemory）。"
-                                                   Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
-                                        <Border Style="{StaticResource SegmentGroup}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <RadioButton x:Name="TranslateAuto" GroupName="TranslateEngine"
-                                                             Style="{StaticResource SegmentTight}" Content="自动"/>
-                                                <RadioButton x:Name="TranslateTencent" GroupName="TranslateEngine"
-                                                             Style="{StaticResource SegmentTight}" Content="腾讯翻译君"/>
-                                                <RadioButton x:Name="TranslateGoogle" GroupName="TranslateEngine"
-                                                             Style="{StaticResource SegmentTight}" Content="Google 翻译"/>
-                                                <RadioButton x:Name="TranslateMyMemory" GroupName="TranslateEngine"
-                                                             Style="{StaticResource SegmentTight}" Content="MyMemory"/>
-                                                <RadioButton x:Name="TranslateDeepSeek" GroupName="TranslateEngine"
-                                                             Style="{StaticResource SegmentTight}" Content="DeepSeek"/>
-                                                <RadioButton x:Name="TranslateBaidu" GroupName="TranslateEngine"
-                                                             Style="{StaticResource SegmentTight}" Content="百度翻译"/>
-                                                <RadioButton x:Name="TranslateMicrosoft" GroupName="TranslateEngine"
-                                                             Style="{StaticResource SegmentTight}" Content="微软翻译"/>
-                                                <RadioButton x:Name="TranslateCustom" GroupName="TranslateEngine"
-                                                             Style="{StaticResource SegmentTight}" Content="自定义大模型"/>
-                                            </StackPanel>
-                                        </Border>
+                                        <StackPanel x:Name="TranslateWizardStep1">
+                                            <TextBlock Text="向导：你希望翻译走哪条路？" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="日常使用选第一项即可；有 DeepSeek Key 或百度/微软账号时再选对应项。"
+                                                       Style="{StaticResource RowDesc}" Margin="0,3,0,12"/>
+                                            <WrapPanel>
+                                                <Button Content="自动（推荐）" Tag="auto" Click="OnTranslateWizardPick"
+                                                        Style="{StaticResource GhostButton}" Height="34" Padding="14,0" Margin="0,0,8,8"/>
+                                                <Button Content="腾讯翻译君（大陆免费）" Tag="tencent" Click="OnTranslateWizardPick"
+                                                        Style="{StaticResource GhostButton}" Height="34" Padding="14,0" Margin="0,0,8,8"/>
+                                                <Button Content="DeepSeek（更准，需要 Key）" Tag="deepseek" Click="OnTranslateWizardPick"
+                                                        Style="{StaticResource GhostButton}" Height="34" Padding="14,0" Margin="0,0,8,8"/>
+                                                <Button Content="更多引擎（百度 / 微软 / Google…）" Tag="more" Click="OnTranslateWizardPick"
+                                                        Style="{StaticResource GhostButton}" Height="34" Padding="14,0" Margin="0,0,8,8"/>
+                                            </WrapPanel>
+                                        </StackPanel>
+
+                                        <StackPanel x:Name="TranslateWizardStep2" Visibility="Collapsed">
+                                            <TextBlock x:Name="TranslateWizardSummary" Style="{StaticResource RowDesc}" TextWrapping="Wrap"/>
+                                            <Button Content="重新选择" Click="OnTranslateWizardBack"
+                                                    Style="{StaticResource GhostButton}" Height="30" Padding="12,0"
+                                                    HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                                        </StackPanel>
+
+                                        <StackPanel x:Name="TranslateEngines" Visibility="Collapsed" Margin="0,4,0,0">
+                                            <TextBlock Text="可用引擎" Style="{StaticResource RowTitle}" Margin="0,10,0,0"/>
+                                            <Border Style="{StaticResource SegmentGroup}" Margin="0,8,0,0">
+                                                <WrapPanel>
+                                                    <RadioButton x:Name="TranslateAuto" GroupName="TranslateEngine"
+                                                                 Style="{StaticResource SegmentTight}" Content="自动"/>
+                                                    <RadioButton x:Name="TranslateTencent" GroupName="TranslateEngine"
+                                                                 Style="{StaticResource SegmentTight}" Content="腾讯翻译君"/>
+                                                    <RadioButton x:Name="TranslateGoogle" GroupName="TranslateEngine"
+                                                                 Style="{StaticResource SegmentTight}" Content="Google 翻译"/>
+                                                    <RadioButton x:Name="TranslateMyMemory" GroupName="TranslateEngine"
+                                                                 Style="{StaticResource SegmentTight}" Content="MyMemory"/>
+                                                    <RadioButton x:Name="TranslateDeepSeek" GroupName="TranslateEngine"
+                                                                 Style="{StaticResource SegmentTight}" Content="DeepSeek"/>
+                                                    <RadioButton x:Name="TranslateBaidu" GroupName="TranslateEngine"
+                                                                 Style="{StaticResource SegmentTight}" Content="百度翻译"/>
+                                                    <RadioButton x:Name="TranslateMicrosoft" GroupName="TranslateEngine"
+                                                                 Style="{StaticResource SegmentTight}" Content="微软翻译"/>
+                                                    <RadioButton x:Name="TranslateCustom" GroupName="TranslateEngine"
+                                                                 Style="{StaticResource SegmentTight}" Content="自定义大模型"/>
+                                                </WrapPanel>
+                                            </Border>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Border>
 
@@ -882,7 +929,7 @@
                                   Visibility="Collapsed">
                         <StackPanel Margin="0,2,0,26">
                             <TextBlock Text="AI 用量" Style="{StaticResource GroupLabel}"/>
-                            <TextBlock Text="每个来源一张卡片：打开后才会参与汇总。需要密钥的来源直接在卡片里填写；密钥用 Windows DPAPI 加密保存在 secrets.dat，不写进 config.json。"
+                            <TextBlock Text="每个来源一张卡片：打开后才会参与汇总。卡片里的「用量来源」和「额度来源」可以分别选择，例如列显示 Claude，用量读 Codex 的本机日志、额度查 Claude 的账户接口；选「关闭」即可停用其中一项。密钥用 Windows DPAPI 加密保存在 secrets.dat，不写进 config.json。"
                                        Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="2,0,0,10"/>
                             <StackPanel x:Name="UsageSourceList"/>
 

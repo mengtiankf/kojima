@@ -15,8 +15,8 @@ public partial class SettingsWindow
         CheckBox Toggle,
         PasswordBox? Key,
         TextBox? Site,
-        CheckBox? Local,
-        CheckBox? Quota);
+        ComboBox? UsageFrom,
+        ComboBox? QuotaFrom);
 
     private readonly List<UsageCard> _usageCards = new();
 
@@ -84,23 +84,19 @@ public partial class SettingsWindow
 
             cfg.Usage.Toggles.TryGetValue(info.Id, out var flags);
             flags ??= new UsageToggle();
-            CheckBox? localBox = null;
-            CheckBox? quotaBox = null;
-            var subs = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(46, 8, 0, 0),
-            };
+            ComboBox? usageBox = null;
+            ComboBox? quotaBox = null;
+            var subs = new StackPanel { Margin = new Thickness(46, 8, 0, 0) };
             if (info.SupportsLocal)
             {
-                localBox = SubToggle("本机记录", flags.Local);
-                subs.Children.Add(localBox);
+                usageBox = Picker(LocalOptions(), flags.Local ? Effective(flags.UsageFrom, info.Id) : "");
+                subs.Children.Add(PickerRow("用量来源", usageBox));
             }
 
             if (info.SupportsQuota)
             {
-                quotaBox = SubToggle("账户额度", flags.Quota);
-                subs.Children.Add(quotaBox);
+                quotaBox = Picker(QuotaOptions(), flags.Quota ? Effective(flags.QuotaFrom, info.Id) : "");
+                subs.Children.Add(PickerRow("额度来源", quotaBox));
             }
 
             if (subs.Children.Count > 0)
@@ -144,23 +140,77 @@ public partial class SettingsWindow
 
             card.Child = body;
             UsageSourceList.Children.Add(card);
-            _usageCards.Add(new UsageCard(info.Id, toggle, key, site, localBox, quotaBox));
+            _usageCards.Add(new UsageCard(info.Id, toggle, key, site, usageBox, quotaBox));
         }
     }
 
-    private static CheckBox SubToggle(string text, bool isChecked)
+    private static string Effective(string stored, string id)
+        => string.IsNullOrWhiteSpace(stored) || string.Equals(stored, id, StringComparison.OrdinalIgnoreCase)
+            ? id
+            : stored.Trim().ToLowerInvariant();
+
+    private static List<(string Id, string Name)> LocalOptions()
     {
-        var box = new CheckBox
+        var list = new List<(string, string)> { ("", "关闭") };
+        list.AddRange(UsageCatalog.All.Where(info => info.SupportsLocal).Select(info => (info.Id, info.Name)));
+        return list;
+    }
+
+    private static List<(string Id, string Name)> QuotaOptions()
+    {
+        var list = new List<(string, string)> { ("", "关闭") };
+        list.AddRange(UsageCatalog.All.Where(info => info.SupportsQuota).Select(info => (info.Id, info.Name)));
+        return list;
+    }
+
+    private static ComboBox Picker(List<(string Id, string Name)> options, string selected)
+    {
+        var box = new ComboBox
         {
-            Content = text,
-            IsChecked = isChecked,
-            FontSize = 11.5,
-            Margin = new Thickness(0, 0, 18, 0),
-            VerticalContentAlignment = VerticalAlignment.Center,
+            Width = 190,
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center,
         };
-        box.SetResourceReference(Control.ForegroundProperty, "Text2Brush");
+
+        foreach (var (id, name) in options)
+        {
+            var item = new ComboBoxItem { Content = name, Tag = id };
+            box.Items.Add(item);
+            if (string.Equals(id, selected, StringComparison.OrdinalIgnoreCase))
+            {
+                box.SelectedItem = item;
+            }
+        }
+
+        if (box.SelectedItem is null && box.Items.Count > 0)
+        {
+            box.SelectedIndex = 0;
+        }
+
         return box;
     }
+
+    private static Grid PickerRow(string label, ComboBox box)
+    {
+        var row = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(66) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var text = new TextBlock
+        {
+            Text = label,
+            FontSize = 11.5,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        text.SetResourceReference(TextBlock.ForegroundProperty, "Text2Brush");
+        row.Children.Add(text);
+        Grid.SetColumn(box, 1);
+        row.Children.Add(box);
+        return row;
+    }
+
+    private static string SelectedTag(ComboBox box)
+        => box.SelectedItem is ComboBoxItem { Tag: string tag } ? tag : "";
 
     private static string Describe(UsageSourceInfo info)
     {
@@ -205,17 +255,21 @@ public partial class SettingsWindow
 
         foreach (var card in _usageCards)
         {
-            if (card.Local is not null || card.Quota is not null)
+            if (card.UsageFrom is not null || card.QuotaFrom is not null)
             {
                 var entry = toggles.TryGetValue(card.Id, out var existing) ? existing : new UsageToggle();
-                if (card.Local is not null)
+                if (card.UsageFrom is not null)
                 {
-                    entry.Local = card.Local.IsChecked == true;
+                    var picked = SelectedTag(card.UsageFrom);
+                    entry.Local = picked.Length > 0;
+                    entry.UsageFrom = picked.Length > 0 && !string.Equals(picked, card.Id, StringComparison.OrdinalIgnoreCase) ? picked : "";
                 }
 
-                if (card.Quota is not null)
+                if (card.QuotaFrom is not null)
                 {
-                    entry.Quota = card.Quota.IsChecked == true;
+                    var picked = SelectedTag(card.QuotaFrom);
+                    entry.Quota = picked.Length > 0;
+                    entry.QuotaFrom = picked.Length > 0 && !string.Equals(picked, card.Id, StringComparison.OrdinalIgnoreCase) ? picked : "";
                 }
 
                 toggles[card.Id] = entry;
