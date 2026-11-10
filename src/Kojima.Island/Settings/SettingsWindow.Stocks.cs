@@ -141,6 +141,16 @@ public partial class SettingsWindow
             };
             StockPresets.Children.Add(button);
         }
+
+        if (StockPresets.Children.Count == 0)
+        {
+            StockPresets.Children.Add(new TextBlock
+            {
+                Text = "常用股票都已加入自选。",
+                Style = (Style)FindResource("Hint"),
+                Margin = new Thickness(2, 2, 0, 2),
+            });
+        }
     }
 
     private async void OnStockSearchClick(object sender, RoutedEventArgs e) => await SearchStocksAsync();
