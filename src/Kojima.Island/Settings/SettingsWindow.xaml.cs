@@ -199,6 +199,9 @@ public partial class SettingsWindow : Window
         var cfg = _runtime.Config;
 
         StartSwitch.IsChecked = StartupRegistration.IsEnabled() || cfg.StartWithWindows;
+        HotkeyToggle.Text = cfg.Hotkeys.Toggle ?? "";
+        HotkeySettings.Text = cfg.Hotkeys.Settings ?? "";
+        HotkeyMonitor.Text = cfg.Hotkeys.Monitor ?? "";
 
         PosCenter.IsChecked = cfg.Island.Position == IslandPosition.TopCenter;
         PosLeft.IsChecked = cfg.Island.Position == IslandPosition.TopLeft;
@@ -794,6 +797,10 @@ public partial class SettingsWindow : Window
             var previousPollMs = cfg.Messages.PollMs;
             var previousMonitorSource = cfg.Monitor.Source;
             var previousIdle = cfg.Feature("monitor").IdleExitSeconds;
+            var previousHotkeys = HotkeySignature(cfg.Hotkeys);
+            cfg.Hotkeys.Toggle = (HotkeyToggle.Text ?? "").Trim();
+            cfg.Hotkeys.Settings = (HotkeySettings.Text ?? "").Trim();
+            cfg.Hotkeys.Monitor = (HotkeyMonitor.Text ?? "").Trim();
             cfg.StartWithWindows = StartSwitch.IsChecked == true;
             StartupRegistration.Apply(cfg.StartWithWindows);
 
@@ -956,13 +963,23 @@ public partial class SettingsWindow : Window
             StatusText.Text = "已保存并立即生效";
             Saved?.Invoke();
 
+            var restartReasons = new List<string>();
             if (cfg.Feature("monitor").IdleExitSeconds != previousIdle)
+            {
+                restartReasons.Add("子进程空闲回收时长已保存，已启动的子进程仍按旧设置运行。");
+            }
+
+            if (HotkeySignature(cfg.Hotkeys) != previousHotkeys)
+            {
+                restartReasons.Add("快捷键已保存，新组合需要重启后才会注册。");
+            }
+
+            if (restartReasons.Count > 0)
             {
                 var restart = AppDialog.Confirm(
                     this,
                     "需要重启",
-                    "子进程空闲回收时长已保存，已启动的子进程仍按旧设置运行。" + Environment.NewLine +
-                    "要让所有子进程按新时长回收，请重启 Kojima。",
+                    string.Join(Environment.NewLine, restartReasons) + Environment.NewLine + "现在重启吗？",
                     "立即重启",
                     "稍后");
                 if (restart)
@@ -1022,6 +1039,9 @@ public partial class SettingsWindow : Window
 
     private static int ParseInt(string? text, int fallback) =>
         int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+
+    private static string HotkeySignature(HotkeySettings keys) =>
+        $"{keys.Toggle}|{keys.Settings}|{keys.Monitor}";
 
     private sealed class FeatureRow(string key, CheckBox toggle, bool initial)
     {

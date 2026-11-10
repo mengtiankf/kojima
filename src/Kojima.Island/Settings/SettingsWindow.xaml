@@ -167,6 +167,50 @@
                                 </StackPanel>
                             </Border>
 
+                            <TextBlock Text="快捷键" Style="{StaticResource GroupLabel}"/>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="显示 / 隐藏灵动岛" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="例如 Ctrl+Alt+K；修改后需重启生效，留空表示不注册" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <TextBox x:Name="HotkeyToggle" Grid.Column="1" Style="{StaticResource Field}"
+                                                 Width="180" Margin="24,0,0,0"/>
+                                    </Grid>
+                                    <Border Style="{StaticResource RowDivider}"/>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="打开设置" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="默认 Ctrl+Alt+S；修改后需重启生效" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <TextBox x:Name="HotkeySettings" Grid.Column="1" Style="{StaticResource Field}"
+                                                 Width="180" Margin="24,0,0,0"/>
+                                    </Grid>
+                                    <Border Style="{StaticResource RowDivider}"/>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="打开监控" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="默认 Ctrl+Alt+M，被占用时自动退到 Ctrl+Alt+O" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <TextBox x:Name="HotkeyMonitor" Grid.Column="1" Style="{StaticResource Field}"
+                                                 Width="180" Margin="24,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
                             <TextBlock Text="灵动岛" Style="{StaticResource GroupLabel}"/>
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
