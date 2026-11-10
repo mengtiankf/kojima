@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Kojima.Core.Config;
+using Kojima.Core.Models;
 using Kojima.Core.Themes;
 using Kojima.Shell.Interop;
 using Kojima.Shell.Theme;
@@ -885,7 +886,7 @@ public partial class IslandWindow : Window
     }
 
     /// <summary>紧凑态右下角天气。</summary>
-    private void ApplyWeather(Kojima.Shell.Services.WeatherInfo info)
+    private void ApplyWeather(Kojima.Core.Models.WeatherInfo info)
     {
         if (info is null || _demo)
         {

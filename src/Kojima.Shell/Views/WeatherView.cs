@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Kojima.Core.Models;
 using Kojima.Shell.Services;
 using Kojima.Shell.Theme;
 

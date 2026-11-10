@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Kojima.Core.Models;
 using Kojima.Shell.Theme;
 
 namespace Kojima.Shell.Views;
@@ -45,13 +46,13 @@ public partial class HomeView : UserControl
     public void ApplyDemoMedia(Kojima.Shell.Services.MediaInfo info) => Media.ApplyDemo(info);
 
     /// <summary>演示数据：截图用，之后的真实天气不再覆盖。</summary>
-    public void ApplyDemo(Kojima.Shell.Services.WeatherInfo info)
+    public void ApplyDemo(Kojima.Core.Models.WeatherInfo info)
     {
         ApplyWeather(info);
         _demo = true;
     }
 
-    private void ApplyWeather(Kojima.Shell.Services.WeatherInfo info)
+    private void ApplyWeather(Kojima.Core.Models.WeatherInfo info)
     {
         if (info is null || _demo)
         {

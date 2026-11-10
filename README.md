@@ -2,7 +2,7 @@
 
 Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://github.com/mengtiankf/kojima/releases)
 
-界面与调度在主进程，监控、用量、天气、股票这类采样与联网重活放在**按需启动的子进程**里（空闲自动退出）；岛体材质、肩部曲线与主题文件沿用 [BrimDeck](https://github.com/MoFeng2223/BrimDeck) 的设计语言。
+界面与调度在主进程，监控、用量、天气、股票、媒体、剪贴板、翻译、通知与频谱这些采样、解析和联网工作都放在**按需启动的子进程**里（空闲自动退出）；岛体材质、肩部曲线与主题文件沿用 [BrimDeck](https://github.com/MoFeng2223/BrimDeck) 的设计语言。
 
 ![首页](docs/doc-home.png)
 ![AI 用量](docs/doc-usage.png)
@@ -37,14 +37,20 @@ Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://gi
 
 ```
 Kojima.Shell (WPF, 主进程)             Kojima.Agents (子进程, 按需拉起)
-  ├─ 灵动岛窗口 / 页面 / 托盘 / 热键       ├─ monitor   采样 CPU/GPU/内存/网络/进程
-  ├─ ConfigStore / ThemeCatalog          ├─ usage     本地会话日志 + 账户额度
-  └─ AgentSupervisor ─── NamedPipe ───▶  ├─ weather   wttr.in 请求与原始 JSON
-                                         └─ stocks    腾讯行情请求与 GBK 解码
+  ├─ 灵动岛窗口 / 页面 / 托盘 / 热键       ├─ monitor    CPU/GPU/内存/网络/进程采样 + 占用提醒
+  ├─ ConfigStore / ThemeCatalog          ├─ usage      本地会话日志 + 账户额度 + 缓存/限流
+  ├─ 薄代理（媒体/剪贴板/翻译/消息/频谱）  ├─ weather   wttr.in 请求、解析与雨雪提醒
+  └─ AgentSupervisor ─── NamedPipe ───▶  ├─ stocks    腾讯行情、GBK 解码与 ±5% 提醒
+                                         ├─ media     SMTC 会话、封面与播放控制
+                                         ├─ clipboard 剪贴板轮询与历史
+                                         ├─ translate 翻译请求
+                                         ├─ messages  Windows 通知库读取
+                                         └─ spectrum  WASAPI 环回频谱
 ```
 
 - 子进程只在功能被真正使用时由 `AgentSupervisor` 拉起，空闲 `IdleExitSeconds`（默认 90 秒）后自行退出；关闭功能开关会立即回收。
 - 子进程意外退出会被 `Process.Exited` 捕获：记录退出码、回收句柄，并按 2/4/8/16/30 秒退避后再拉起；连续稳定运行 30 秒后才清除失败计数，避免崩溃循环。
+- 提醒规则（CPU ≥ 90%、雨雪、持仓 ±5%）也在子进程内判定，通过 `{Event="notice", Data={title,body,kind}}` 推给主进程进入消息中心。
 - IPC 是逐行 JSON 的命名管道：`kojima-{feature}-{shellPid}`，主进程发 `IpcEnvelope{Id,Method,Params}`，子进程回 `{Id,Result}` 或推 `{Event,Data}`。
 - 共享模型、配置、主题与几何算法都在 `Kojima.Core`，两个进程引用同一份代码。
 

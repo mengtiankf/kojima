@@ -1,6 +1,7 @@
 using System.Net.Http;
 using System.Text.Json;
 using Kojima.Core.Ipc;
+using Kojima.Core.Models;
 
 namespace Kojima.Agents.Features;
 
@@ -37,7 +38,8 @@ public sealed class WeatherFeature : IAgentFeature
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         await MaybeAlertAsync(body).ConfigureAwait(false);
-        return body;
+        using var document = JsonDocument.Parse(body);
+        return WeatherParser.Parse(document.RootElement);
     }
 
     /// <summary>雨雪提醒：3 小时内最多一次，判定用 wttr 的中文/英文天气描述。</summary>
