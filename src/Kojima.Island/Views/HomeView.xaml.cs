@@ -36,6 +36,14 @@ public partial class HomeView : UserControl
         ActMute.MouseLeftButtonUp += (_, _) => ToggleMute();
         ActSnip.MouseLeftButtonUp += (_, _) => Run("ms-screenclip:");
         WeatherCard.MouseLeftButtonUp += (_, _) => OpenSettings();
+
+        // 主页卡片跟随功能开关：关掉的功能不在主页留一张空卡。
+        var showWeather = _runtime.FeatureEnabled("weather");
+        var showMedia = _runtime.FeatureEnabled("media");
+        var showControls = _runtime.FeatureEnabled("controls");
+        WeatherCard.Visibility = showWeather ? Visibility.Visible : Visibility.Collapsed;
+        MediaCard.Visibility = showMedia ? Visibility.Visible : Visibility.Collapsed;
+        ActionCard.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>天气卡：城市 / 温度 / 描述。</summary>

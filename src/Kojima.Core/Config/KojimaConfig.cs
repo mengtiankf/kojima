@@ -251,6 +251,7 @@ public sealed class KojimaConfig
         ["stocks"] = new FeatureSettings(),
         ["clipboard"] = new FeatureSettings { Enabled = false },
         ["translate"] = new FeatureSettings { Enabled = false },
+        ["messages"] = new FeatureSettings(),
         ["controls"] = new FeatureSettings(),
     };
 

@@ -80,7 +80,11 @@ public sealed class MediaProxy : IDisposable
 
     public void Start() => _starting ??= StartAsync();
 
-    public void Stop() => _ = _agents.RequestAsync<object>("media", "media.stop", null, 5000);
+    public void Stop()
+    {
+        _starting = null;
+        _ = _agents.RequestAsync<object>("media", "media.stop", null, 5000);
+    }
 
     public async Task TogglePlayPauseAsync() => await CommandAsync("media.toggle").ConfigureAwait(false);
 

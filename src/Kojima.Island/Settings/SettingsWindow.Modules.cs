@@ -130,8 +130,10 @@ public partial class SettingsWindow
                 Margin = new Thickness(16, 0, 0, 0),
             };
 
-            var up = MakeOrderButton("\uE74A", "上移", index > 0, () => MoveKey(def.Key, -1));
-            var down = MakeOrderButton("\uE74B", "下移", index < _order.Count - 1, () => MoveKey(def.Key, 1));
+            // 媒体没有独立的灵动岛标签，顺序对它没有意义，避免出现无效按钮。
+            var reorderable = !def.Key.Equals("media", StringComparison.OrdinalIgnoreCase);
+            var up = MakeOrderButton("\uE74A", "上移", reorderable && index > 0, () => MoveKey(def.Key, -1));
+            var down = MakeOrderButton("\uE74B", "下移", reorderable && index < _order.Count - 1, () => MoveKey(def.Key, 1));
             actions.Children.Add(up);
             actions.Children.Add(down);
             _orderButtons[def.Key] = (up, down);

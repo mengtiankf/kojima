@@ -34,7 +34,25 @@ public sealed class MessageProxy : IDisposable
 
     public void Start() => _starting ??= StartAsync();
 
-    public void Stop() => _ = _agents.RequestAsync<object>("messages", "messages.stop", null, 5000);
+    public void Stop()
+    {
+        _starting = null;
+        _ = _agents.RequestAsync<object>("messages", "messages.stop", null, 5000);
+    }
+
+    /// <summary>轮询间隔改动后让子进程按新间隔重启计时器。</summary>
+    public async Task RestartAsync()
+    {
+        try
+        {
+            await _agents.RequestAsync<object>("messages", "messages.restart", null, 8000).ConfigureAwait(false);
+            _starting = null;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Warn("重启消息子进程失败：" + ex.Message);
+        }
+    }
 
     public void Clear()
     {

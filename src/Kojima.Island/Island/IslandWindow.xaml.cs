@@ -235,7 +235,10 @@ public partial class IslandWindow : Window
             _pages.Add(new IslandPage("stocks", "", "股票", stocks, 300));
         }
 
-        _pages.Add(new IslandPage("ctl", "", "控制", new ControlsView(_runtime), 236));
+        if (_runtime.FeatureEnabled("controls"))
+        {
+            _pages.Add(new IslandPage("ctl", "", "控制", new ControlsView(_runtime), 236));
+        }
 
         if (_runtime.FeatureEnabled("clipboard"))
         {
@@ -814,6 +817,7 @@ public partial class IslandWindow : Window
     private void ApplyAppearance()
     {
         Background = Brushes.Transparent;
+        Opacity = Math.Clamp(Settings.Opacity, 0.6, 1.0);
         Surface.Shape = Settings.Shape;
         Surface.NotchWidth = Settings.NotchWidth;
         Surface.CapsuleWidth = Settings.CapsuleWidth;
@@ -854,7 +858,8 @@ public partial class IslandWindow : Window
         var content = Settings.CompactContent ?? "clockWeather";
 
         var clock = Settings.CompactView == "clock";
-        var weather = Settings.ShowWeather;
+        var weather = Settings.ShowWeather && _runtime.FeatureEnabled("weather");
+        var mediaOn = _runtime.FeatureEnabled("media");
 
         switch (content)
         {
@@ -882,7 +887,7 @@ public partial class IslandWindow : Window
 
         ClockText.Visibility = clock ? Visibility.Visible : Visibility.Collapsed;
         WeatherStack.Visibility = weather ? Visibility.Visible : Visibility.Collapsed;
-        MediaText.Visibility = content == "media" && Settings.Shape != IslandShape.Indicator
+        MediaText.Visibility = mediaOn && content == "media" && Settings.Shape != IslandShape.Indicator
             ? Visibility.Visible
             : Visibility.Collapsed;
 

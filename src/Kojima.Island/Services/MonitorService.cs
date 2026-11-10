@@ -61,8 +61,11 @@ public sealed class MonitorService
 
         try
         {
+            var interval = Math.Clamp(_config?.Monitor.IntervalMs ?? 1500, 400, 10000);
+            var source = _config?.Monitor.Source;
+            var tempSource = source is "internal" or "lhm" or "ohm" ? source : "auto";
             var result = await _agents
-                .RequestAsync("monitor", "subscribe", new { intervalMs = 1500, tempSource = _config?.Monitor.Source ?? "auto" }, 10000)
+                .RequestAsync("monitor", "subscribe", new { intervalMs = interval, tempSource }, 10000)
                 .ConfigureAwait(false);
             if (result is { } element && element.TryGetProperty("id", out var id) && id.TryGetInt32(out var parsed))
             {
@@ -75,6 +78,18 @@ public sealed class MonitorService
         {
             AppLog.Warn("启动监控失败：" + ex.Message);
         }
+    }
+
+    /// <summary>数据源或采样间隔改动后重开推送；未在推送时下次订阅自然会读到新配置。</summary>
+    public async Task ApplySettingsAsync()
+    {
+        if (_streamId == 0)
+        {
+            return;
+        }
+
+        await StopAsync().ConfigureAwait(false);
+        await StartAsync().ConfigureAwait(false);
     }
 
     public async Task StopAsync()

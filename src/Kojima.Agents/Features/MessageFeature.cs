@@ -57,6 +57,10 @@ public sealed class MessageFeature : IAgentFeature
                 return Task.FromResult<object?>(Items());
             case "messages.list":
                 return Task.FromResult<object?>(Items());
+            case "messages.restart":
+                Stop();
+                Start();
+                return Task.FromResult<object?>(new { ok = true });
             case "messages.stop":
                 Stop();
                 return Task.FromResult<object?>(new { ok = true });

@@ -10,6 +10,8 @@ public sealed class UsageService
     private readonly AgentSupervisor _agents;
     private readonly Dispatcher _dispatcher;
     private readonly KojimaConfig _config;
+    private readonly DispatcherTimer _timer = new();
+    private string _period = "today";
     private int _busy;
 
     public UsageService(AgentSupervisor agents, Dispatcher dispatcher, KojimaConfig config)
@@ -17,6 +19,22 @@ public sealed class UsageService
         _agents = agents;
         _dispatcher = dispatcher;
         _config = config;
+        _timer.Tick += (_, _) =>
+        {
+            if (_config.Feature("usage").Enabled)
+            {
+                _ = RefreshAsync(_period);
+            }
+        };
+        ApplySettings();
+    }
+
+    /// <summary>按设置里的刷新间隔重启周期刷新；保存设置后调用。</summary>
+    public void ApplySettings()
+    {
+        var seconds = Math.Clamp(_config.Usage.RefreshSeconds, 30, 3600);
+        _timer.Interval = TimeSpan.FromSeconds(seconds);
+        _timer.Start();
     }
 
     public IReadOnlyList<UsageSnapshot> Snapshots { get; private set; } = [];
@@ -34,6 +52,7 @@ public sealed class UsageService
             return;
         }
 
+        _period = period;
         try
         {
             var sources = _config.Usage.Sources.Count > 0

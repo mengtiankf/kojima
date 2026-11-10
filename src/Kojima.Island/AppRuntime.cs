@@ -27,7 +27,7 @@ public sealed class AppRuntime
         Notify = new NotifyCenter(dispatcher);
         Updates = new UpdateCoordinator(Notify, Agents);
         StockAlerts = new StockAlertService(Agents);
-        Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardProxy(Agents, dispatcher) : null;
+        Clipboard = new ClipboardProxy(Agents, dispatcher);
         Media = new MediaProxy(Agents, dispatcher);
         Spectrum = new SpectrumProxy(Agents);
         Messages = new MessageProxy(Agents, dispatcher, Config);
@@ -59,7 +59,7 @@ public sealed class AppRuntime
 
     public StockAlertService StockAlerts { get; }
 
-    public ClipboardProxy? Clipboard { get; }
+    public ClipboardProxy Clipboard { get; }
 
     public MessageProxy Messages { get; }
 
@@ -110,19 +110,62 @@ public sealed class AppRuntime
         SaveConfig();
         if (!enabled)
         {
-            await Agents.StopAsync(key).ConfigureAwait(false);
-            if (key == "stocks")
+            switch (key)
             {
-                StockAlerts.Stop();
+                case "monitor":
+                    await Monitor.StopAsync().ConfigureAwait(false);
+                    break;
+                case "clipboard":
+                    Clipboard.Stop();
+                    break;
+                case "messages":
+                    Messages.Stop();
+                    break;
+                case "media":
+                    Media.Stop();
+                    break;
+                case "spectrum":
+                    Spectrum.Stop();
+                    break;
+                case "stocks":
+                    StockAlerts.Stop();
+                    break;
             }
+
+            await Agents.StopAsync(key).ConfigureAwait(false);
         }
-        else if (key == "monitor")
+        else
         {
-            await Monitor.StartAsync().ConfigureAwait(false);
-        }
-        else if (key == "stocks")
-        {
-            StockAlerts.Start();
+            switch (key)
+            {
+                case "monitor":
+                    await Monitor.StartAsync().ConfigureAwait(false);
+                    break;
+                case "stocks":
+                    StockAlerts.Start();
+                    break;
+                case "clipboard":
+                    Clipboard.Start();
+                    break;
+                case "messages":
+                    Messages.Start();
+                    break;
+                case "media":
+                    Media.Start();
+                    break;
+                case "spectrum":
+                    Spectrum.Start();
+                    break;
+                case "usage":
+                    _ = Usage.RefreshAsync();
+                    break;
+                case "weather":
+                    _ = Weather.RefreshAsync();
+                    break;
+                case "controls":
+                    _ = Controls.LoadAsync();
+                    break;
+            }
         }
     }
 
@@ -146,13 +189,20 @@ public sealed class AppRuntime
     {
         if (Config.Feature("clipboard").Enabled)
         {
-            Clipboard?.Start();
+            Clipboard.Start();
         }
 
-        Media.Start();
-        Spectrum.Start();
+        if (Config.Feature("media").Enabled)
+        {
+            Media.Start();
+            Spectrum.Start();
+        }
 
-        Messages.Start();
+        if (Config.Feature("messages").Enabled)
+        {
+            Messages.Start();
+        }
+
         if (Config.Feature("stocks").Enabled)
         {
             StockAlerts.Start();

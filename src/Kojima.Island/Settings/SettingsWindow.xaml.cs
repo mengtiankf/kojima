@@ -791,6 +791,9 @@ public partial class SettingsWindow : Window
         try
         {
             var cfg = _runtime.Config;
+            var previousPollMs = cfg.Messages.PollMs;
+            var previousMonitorSource = cfg.Monitor.Source;
+            var previousIdle = cfg.Feature("monitor").IdleExitSeconds;
             cfg.StartWithWindows = StartSwitch.IsChecked == true;
             StartupRegistration.Apply(cfg.StartWithWindows);
 
@@ -929,6 +932,17 @@ public partial class SettingsWindow : Window
 
             _runtime.Weather.ApplySettings();
             _ = _runtime.Weather.RefreshAsync();
+            _runtime.Usage.ApplySettings();
+
+            if (cfg.Messages.PollMs != previousPollMs)
+            {
+                await _runtime.Messages.RestartAsync();
+            }
+
+            if (!string.Equals(cfg.Monitor.Source, previousMonitorSource, StringComparison.OrdinalIgnoreCase))
+            {
+                await _runtime.Monitor.ApplySettingsAsync();
+            }
 
             _pending.Clear();
             _runtime.Island?.ReloadFeatures();
@@ -938,27 +952,24 @@ public partial class SettingsWindow : Window
                 row.Initial = row.Toggle.IsChecked == true;
             }
 
-            var restartWanted = false;
-            if (changed.Count > 0)
-            {
-                restartWanted = AppDialog.Confirm(
-                    this,
-                    "需要重启",
-                    "功能模块的开关会立即生效。" + Environment.NewLine +
-                    "要让所有界面与子进程完全按新配置运行，建议重启 Kojima。",
-                    "立即重启",
-                    "稍后");
-            }
-
-            StatusText.Text = changed.Count > 0 ? "已应用（建议重启一次）" : "已保存";
+            StatusText.Text = "已保存并立即生效";
             Saved?.Invoke();
 
-            if (restartWanted)
+            if (cfg.Feature("monitor").IdleExitSeconds != previousIdle)
             {
-                RestartApp();
-                return;
+                var restart = AppDialog.Confirm(
+                    this,
+                    "需要重启",
+                    "子进程空闲回收时长已保存，已启动的子进程仍按旧设置运行。" + Environment.NewLine +
+                    "要让所有子进程按新时长回收，请重启 Kojima。",
+                    "立即重启",
+                    "稍后");
+                if (restart)
+                {
+                    RestartApp();
+                    return;
+                }
             }
-
             if (close)
             {
                 Close();
