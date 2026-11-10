@@ -2,7 +2,7 @@
 ; 由 build.ps1 在 publish 之后调用：ISCC.exe /DAppVersion=1.2.1 installer\kojima.iss
 
 #ifndef AppVersion
-  #define AppVersion "1.2.7"
+  #define AppVersion "1.3.0"
 #endif
 
 #define AppName "Kojima"
@@ -60,6 +60,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "启动 {#AppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Flags: nowait skipifnotsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"

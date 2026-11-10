@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Kojima.Agents/Kojima.Agents.csproj" />
     <Project Path="src/Kojima.Core/Kojima.Core.csproj" />
+    <Project Path="src/Kojima.Island/Kojima.Island.csproj" />
     <Project Path="src/Kojima.Shell/Kojima.Shell.csproj" />
   </Folder>
   <Folder Name="/tests/">

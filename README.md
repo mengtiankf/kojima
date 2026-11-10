@@ -36,38 +36,40 @@ Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://gi
 ## 架构
 
 ```
-Kojima.Shell (WPF, 主进程)             Kojima.Agents (子进程, 按需拉起)
-  ├─ 灵动岛窗口 / 页面 / 托盘 / 热键       ├─ monitor    CPU/GPU/内存/网络/进程采样 + 占用提醒
-  ├─ ConfigStore / ThemeCatalog          ├─ usage      本地会话日志 + 账户额度 + 缓存/限流
-  ├─ 薄代理（媒体/剪贴板/翻译/消息/频谱）  ├─ weather   wttr.in 请求、解析与雨雪提醒
-  └─ AgentSupervisor ─── NamedPipe ───▶  ├─ stocks    腾讯行情、GBK 解码与 ±5% 提醒
-                                         ├─ media     SMTC 会话、封面与播放控制
-                                         ├─ clipboard 剪贴板轮询与历史
-                                         ├─ translate 翻译请求
-                                         ├─ messages  Windows 通知库读取
-                                         ├─ spectrum  WASAPI 环回频谱
-                                         └─ updates   GitHub Release 检查与安装包下载
+Kojima.exe (Shell：单实例/托盘/监督)      Kojima.Agents (子进程, 按需拉起)
+  └─ 拉起并守护 Kojima.Island.exe          ├─ monitor    CPU/GPU/内存/网络/进程采样 + 占用提醒
+        │ 命名管道 kojima-shell            ├─ usage      本地会话日志 + 账户额度 + 缓存/限流
+        ▼                                  ├─ weather   wttr.in 请求、解析与雨雪提醒
+Kojima.Island.exe (WPF, UI 进程)           ├─ stocks    腾讯行情、GBK 解码与 ±5% 提醒
+  ├─ 灵动岛窗口 / 页面 / 热键               ├─ media     SMTC 会话、封面与播放控制
+  ├─ ConfigStore / ThemeCatalog            ├─ clipboard 剪贴板轮询与历史
+  ├─ 薄代理（媒体/剪贴板/翻译/消息/频谱）    ├─ translate 翻译请求
+  └─ AgentSupervisor ─── NamedPipe ───▶    ├─ messages  Windows 通知库读取
+                                           ├─ spectrum  WASAPI 环回频谱
+                                           ├─ controls  音量与亮度
+                                           └─ updates   GitHub Release 检查与安装包下载
 ```
 
+- `Kojima.exe` 只负责单实例、托盘、退出与守护 `Kojima.Island.exe`；灵动岛、设置页和所有功能调度都在 UI 子进程里，UI 崩溃时 Shell 会自动把它拉起来。
 - 子进程只在功能被真正使用时由 `AgentSupervisor` 拉起，空闲 `IdleExitSeconds`（默认 90 秒）后自行退出；关闭功能开关会立即回收。
 - 子进程意外退出会被 `Process.Exited` 捕获：记录退出码、回收句柄，并按 2/4/8/16/30 秒退避后再拉起；连续稳定运行 30 秒后才清除失败计数，避免崩溃循环。
-- 提醒规则（CPU ≥ 90%、雨雪、持仓 ±5%）也在子进程内判定，通过 `{Event="notice", Data={title,body,kind}}` 推给主进程进入消息中心。
-- IPC 是逐行 JSON 的命名管道：`kojima-{feature}-{shellPid}`，主进程发 `IpcEnvelope{Id,Method,Params}`，子进程回 `{Id,Result}` 或推 `{Event,Data}`。
-- 共享模型、配置、主题与几何算法都在 `Kojima.Core`，两个进程引用同一份代码。
+- 提醒规则（CPU ≥ 90%、雨雪、持仓 ±5%）也在子进程内判定，通过 `{Event="notice", Data={title,body,kind}}` 推给 UI 进程进入消息中心。
+- IPC 是逐行 JSON 的命名管道：`kojima-{feature}-{uiPid}`，UI 进程发 `IpcEnvelope{Id,Method,Params}`，子进程回 `{Id,Result}` 或推 `{Event,Data}`。
+- 共享模型、配置、主题与几何算法都在 `Kojima.Core`，三个进程引用同一份代码。
 
 ## 安装
 
 从 [Releases](https://github.com/mengtiankf/kojima/releases) 下载，或本地构建后从 `dist/` 取用：
 
-- `dist/KojimaSetup-1.2.7.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
-- `publish/`：绿色版，直接运行 `Kojima.exe`
+- `dist/KojimaSetup-1.3.0.exe`：Inno Setup 安装包（默认装到 `%LOCALAPPDATA%\Programs\Kojima`，可选开机启动、桌面快捷方式）
+- `publish/`：绿色版，运行 `Kojima.exe`（Shell 会自动拉起 `Kojima.Island.exe`）
 
 配置与日志在 `%LOCALAPPDATA%\Kojima`：
 
 ```
 config.json      # 设置（位置、形态、主题、收起显示、功能开关、用量来源、监控数据源；不含任何密钥）
 secrets.dat      # 密钥（DPAPI 当前用户加密，仅本机可解；首次启动会把旧版 config.json 里的明文密钥迁走并抹除）
-logs/            # shell.log / agent-*.log
+logs/            # shell.log / island.log / agent-*.log
 themes/          # 自定义主题（JSON，可带 // 注释）
 ```
 

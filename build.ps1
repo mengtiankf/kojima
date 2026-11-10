@@ -2,7 +2,7 @@
 # Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.2.1]
 
 param(
-    [string]$Version = "1.2.7"
+    [string]$Version = "1.3.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,6 +17,11 @@ if (Test-Path $publish) { Remove-Item $publish -Recurse -Force }
 if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
 New-Item -ItemType Directory -Path $publish | Out-Null
 New-Item -ItemType Directory -Path $dist | Out-Null
+
+Write-Host "== publish island (self-contained win-x64) =="
+dotnet publish "src/Kojima.Island/Kojima.Island.csproj" -c Release -r win-x64 --self-contained true `
+    -p:PublishReadyToRun=true -p:DebugType=None -o $publish
+if ($LASTEXITCODE -ne 0) { throw "publish island failed" }
 
 Write-Host "== publish shell (self-contained win-x64) =="
 dotnet publish "src/Kojima.Shell/Kojima.Shell.csproj" -c Release -r win-x64 --self-contained true `
