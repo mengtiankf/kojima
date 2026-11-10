@@ -70,8 +70,8 @@ public sealed class IslandSurface : FrameworkElement
             {
                 IslandShape.Capsule => IslandOutline.Rounded(0, 0, w, h, h / 2),
                 IslandShape.Indicator => IslandOutline.Rounded(0, 0, w, h, h / 2),
-                // 刘海：贴顶，顶部两角补成直角（不再留肩部缺口），仅底部圆角
-                _ => IslandOutline.Build(0, 0, w, h, 0, 0, 0, Corner, Corner),
+                // 刘海：贴顶；两侧肩线按 BrimDeck 的 7/16 深度曲线过渡，底部圆角
+                _ => IslandOutline.Build(0, 0, w, h, Math.Max(0, Shoulder), 0, 0, Corner, Corner),
             };
         }
 
