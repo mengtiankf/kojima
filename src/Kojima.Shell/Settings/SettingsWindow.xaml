@@ -872,6 +872,28 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="120"/>
                                             <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="自动检查更新" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="每天启动后最多检查一次 GitHub Releases，只提示不强制"
+                                                       Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock x:Name="UpdateStatusText" Style="{StaticResource Hint}" Text=""/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <CheckBox x:Name="AutoUpdateSwitch" Style="{StaticResource Switch}"
+                                                      VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                            <Button x:Name="CheckUpdateButton" Style="{StaticResource GhostButton}"
+                                                    Content="检查更新" Click="OnCheckUpdateClick"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Margin="0,14,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="GitHub 仓库" Style="{StaticResource RowTitle}" VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="1" VerticalAlignment="Center">

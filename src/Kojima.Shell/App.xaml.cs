@@ -53,6 +53,35 @@ public partial class App : Application
         CreateTray();
         ApplyDevHooks();
         AppLog.Info("Kojima 启动完成");
+        _ = AutoCheckUpdatesAsync();
+    }
+
+    /// <summary>每天最多检查一次更新；失败只写日志，不打扰用户。</summary>
+    private async Task AutoCheckUpdatesAsync()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(12));
+            var config = ConfigStore.Load();
+            if (!config.Update.AutoCheck)
+            {
+                return;
+            }
+
+            var today = DateTime.Today.ToString("yyyy-MM-dd");
+            if (config.Update.LastCheck == today)
+            {
+                return;
+            }
+
+            config.Update.LastCheck = today;
+            ConfigStore.Save(config);
+            await _runtime!.Updates.CheckAsync(manual: false);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Warn("自动检查更新失败：" + ex.Message);
+        }
     }
 
     /// <summary>把未处理异常写进 logs/shell.log，便于用户回报问题。</summary>

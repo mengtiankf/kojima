@@ -297,6 +297,7 @@ public partial class SettingsWindow : Window
             _ => ModeManual,
         }).IsChecked = true;
         HighContrastSwitch.IsChecked = appearance.FollowHighContrast;
+        AutoUpdateSwitch.IsChecked = cfg.Update.AutoCheck;
 
         BuildThemes();
         BuildThemeChoices(appearance);
@@ -714,6 +715,43 @@ public partial class SettingsWindow : Window
 
     private void OnCancelClick(object sender, RoutedEventArgs e) => Close();
 
+    private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
+    {
+        CheckUpdateButton.IsEnabled = false;
+        UpdateStatusText.Text = "正在检查…";
+        try
+        {
+            var release = await _runtime.Updates.CheckAsync(manual: true);
+            if (release is null)
+            {
+                UpdateStatusText.Text = "已是最新版本";
+                return;
+            }
+
+            UpdateStatusText.Text = $"发现 {release.Version}";
+            var notes = release.Notes.Length > 600 ? release.Notes[..600] + "…" : release.Notes;
+            var answer = MessageBox.Show(this,
+                $"发现新版本 {release.Version}，是否现在下载并安装？\n\n{notes}",
+                "Kojima 更新", MessageBoxButton.YesNo, MessageBoxImage.Information);
+            if (answer != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            var progress = new Progress<double>(value =>
+                UpdateStatusText.Text = $"正在下载 {value:P0}");
+            var installed = await _runtime.Updates.InstallAsync(release, progress);
+            if (installed)
+            {
+                _runtime.Updates.ShutdownForUpdate();
+            }
+        }
+        finally
+        {
+            CheckUpdateButton.IsEnabled = true;
+        }
+    }
+
     private void OnGitHubNavigate(object sender, RequestNavigateEventArgs e)
     {
         try
@@ -824,6 +862,7 @@ public partial class SettingsWindow : Window
             }
 
             cfg.Appearance.FollowHighContrast = HighContrastSwitch.IsChecked == true;
+            cfg.Update.AutoCheck = AutoUpdateSwitch.IsChecked == true;
 
             cfg.Monitor.Source = MonitorInternal.IsChecked == true ? "internal"
                 : MonitorLhm.IsChecked == true ? "lhm"

@@ -192,8 +192,7 @@ public sealed class AppearanceSettings
 }
 
 public sealed class KojimaConfig
-{
-    public int Version { get; set; } = SettingsMigrations.CurrentVersion;
+{    public int Version { get; set; } = SettingsMigrations.CurrentVersion;
 
     public bool StartWithWindows { get; set; }
 
@@ -219,6 +218,8 @@ public sealed class KojimaConfig
 
     /// <summary>消息中心（QQ / 微信 / 邮件通知）。</summary>
     public MessageSettings Messages { get; set; } = new();
+
+    public UpdateSettings Update { get; set; } = new();
 
     public Dictionary<string, FeatureSettings> Features { get; set; } = new()
     {
@@ -257,4 +258,14 @@ public sealed class MessageSettings
         ["wechat"] = "",
         ["mail"] = "",
     };
+}
+
+/// <summary>自动更新设置。</summary>
+public sealed class UpdateSettings
+{
+    /// <summary>启动后静默检查一次（每天最多一次）。</summary>
+    public bool AutoCheck { get; set; } = true;
+
+    /// <summary>上次检查日期（yyyy-MM-dd），用于自动检查去重。</summary>
+    public string LastCheck { get; set; } = "";
 }

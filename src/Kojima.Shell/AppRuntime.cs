@@ -24,6 +24,7 @@ public sealed class AppRuntime
         Usage = new UsageService(Agents, dispatcher, Config);
         Weather = new WeatherService(dispatcher, Agents);
         Notify = new NotifyCenter(dispatcher);
+        Updates = new UpdateCoordinator(Notify);
         StockAlerts = new StockAlertService(Notify, Config, Agents);
         Clipboard = Config.Feature("clipboard").Enabled ? new ClipboardService() : null;
         Media = new MediaSessionService();
@@ -50,6 +51,8 @@ public sealed class AppRuntime
     public WeatherService Weather { get; }
 
     public NotifyCenter Notify { get; }
+
+    public UpdateCoordinator Updates { get; }
 
     public StockAlertService StockAlerts { get; }
 

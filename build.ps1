@@ -43,6 +43,14 @@ if (-not $iscc) { throw "ISCC.exe not found, install Inno Setup 6" }
 & $iscc "/DAppVersion=$Version" "installer\kojima.iss"
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 
-Write-Host "== done (仅 exe 安装包) =="
+Write-Host "== portable zip + checksums =="
+$zip = Join-Path $dist "Kojima-$Version-portable.zip"
+Compress-Archive -Path (Join-Path $publish "*") -DestinationPath $zip -Force
+foreach ($file in Get-ChildItem $dist -File) {
+    $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    Set-Content -Path "$($file.FullName).sha256" -Value "$hash  $($file.Name)" -Encoding ASCII
+}
+
+Write-Host "== done (installer exe + portable zip, with .sha256) =="
 Get-ChildItem $dist | Select-Object Name, Length | Format-Table
 
