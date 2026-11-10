@@ -29,6 +29,7 @@ internal sealed class ShellDialog : Form
         _danger = ToColor(palette?.Danger, Color.FromArgb(255, 69, 58));
 
         FormBorderStyle = FormBorderStyle.None;
+        Text = title;
         StartPosition = FormStartPosition.CenterScreen;
         ShowInTaskbar = false;
         TopMost = true;

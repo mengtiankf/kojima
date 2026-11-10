@@ -124,8 +124,8 @@
                             Click="OnCancelClick" AutomationProperties.Name="关闭"/>
                 </Grid>
 
-                <ScrollViewer Grid.Row="1" Margin="0,14,0,0" MaxHeight="300"
-                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer Grid.Row="1" Margin="0,14,0,0" MaxHeight="320"
+                              VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
                     <TextBlock x:Name="BodyText" TextWrapping="Wrap" LineHeight="21"
                                Foreground="{DynamicResource DialogText2Brush}"/>
                 </ScrollViewer>
