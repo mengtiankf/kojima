@@ -42,7 +42,7 @@ public sealed class IslandSettings
 
     public double PanelWidth { get; set; } = 640;
 
-    public string Theme { get; set; } = "dark";
+    public string Theme { get; set; } = "deck-dark";
 
     public bool HideFullscreen { get; set; } = true;
 

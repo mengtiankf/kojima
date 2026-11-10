@@ -160,6 +160,7 @@ public sealed class SecretMigrationTests : IDisposable
     [Fact]
     public void DefaultThemeExistsInCatalog()
     {
-        Assert.Equal("dark", new KojimaConfig().Island.Theme);
+        Assert.Equal("deck-dark", new KojimaConfig().Island.Theme);
+        Assert.Equal("deck-dark", Kojima.Core.Themes.ThemeCatalog.Get("no-such-theme").Id);
     }
 }
