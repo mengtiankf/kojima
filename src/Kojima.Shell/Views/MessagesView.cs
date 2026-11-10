@@ -33,7 +33,11 @@ public sealed class MessagesView : UserControl
         Grid.SetColumn(_status, 0);
         header.Children.Add(_status);
 
-        var clear = UiKit.Button("清空", () => _runtime.Messages.Clear());
+        var clear = UiKit.Button("清空", () =>
+        {
+            _runtime.Messages.Clear();
+            _runtime.Notify.Clear();
+        });
         Grid.SetColumn(clear, 1);
         header.Children.Add(clear);
 
@@ -61,6 +65,7 @@ public sealed class MessagesView : UserControl
         Content = root;
 
         _runtime.Messages.Changed += () => Dispatcher.BeginInvoke(Render);
+        _runtime.Notify.Changed += () => Dispatcher.BeginInvoke(Render);
         ThemeRuntime.Changed += () => Dispatcher.BeginInvoke(Render);
         Render();
     }
@@ -89,17 +94,40 @@ public sealed class MessagesView : UserControl
         _ => Color.FromRgb(0x8E, 0x8E, 0x93),
     };
 
+    private static (string Name, string Glyph, Color Color) NoticeStyle(string kind) => kind switch
+    {
+        "warn" => ("监控提醒", "\uE7BA", Color.FromRgb(0xF2, 0x5C, 0x5C)),
+        "weather" => ("天气变化", "\uE706", Color.FromRgb(0x4A, 0xA8, 0xF0)),
+        "stock" => ("持仓提醒", "\uE9D2", Color.FromRgb(0x3D, 0xC1, 0x7A)),
+        _ => ("提醒", "\uE946", Color.FromRgb(0x8E, 0x8E, 0x93)),
+    };
+
     private void Render()
     {
         _list.Children.Clear();
+        var notices = _runtime.Notify.Items;
         var items = _runtime.Messages.Items;
-        _empty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        _empty.Visibility = items.Count == 0 && notices.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        var counts = _runtime.Messages.Counts;
-        _status.Text = items.Count == 0
-            ? "消息"
-            : $"{items.Count} 条 · " + string.Join(" · ", counts.OrderByDescending(p => p.Value)
-                .Select(p => $"{KindName(p.Key)} {p.Value}"));
+        if (items.Count == 0 && notices.Count == 0)
+        {
+            _status.Text = "消息";
+        }
+        else
+        {
+            var parts = new List<string>();
+            var byNotice = notices.GroupBy(n => NoticeStyle(n.Kind).Name)
+                .Select(g => $"{g.Key} {g.Count()}");
+            parts.AddRange(byNotice);
+            var counts = _runtime.Messages.Counts;
+            parts.AddRange(counts.OrderByDescending(p => p.Value).Select(p => $"{KindName(p.Key)} {p.Value}"));
+            _status.Text = $"{items.Count + notices.Count} 条 · " + string.Join(" · ", parts);
+        }
+
+        foreach (var notice in notices)
+        {
+            _list.Children.Add(NoticeCard(notice));
+        }
 
         foreach (var item in items)
         {
@@ -166,5 +194,59 @@ public sealed class MessagesView : UserControl
 
             _list.Children.Add(border);
         }
+    }
+
+    /// <summary>应用内提醒（CPU 占用、天气、持仓），与系统通知共用这一页。</summary>
+    private Border NoticeCard(Notice notice)
+    {
+        var (name, glyph, color) = NoticeStyle(notice.Kind);
+
+        var card = new Grid();
+        card.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        card.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        card.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var badge = new Border
+        {
+            Width = 26,
+            Height = 26,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(color) { Opacity = 0.18 },
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 1, 10, 0),
+            Child = UiKit.Glyph(glyph, 13, new SolidColorBrush(color)),
+        };
+        ((TextBlock)badge.Child).HorizontalAlignment = HorizontalAlignment.Center;
+        ((TextBlock)badge.Child).VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(badge, 0);
+        card.Children.Add(badge);
+
+        var body = new StackPanel();
+        var title = UiKit.T(notice.Title, 12.5, ThemeRuntime.Text, FontWeights.SemiBold);
+        title.TextTrimming = TextTrimming.CharacterEllipsis;
+        body.Children.Add(title);
+
+        var detail = UiKit.T(notice.Body, 10.5, ThemeRuntime.Text3);
+        detail.Margin = new Thickness(0, 3, 0, 0);
+        detail.TextWrapping = TextWrapping.Wrap;
+        body.Children.Add(detail);
+        Grid.SetColumn(body, 1);
+        card.Children.Add(body);
+
+        var time = UiKit.T(notice.TimeText, 10.5, ThemeRuntime.Text3, num: true);
+        time.VerticalAlignment = VerticalAlignment.Top;
+        time.Margin = new Thickness(10, 2, 0, 0);
+        Grid.SetColumn(time, 2);
+        card.Children.Add(time);
+
+        return new Border
+        {
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(12, 10, 12, 10),
+            Margin = new Thickness(0, 0, 0, 6),
+            Background = ThemeRuntime.Card,
+            Child = card,
+            ToolTip = name,
+        };
     }
 }
