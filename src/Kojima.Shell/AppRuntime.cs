@@ -31,6 +31,7 @@ public sealed class AppRuntime
         Media = new MediaProxy(Agents, dispatcher);
         Spectrum = new SpectrumProxy(Agents);
         Messages = new MessageProxy(Agents, dispatcher, Config);
+        Controls = new ControlsProxy(Agents);
         Agents.EventReceived += OnAgentEvent;
         Agents.Failed += (feature, reason) => Notify.Push("后台功能异常", $"子进程 {feature} 连续失败：{reason}", "warn");
         _current = this;
@@ -61,6 +62,8 @@ public sealed class AppRuntime
     public ClipboardProxy? Clipboard { get; }
 
     public MessageProxy Messages { get; }
+
+    public ControlsProxy Controls { get; }
 
     /// <summary>系统媒体会话（SMTC）。</summary>
     /// <summary>灵岛窗口（由 App 启动时挂上），用于保存设置后热刷新。</summary>
@@ -191,6 +194,7 @@ public sealed class AppRuntime
             Media.Dispose();
             Spectrum.Dispose();
             Messages.Dispose();
+            Controls.Dispose();
             StockAlerts.Dispose();
             Weather.Dispose();
             await Monitor.StopAsync().ConfigureAwait(false);

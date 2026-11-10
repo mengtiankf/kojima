@@ -19,7 +19,6 @@ public sealed class ControlsView : UserControl
     private readonly TextBlock _brightnessText;
     private readonly TextBlock _muteGlyph;
     private bool _syncing;
-    private readonly AudioEndpoints _audio = new();
 
     public ControlsView()
         : this(null)
@@ -119,20 +118,30 @@ public sealed class ControlsView : UserControl
         return tile;
     }
 
-    private void Sync()
+    private async void Sync()
     {
+        if (_runtime is null)
+        {
+            return;
+        }
+
+        var state = await _runtime.Controls.LoadAsync();
+        if (state is null)
+        {
+            return;
+        }
+
         _syncing = true;
         try
         {
-            _volume.Value = Math.Round(_audio.GetVolume() * 100);
+            _volume.Value = Math.Round(state.Volume * 100);
             _volumeText.Text = $"{_volume.Value:0}%";
-            var muted = _audio.IsMuted();
-            _muteGlyph.Text = muted ? "\uE74F" : "\uE767";
-            _muteGlyph.Foreground = muted ? ThemeRuntime.Danger : ThemeRuntime.Text2;
+            _muteGlyph.Text = state.Muted ? "\uE74F" : "\uE767";
+            _muteGlyph.Foreground = state.Muted ? ThemeRuntime.Danger : ThemeRuntime.Text2;
 
-            if (BrightnessService.Supported)
+            if (state.BrightnessSupported)
             {
-                _brightness.Value = BrightnessService.Get();
+                _brightness.Value = state.Brightness;
                 _brightnessText.Text = $"{_brightness.Value:0}%";
             }
             else
@@ -154,7 +163,7 @@ public sealed class ControlsView : UserControl
             return;
         }
 
-        _audio.SetVolume((float)(_volume.Value / 100));
+        _runtime?.Controls.SetVolume(_volume.Value / 100);
         _volumeText.Text = $"{_volume.Value:0}%";
     }
 
@@ -165,15 +174,25 @@ public sealed class ControlsView : UserControl
             return;
         }
 
-        BrightnessService.Set((int)_brightness.Value);
+        _runtime?.Controls.SetBrightness((int)_brightness.Value);
         _brightnessText.Text = $"{_brightness.Value:0}%";
     }
 
-    private void ToggleMute()
+    private async void ToggleMute()
     {
-        var muted = _audio.ToggleMute();
-        _muteGlyph.Text = muted ? "\uE74F" : "\uE767";
-        _muteGlyph.Foreground = muted ? ThemeRuntime.Danger : ThemeRuntime.Text2;
+        if (_runtime is null)
+        {
+            return;
+        }
+
+        var muted = await _runtime.Controls.ToggleMuteAsync();
+        if (muted is null)
+        {
+            return;
+        }
+
+        _muteGlyph.Text = muted.Value ? "\uE74F" : "\uE767";
+        _muteGlyph.Foreground = muted.Value ? ThemeRuntime.Danger : ThemeRuntime.Text2;
     }
 
     /// <summary>「音乐」按钮：优先打开用户自定义的程序，否则退回系统音乐应用。</summary>

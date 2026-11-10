@@ -127,19 +127,16 @@ public partial class HomeView : UserControl
         Kojima.Shell.App.ShowSettingsDialog();
     }
 
-    private void ToggleMute()
+    private async void ToggleMute()
     {
-        try
+        var muted = await _runtime.Controls.ToggleMuteAsync();
+        if (muted is null)
         {
-            var volume = new Kojima.Shell.Interop.AudioEndpoints();
-            var muted = volume.ToggleMute();
-            ActMuteText.Text = muted ? "已静音" : "静音";
-            ActMuteGlyph.Text = muted ? "\uE74F" : "\uE767";
+            return;
         }
-        catch (Exception ex)
-        {
-            Core.Config.AppLog.Warn("静音切换失败：" + ex.Message);
-        }
+
+        ActMuteText.Text = muted.Value ? "已静音" : "静音";
+        ActMuteGlyph.Text = muted.Value ? "\uE74F" : "\uE767";
     }
 
     private static void OpenLiveCaptions()

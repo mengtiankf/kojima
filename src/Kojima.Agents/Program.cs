@@ -48,6 +48,7 @@ internal static class Program
             "messages" => new MessageFeature(),
             "spectrum" => new SpectrumFeature(),
             "updates" => new UpdatesFeature(),
+            "controls" => new ControlsFeature(),
             _ => new NoopFeature(),
         };
 
