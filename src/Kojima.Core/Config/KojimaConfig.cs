@@ -114,6 +114,15 @@ public sealed class UsageSettings
         ["newapi"] = "",
         ["sub2api"] = "",
     };
+
+    /// <summary>每个来源可以分别关掉“本机记录”或“账户额度”，默认都开。</summary>
+    public Dictionary<string, UsageToggle> Toggles { get; set; } = new();
+}
+
+public sealed class UsageToggle
+{
+    public bool Local { get; set; } = true;
+    public bool Quota { get; set; } = true;
 }
 
 public sealed class MonitorSettings
@@ -236,6 +245,7 @@ public sealed class KojimaConfig
         ["stocks"] = new FeatureSettings(),
         ["clipboard"] = new FeatureSettings { Enabled = false },
         ["translate"] = new FeatureSettings { Enabled = false },
+        ["controls"] = new FeatureSettings(),
     };
 
     public FeatureSettings Feature(string key)

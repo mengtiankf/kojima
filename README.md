@@ -20,7 +20,7 @@ Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://gi
 | 灵动岛 | 顶部居中 / 上靠左 / 上靠右三档吸附位置，也可直接拖动并吸附屏幕边缘；刘海 / 胶囊 / 指示条三种形态；悬停展开、离开自动收起，动画时长可调；展开宽度可拖动右下角或设置滑杆调整；支持多显示器选择，位置按显示器记忆，并可让其他显示器顶部同时显示副岛 |
 | 收起时显示 | 时钟和天气 / 仅时钟 / 仅天气 / 媒体信息 / 不显示，五档任选 |
 | 首页 | 时钟、日期、天气、媒体卡（封面 / 实时频谱 / 当前歌词 / 上一首 / 播放暂停 / 下一首）与常驻快捷操作（静音 / 截图 / 设置）；歌词来自 LRCLIB 与网易云，失败时静默降级 |
-| AI 用量 | 13 个来源：Claude、Codex、Cursor、Antigravity（读取会话数据库）、DeepSeek Harness、Kimi、OpenCode、ZCode、DeepSeek、OpenRouter、GLM、NewAPI、Sub2API；今日 / 本周 / 本月 Token、额度与估算成本（额度依赖服务端公开接口，结果缓存 5 分钟并自动退避限流；没有额度接口时给出说明，成本按公开价格表估算） |
+| AI 用量 | 13 个来源：Claude、Codex、Cursor、Antigravity（读取会话数据库）、DeepSeek Harness、Kimi、OpenCode、ZCode、DeepSeek、OpenRouter、GLM、NewAPI、Sub2API；今日 / 本周 / 本月 Token、额度与估算成本（额度依赖服务端公开接口，结果缓存 5 分钟并自动退避限流；没有额度接口时给出说明，成本按公开价格表估算）；每个来源可分别关闭“本机记录”与“账户额度” |
 | 系统监控 | CPU（总/每核）、GPU（NVIDIA 走 nvidia-smi，其它显卡走系统 GPU 引擎计数器；显存 / 温度 / 功耗）、内存、网络、磁盘、温度、电池健康与剩余时间、进程 TOP 7；温度与功耗可接 LibreHardwareMonitor / OpenHardwareMonitor |
 | 天气 | 当前天气 + 三日预报；可在设置里填写城市（如 上海、Tokyo），留空按 IP 定位；图标为自绘矢量，不依赖字体码位 |
 | 股票 | 自选股可搜索、自选、增删，内置上证 / 深证 / 茅台 / 宁德 / 比亚迪 / 腾讯等常用标的；行情源可选腾讯 / 新浪 / 东方财富（自动依次回退），刷新间隔可调，红涨绿跌 |

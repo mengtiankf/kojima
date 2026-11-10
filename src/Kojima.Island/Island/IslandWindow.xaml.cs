@@ -349,9 +349,10 @@ public partial class IslandWindow : Window
             ["clipboard"] = "clip",
             ["translate"] = "translate",
             ["messages"] = "msg",
+            ["controls"] = "ctl",
         };
 
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "home", "ctl" };
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "home" };
         foreach (var key in order)
         {
             if (map.TryGetValue(key, out var pageKey) && seen.Add(pageKey))
@@ -366,6 +367,11 @@ public partial class IslandWindow : Window
 
         foreach (var page in _pages)
         {
+            if (page.Key == "ctl" && !_runtime.FeatureEnabled("controls"))
+            {
+                continue;
+            }
+
             if (seen.Add(page.Key))
             {
                 yield return page;

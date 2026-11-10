@@ -10,7 +10,13 @@ namespace Kojima.Island.Settings;
 /// <summary>AI 用量的来源卡片：每个来源一张卡，密钥/站点就地填写。</summary>
 public partial class SettingsWindow
 {
-    private sealed record UsageCard(string Id, CheckBox Toggle, PasswordBox? Key, TextBox? Site);
+    private sealed record UsageCard(
+        string Id,
+        CheckBox Toggle,
+        PasswordBox? Key,
+        TextBox? Site,
+        CheckBox? Local,
+        CheckBox? Quota);
 
     private readonly List<UsageCard> _usageCards = new();
 
@@ -76,6 +82,32 @@ public partial class SettingsWindow
             head.Children.Add(toggle);
             body.Children.Add(head);
 
+            cfg.Usage.Toggles.TryGetValue(info.Id, out var flags);
+            flags ??= new UsageToggle();
+            CheckBox? localBox = null;
+            CheckBox? quotaBox = null;
+            var subs = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(46, 8, 0, 0),
+            };
+            if (info.SupportsLocal)
+            {
+                localBox = SubToggle("本机记录", flags.Local);
+                subs.Children.Add(localBox);
+            }
+
+            if (info.SupportsQuota)
+            {
+                quotaBox = SubToggle("账户额度", flags.Quota);
+                subs.Children.Add(quotaBox);
+            }
+
+            if (subs.Children.Count > 0)
+            {
+                body.Children.Add(subs);
+            }
+
             PasswordBox? key = null;
             if (info.NeedsKey)
             {
@@ -112,8 +144,22 @@ public partial class SettingsWindow
 
             card.Child = body;
             UsageSourceList.Children.Add(card);
-            _usageCards.Add(new UsageCard(info.Id, toggle, key, site));
+            _usageCards.Add(new UsageCard(info.Id, toggle, key, site, localBox, quotaBox));
         }
+    }
+
+    private static CheckBox SubToggle(string text, bool isChecked)
+    {
+        var box = new CheckBox
+        {
+            Content = text,
+            IsChecked = isChecked,
+            FontSize = 11.5,
+            Margin = new Thickness(0, 0, 18, 0),
+            VerticalContentAlignment = VerticalAlignment.Center,
+        };
+        box.SetResourceReference(Control.ForegroundProperty, "Text2Brush");
+        return box;
     }
 
     private static string Describe(UsageSourceInfo info)
@@ -151,8 +197,30 @@ public partial class SettingsWindow
         }
 
         cfg.Usage.Sources = sources;
+        var toggles = new Dictionary<string, UsageToggle>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in cfg.Usage.Toggles)
+        {
+            toggles[pair.Key] = pair.Value;
+        }
+
         foreach (var card in _usageCards)
         {
+            if (card.Local is not null || card.Quota is not null)
+            {
+                var entry = toggles.TryGetValue(card.Id, out var existing) ? existing : new UsageToggle();
+                if (card.Local is not null)
+                {
+                    entry.Local = card.Local.IsChecked == true;
+                }
+
+                if (card.Quota is not null)
+                {
+                    entry.Quota = card.Quota.IsChecked == true;
+                }
+
+                toggles[card.Id] = entry;
+            }
+
             if (card.Key is not null)
             {
                 CollectSecret(secretUpdates, card.Key, SecretNames.Usage(card.Id));
@@ -163,5 +231,7 @@ public partial class SettingsWindow
                 cfg.Usage.Sites[card.Id] = (card.Site.Text ?? "").Trim();
             }
         }
+
+        cfg.Usage.Toggles = toggles;
     }
 }

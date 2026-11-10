@@ -11,6 +11,7 @@ namespace Kojima.Core.Models;
 /// <param name="NeedsKey">是否需要用户填写 API Key。</param>
 /// <param name="NeedsSite">是否需要站点地址（NewAPI / Sub2API）。</param>
 /// <param name="SupportsQuota">是否会尝试读取套餐额度或余额。</param>
+/// <param name="SupportsLocal">是否有可读取的本机日志 / 数据库。</param>
 public sealed record UsageSourceInfo(
     string Id,
     string Name,
@@ -18,21 +19,22 @@ public sealed record UsageSourceInfo(
     string Description,
     bool NeedsKey = false,
     bool NeedsSite = false,
-    bool SupportsQuota = false);
+    bool SupportsQuota = false,
+    bool SupportsLocal = false);
 
 /// <summary>13 个用量来源的目录。</summary>
 public static class UsageCatalog
 {
     public static readonly IReadOnlyList<UsageSourceInfo> All =
     [
-        new("claude", "Claude", "本机", "Claude Code 会话日志 + Claude 账户额度", SupportsQuota: true),
-        new("codex", "Codex", "本机", "Codex CLI 会话日志 + ChatGPT 账户额度", SupportsQuota: true),
+        new("claude", "Claude", "本机", "Claude Code 会话日志 + Claude 账户额度", SupportsQuota: true, SupportsLocal: true),
+        new("codex", "Codex", "本机", "Codex CLI 会话日志 + ChatGPT 账户额度", SupportsQuota: true, SupportsLocal: true),
         new("cursor", "Cursor", "在线", "Cursor 账期额度（Token 明细来自账户接口）", SupportsQuota: true),
-        new("antigravity", "Antigravity", "本机", "Antigravity 本机会话（记录格式较新，暂只做说明）"),
-        new("dsh", "DSH", "本机", "DeepSeek Harness 本机会话"),
-        new("kimi", "Kimi", "本机", "Kimi Code 会话日志 + 套餐额度", SupportsQuota: true),
-        new("opencode", "OpenCode", "本机", "OpenCode 本机数据库"),
-        new("zcode", "ZCode", "本机", "ZCode 本机数据库"),
+        new("antigravity", "Antigravity", "本机", "读取 Antigravity 本机会话数据库中的模型用量", SupportsLocal: true),
+        new("dsh", "DSH", "本机", "DeepSeek Harness 本机会话", SupportsLocal: true),
+        new("kimi", "Kimi", "本机", "Kimi Code 会话日志 + 套餐额度", SupportsQuota: true, SupportsLocal: true),
+        new("opencode", "OpenCode", "本机", "OpenCode 本机数据库", SupportsLocal: true),
+        new("zcode", "ZCode", "本机", "ZCode 本机数据库", SupportsLocal: true),
         new("deepseek", "DeepSeek", "在线", "DeepSeek 账户余额", NeedsKey: true, SupportsQuota: true),
         new("openrouter", "OpenRouter", "在线", "OpenRouter 额度与累计花费", NeedsKey: true, SupportsQuota: true),
         new("glm", "GLM 智谱", "在线", "智谱 / Z.ai 套餐额度", NeedsKey: true, SupportsQuota: true),

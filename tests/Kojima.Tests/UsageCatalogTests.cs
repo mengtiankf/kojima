@@ -34,4 +34,24 @@ public sealed class UsageCatalogTests
         Assert.Equal(["newapi", "sub2api"], needsSite);
         Assert.All(UsageCatalog.All.Where(s => s.NeedsSite), s => Assert.True(s.NeedsKey));
     }
+
+    [Fact]
+    public void LocalReadersAreMarkedWhereTheyExist()
+    {
+        foreach (var id in new[] { "claude", "codex", "antigravity", "dsh", "kimi", "opencode", "zcode" })
+        {
+            Assert.True(UsageCatalog.Find(id)!.SupportsLocal, id);
+        }
+
+        Assert.False(UsageCatalog.Find("cursor")!.SupportsLocal);
+        Assert.False(UsageCatalog.Find("deepseek")!.SupportsLocal);
+    }
+
+    [Fact]
+    public void UsageTogglesDefaultToBothOn()
+    {
+        var toggle = new Kojima.Core.Config.UsageToggle();
+        Assert.True(toggle.Local);
+        Assert.True(toggle.Quota);
+    }
 }

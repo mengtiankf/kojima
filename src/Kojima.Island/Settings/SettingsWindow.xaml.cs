@@ -43,6 +43,7 @@ public partial class SettingsWindow : Window
         ("stocks", "股票", "自选行情与涨跌"),
         ("clipboard", "剪贴板", "最近复制的文本与图片"),
         ("translate", "翻译", "选中文本的快速翻译"),
+        ("controls", "控制", "音量、亮度与截图等快捷操作"),
     };
 
 
