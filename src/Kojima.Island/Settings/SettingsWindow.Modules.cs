@@ -110,9 +110,13 @@ public partial class SettingsWindow
             toggle.Unchecked += (_, _) => _pending[def.Key] = false;
 
             var row = new Grid { Style = (Style)FindResource("SettingRow") };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition());
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var targetIndex = index;
+            DragReorder.Target(row, () => MoveKeyTo(def.Key, targetIndex));
+            row.Children.Add(DragReorder.Grip(def.Key));
 
             var text = new StackPanel
             {
@@ -121,6 +125,7 @@ public partial class SettingsWindow
             };
             text.Children.Add(new TextBlock { Text = def.Label, Style = (Style)FindResource("RowTitle") });
             text.Children.Add(new TextBlock { Text = def.Desc, Style = (Style)FindResource("RowDesc") });
+            Grid.SetColumn(text, 1);
             row.Children.Add(text);
 
             var actions = new StackPanel
@@ -130,10 +135,8 @@ public partial class SettingsWindow
                 Margin = new Thickness(16, 0, 0, 0),
             };
 
-            // 后台插件没有独立标签，顺序对它们没有意义。
-            var reorderable = def.Key is not ("media" or "spectrum" or "updates");
-            var up = MakeOrderButton("\uE74A", "上移", reorderable && index > 0, () => MoveKey(def.Key, -1));
-            var down = MakeOrderButton("\uE74B", "下移", reorderable && index < _order.Count - 1, () => MoveKey(def.Key, 1));
+            var up = MakeOrderButton("\uE74A", "上移", index > 0, () => MoveKey(def.Key, -1));
+            var down = MakeOrderButton("\uE74B", "下移", index < _order.Count - 1, () => MoveKey(def.Key, 1));
             actions.Children.Add(up);
             actions.Children.Add(down);
             _orderButtons[def.Key] = (up, down);
@@ -178,15 +181,29 @@ public partial class SettingsWindow
             };
             toggleHost.Children.Add(toggle);
 
-            Grid.SetColumn(actions, 1);
+            Grid.SetColumn(actions, 2);
             row.Children.Add(actions);
-            Grid.SetColumn(toggleHost, 2);
+            Grid.SetColumn(toggleHost, 3);
             row.Children.Add(toggleHost);
 
             FeatureList.Children.Add(row);
             _features.Add(new FeatureRow(def.Key, toggle, enabled));
         }
     }
+
+    private void MoveKeyTo(string key, int target)
+    {
+        var index = _order.FindIndex(item => item.Equals(key, StringComparison.OrdinalIgnoreCase));
+        if (index < 0)
+        {
+            return;
+        }
+        _order.RemoveAt(index);
+        _order.Insert(Math.Clamp(target, 0, _order.Count), key);
+        RebuildFeatureList();
+    }
+
+    internal void DropFeatureForTest(string key, int target) => MoveKeyTo(key, target);
 
     private Button MakeOrderButton(string glyph, string tip, bool enabled, Action onClick)
     {
@@ -246,6 +263,13 @@ public partial class SettingsWindow
         Dispatcher.BeginInvoke(new Action(RebuildFeatureList), System.Windows.Threading.DispatcherPriority.Background);
     }
 
+    internal void SetFeatureForTest(string key, bool enabled)
+    {
+        var row = _features.FirstOrDefault(feature => feature.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ArgumentException("Unknown feature", key);
+        row.Toggle.IsChecked = enabled;
+    }
+
     /// <summary>开发钩子：按 key 上移/下移一行（用于自动化验证排序逻辑）。</summary>
     public void DebugMove(string key, int delta)
     {
@@ -257,7 +281,15 @@ public partial class SettingsWindow
     }
 
     /// <summary>供开发钩子直接进入某个模块的二级设置。</summary>
-    public void SelectModule(string key) => OpenModule(key);
+    public void SelectModule(string key)
+    {
+        if (key.Equals("usage", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenUsageModule();
+            return;
+        }
+        OpenModule(key);
+    }
 
     private bool _usageBackAdded;
 

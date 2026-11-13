@@ -21,7 +21,7 @@ public sealed class MediaFeature : IAgentFeature
     private string _artKey = "";
     private byte[]? _artwork;
 
-    public bool Busy => false;
+    public bool Busy => _started;
 
     public void Attach(AgentPipeServer server) => _server = server;
 
@@ -64,13 +64,15 @@ public sealed class MediaFeature : IAgentFeature
                 var title = "";
                 var artist = "";
                 var duration = 0L;
+                var appId = "";
                 if (args is { ValueKind: JsonValueKind.Object } request)
                 {
                     if (request.TryGetProperty("title", out var t)) { title = t.GetString() ?? ""; }
                     if (request.TryGetProperty("artist", out var a)) { artist = a.GetString() ?? ""; }
                     if (request.TryGetProperty("durationMs", out var d)) { duration = d.GetInt64(); }
+                    if (request.TryGetProperty("appId", out var app)) { appId = app.GetString() ?? ""; }
                 }
-                return await LyricsProvider.FetchAsync(title, artist, duration, CancellationToken.None).ConfigureAwait(false);
+                return await LyricsProvider.FetchAsync(title, artist, duration, appId, CancellationToken.None).ConfigureAwait(false);
             default:
                 throw new InvalidOperationException("未知方法：" + method);
         }
@@ -92,6 +94,10 @@ public sealed class MediaFeature : IAgentFeature
         _started = false;
         _timer?.Dispose();
         _timer = null;
+        _session = null;
+        _artKey = "";
+        _artwork = null;
+        Publish(null);
     }
 
     private async Task ActAsync(Func<GlobalSystemMediaTransportControlsSession, global::Windows.Foundation.IAsyncOperation<bool>> action)
@@ -147,21 +153,45 @@ public sealed class MediaFeature : IAgentFeature
             }
         }
 
-        if (_session is null)
+        try
         {
-            try
+            var current = _manager.GetCurrentSession();
+            var sessions = _manager.GetSessions();
+            var selected = IsPlaying(current) ? current
+                : sessions.FirstOrDefault(IsPlaying)
+                ?? current
+                ?? sessions.FirstOrDefault();
+            if (!ReferenceEquals(selected, _session))
             {
-                _session = _manager.GetCurrentSession()
-                           ?? _manager.GetSessions().FirstOrDefault(s => s.GetPlaybackInfo().PlaybackStatus ==
-                               GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing);
+                _session = selected;
+                _artKey = "";
+                _artwork = null;
             }
-            catch
-            {
-                _session = null;
-            }
+        }
+        catch
+        {
+            _session = null;
         }
 
         return _session;
+    }
+
+    private static bool IsPlaying(GlobalSystemMediaTransportControlsSession? session)
+    {
+        if (session is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            return session.GetPlaybackInfo().PlaybackStatus ==
+                GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task RefreshAsync(bool force)
@@ -216,6 +246,7 @@ public sealed class MediaFeature : IAgentFeature
         }
         catch (Exception ex)
         {
+            _session = null;
             Core.Config.AppLog.Warn("读取媒体会话失败：" + ex.Message);
         }
         finally

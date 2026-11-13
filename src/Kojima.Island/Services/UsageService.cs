@@ -54,6 +54,13 @@ public sealed class UsageService
 
     public event Action? Updated;
 
+    public void Seed(IReadOnlyList<UsageSnapshot> snapshots)
+    {
+        Snapshots = snapshots;
+        UpdatedAt = DateTimeOffset.Now;
+        Updated?.Invoke();
+    }
+
     public async Task RefreshAsync(string? period = null)
     {
         if (Interlocked.Exchange(ref _busy, 1) == 1)

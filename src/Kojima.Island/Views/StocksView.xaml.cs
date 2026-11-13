@@ -115,7 +115,11 @@ public sealed class StocksSurface : FrameworkElement
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (!_loaded) { ThemeRuntime.Changed += OnThemeChanged; }
+        if (!_loaded)
+        {
+            ThemeRuntime.Changed += OnThemeChanged;
+            if (AppRuntime.Current?.Stocks is { } service) { service.Updated += OnDataUpdated; }
+        }
         _loaded = true;
         _timer.Start();
         if (AutoRefresh) { _ = RefreshAsync(); }
@@ -125,7 +129,11 @@ public sealed class StocksSurface : FrameworkElement
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _timer.Stop();
-        if (_loaded) { ThemeRuntime.Changed -= OnThemeChanged; }
+        if (_loaded)
+        {
+            ThemeRuntime.Changed -= OnThemeChanged;
+            if (AppRuntime.Current?.Stocks is { } service) { service.Updated -= OnDataUpdated; }
+        }
         _loaded = false;
     }
 
@@ -133,6 +141,8 @@ public sealed class StocksSurface : FrameworkElement
     {
         if (Dispatcher.CheckAccess()) { InvalidateVisual(); } else { Dispatcher.BeginInvoke(new Action(InvalidateVisual)); }
     }
+
+    private void OnDataUpdated() => _ = RefreshAsync();
 
     protected override Size MeasureOverride(Size availableSize)
     {
@@ -263,10 +273,10 @@ public sealed class StocksSurface : FrameworkElement
         InvalidateVisual();
         try
         {
-            var agents = AppRuntime.Current?.Agents
+            var service = AppRuntime.Current?.Stocks
                          ?? throw new InvalidOperationException("运行时尚未就绪");
-            var quotes = await agents.RequestAsync<List<StockQuote>>("stocks", "stocks.read",
-                new { codes = _rows.Select(r => r.Code).ToArray() }, 20000) ?? [];
+            await service.RefreshAsync();
+            var quotes = service.Quotes;
             if (quotes.Count == 0) { throw new InvalidOperationException("行情返回为空"); }
             foreach (var row in _rows)
             {
@@ -283,8 +293,8 @@ public sealed class StocksSurface : FrameworkElement
                 if (quote.Name.Length > 0) { row.Name = quote.Name; }
             }
 
-            _updatedAt = DateTimeOffset.Now;
-            _error = false;
+            _updatedAt = service.UpdatedAt;
+            _error = service.Status == "行情获取失败";
         }
         catch (Exception ex)
         {

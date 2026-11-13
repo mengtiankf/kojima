@@ -26,7 +26,9 @@ public sealed class MediaWidget : UserControl
     private readonly Border _playButton = new();
     private readonly TextBlock _prevGlyph;
     private readonly TextBlock _nextGlyph;
-    private readonly Border _empty;
+    private readonly double _coverSize;
+    private readonly bool _large;
+    private bool _eventsAttached;
 
     /// <summary>XAML 用：从全局运行时取媒体服务。</summary>
     public MediaWidget()
@@ -34,34 +36,46 @@ public sealed class MediaWidget : UserControl
     {
     }
 
-    public MediaWidget(MediaProxy? service)
+    public MediaWidget(MediaProxy? service, bool large = false)
     {
         _service = service;
-        Height = 210;
+        _large = large;
+        _coverSize = large ? 128 : 96;
+        Height = large ? 240 : 210;
 
-        _coverGlyph = UiKit.Glyph("\uE8D6", 34, ThemeRuntime.Text3);
+        _coverGlyph = UiKit.Glyph("\uE8D6", large ? 42 : 34, ThemeRuntime.Text3);
         _cover.Child = _coverGlyph;
-        _cover.CornerRadius = new CornerRadius(10);
-        _cover.Width = 96;
-        _cover.Height = 96;
+        _cover.CornerRadius = new CornerRadius(12);
+        _cover.Width = _coverSize;
+        _cover.Height = _coverSize;
         _cover.HorizontalAlignment = HorizontalAlignment.Left;
         _cover.VerticalAlignment = VerticalAlignment.Top;
 
-        _title = UiKit.T("未在播放", 15, ThemeRuntime.Text, FontWeights.SemiBold);
+        _title = UiKit.T("未在播放", large ? 18 : 15, ThemeRuntime.Text, FontWeights.SemiBold);
         _title.TextTrimming = TextTrimming.CharacterEllipsis;
-        _artist = UiKit.T("打开任意播放器试试", 12, ThemeRuntime.Text2);
+        _artist = UiKit.T("打开任意播放器试试", large ? 13 : 12, ThemeRuntime.Text2);
         _artist.TextTrimming = TextTrimming.CharacterEllipsis;
         _album = UiKit.T("", 11, ThemeRuntime.Text3);
         _album.TextTrimming = TextTrimming.CharacterEllipsis;
-        _lyric = UiKit.T("", 11, ThemeRuntime.Text2);
+        _lyric = UiKit.T("", large ? 17 : 11, ThemeRuntime.Text2, large ? FontWeights.SemiBold : FontWeights.Normal);
         _lyric.TextTrimming = TextTrimming.CharacterEllipsis;
-        _lyric.Margin = new Thickness(0, 3, 0, 0);
+        _lyric.Margin = new Thickness(0, large ? 10 : 3, 0, 0);
+        if (large)
+        {
+            _lyric.TextWrapping = TextWrapping.Wrap;
+            _lyric.TextAlignment = TextAlignment.Center;
+            _lyric.HorizontalAlignment = HorizontalAlignment.Stretch;
+            _lyric.MaxHeight = 52;
+        }
 
         var info = new StackPanel { Margin = new Thickness(14, 2, 0, 0) };
         info.Children.Add(_title);
         info.Children.Add(_artist);
         info.Children.Add(_album);
-        info.Children.Add(_lyric);
+        if (!large)
+        {
+            info.Children.Add(_lyric);
+        }
 
         var top = new Grid();
         top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -71,9 +85,13 @@ public sealed class MediaWidget : UserControl
         Grid.SetColumn(info, 1);
         top.Children.Add(info);
 
-        // 频谱（替代进度条）
-        _spectrum.Height = 34;
-        _spectrum.Margin = new Thickness(0, 10, 0, 0);
+        // 媒体页把频谱放在右侧信息下方；首页保留整条频谱。
+        _spectrum.Height = large ? 36 : 34;
+        _spectrum.Margin = new Thickness(0, large ? 8 : 10, 0, 0);
+        if (large)
+        {
+            info.Children.Add(_spectrum);
+        }
 
         _position = UiKit.T("0:00", 10.5, ThemeRuntime.Text3, num: true);
         _duration = UiKit.T("0:00", 10.5, ThemeRuntime.Text3, num: true);
@@ -111,24 +129,6 @@ public sealed class MediaWidget : UserControl
         controls.Children.Add(_playButton);
         controls.Children.Add(next);
 
-        _empty = new Border
-        {
-            Background = Brushes.Transparent,
-            Visibility = Visibility.Collapsed,
-            Child = new StackPanel
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Children =
-                {
-                    UiKit.T("未在播放", 13, ThemeRuntime.Text2),
-                    UiKit.T("打开任意播放器试试", 11, ThemeRuntime.Text3),
-                },
-            },
-        };
-        Grid.SetRow(_empty, 0);
-        Grid.SetRowSpan(_empty, 4);
-
         var root = new Grid();
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -136,21 +136,47 @@ public sealed class MediaWidget : UserControl
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         Grid.SetRow(top, 0);
         root.Children.Add(top);
-        Grid.SetRow(_spectrum, 1);
-        root.Children.Add(_spectrum);
+        if (large)
+        {
+            Grid.SetRow(_lyric, 1);
+            root.Children.Add(_lyric);
+        }
+        else
+        {
+            Grid.SetRow(_spectrum, 1);
+            root.Children.Add(_spectrum);
+        }
         Grid.SetRow(times, 2);
         root.Children.Add(times);
         Grid.SetRow(controls, 3);
         root.Children.Add(controls);
-        root.Children.Add(_empty);
         Content = root;
 
         _spectrum.SetSource(() => AppRuntime.Current?.Spectrum?.Levels ?? Array.Empty<double>());
-        if (_service is not null) { _service.Changed += OnChanged; }
-        Unloaded += (_, _) => { if (_service is not null) { _service.Changed -= OnChanged; } };
-        ThemeRuntime.Changed += OnTheme;
-        Unloaded += (_, _) => ThemeRuntime.Changed -= OnTheme;
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
         Render();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (!_eventsAttached)
+        {
+            if (_service is not null) { _service.Changed += OnChanged; }
+            ThemeRuntime.Changed += OnTheme;
+            _eventsAttached = true;
+        }
+        Render();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (_eventsAttached)
+        {
+            if (_service is not null) { _service.Changed -= OnChanged; }
+            ThemeRuntime.Changed -= OnTheme;
+            _eventsAttached = false;
+        }
     }
 
     private static Border GlyphButton(TextBlock glyph, Action onClick)
@@ -207,14 +233,13 @@ public sealed class MediaWidget : UserControl
         var info = overrideInfo ?? _service?.Current;
         var hasMedia = info is not null;
 
-        _empty.Visibility = hasMedia ? Visibility.Collapsed : Visibility.Visible;
         _cover.Background = hasMedia && info!.Artwork is not null
             ? Brushes.Transparent
             : ThemeRuntime.Fill;
         _cover.Child = hasMedia && info!.Artwork is not null
             ? new Image { Source = info.Artwork, Stretch = Stretch.UniformToFill }
             : _coverGlyph;
-        _cover.Clip = new RectangleGeometry(new Rect(0, 0, 96, 96), 10, 10);
+        _cover.Clip = new RectangleGeometry(new Rect(0, 0, _coverSize, _coverSize), 12, 12);
 
         _title.Text = hasMedia ? (string.IsNullOrWhiteSpace(info!.Title) ? "未知曲目" : info.Title) : "未在播放";
         _artist.Text = hasMedia
@@ -222,8 +247,17 @@ public sealed class MediaWidget : UserControl
             : "打开任意播放器试试";
         _album.Text = hasMedia ? info!.Album : "";
         var lyric = overrideInfo is null ? _service?.CurrentLyricLine : null;
-        _lyric.Text = hasMedia && !string.IsNullOrWhiteSpace(lyric) ? lyric : "";
-        _lyric.Visibility = _lyric.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (_large)
+        {
+            _lyric.Text = hasMedia ? (string.IsNullOrWhiteSpace(lyric) ? "暂无歌词" : lyric) : "等待媒体播放";
+            _lyric.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            _lyric.Text = hasMedia && !string.IsNullOrWhiteSpace(lyric) ? lyric : "";
+            _lyric.Visibility = _lyric.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+        _lyric.ToolTip = _service?.Lyrics?.Source is { } source ? "歌词来源：" + source : null;
         _playGlyph.Text = hasMedia && info!.IsPlaying ? "\uE769" : "\uE768";
         _playButton.Background = hasMedia ? ThemeRuntime.Accent : ThemeRuntime.Track;
         _playButton.IsEnabled = hasMedia;

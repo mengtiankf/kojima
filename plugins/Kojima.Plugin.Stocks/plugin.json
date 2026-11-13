@@ -1,7 +1,7 @@
 {
   "id": "stocks",
   "name": "股票",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "assembly": "Kojima.Plugin.Stocks.dll",
   "entryType": "Kojima.Agents.Features.StocksFeature",
   "description": "自选行情、股票搜索与持仓提醒"

@@ -34,6 +34,23 @@ public static class FeatureIds
         _ => throw new ArgumentOutOfRangeException(nameof(id)),
     };
 
+    public static IReadOnlyList<string> CardFeatures { get; } =
+        ["usage", "monitor", "media", "messages", "weather", "stocks", "clipboard", "translate", "controls"];
+
+    public static string? PageKey(string feature) => feature switch
+    {
+        "usage" => "usage",
+        "monitor" => "monitor",
+        "media" => "media",
+        "weather" => "weather",
+        "stocks" => "stocks",
+        "clipboard" => "clip",
+        "translate" => "translate",
+        "messages" => "msg",
+        "controls" => "ctl",
+        _ => null,
+    };
+
     public static string DisplayName(this FeatureId id) => id switch
     {
         FeatureId.Usage => "AI 用量",

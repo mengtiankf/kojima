@@ -49,6 +49,8 @@ public partial class IslandWindow : Window
     private const double DragThreshold = 4;
     private const double ResizeEdge = 18;
     private readonly string? _displayOverride;
+    private bool _monitorPageSubscribed;
+    private bool _compactMonitorSubscribed;
 
     public IslandWindow(AppRuntime runtime, string? display = null)
     {
@@ -93,12 +95,20 @@ public partial class IslandWindow : Window
         _runtime.Media.Changed += () => Dispatcher.BeginInvoke(ApplyCompactContent);
         _runtime.Usage.Updated += OnUsageUpdated;
         _runtime.Monitor.Sample += OnMonitorSample;
+        _runtime.Stocks.Updated += OnStocksUpdated;
         Dispatcher.BeginInvoke(() => ApplyWeather(_runtime.Weather.Current));
     }
 
     public bool IsExpanded => _expanded;
 
     public string? CurrentPageKey => _current?.Key;
+
+    internal IReadOnlyList<string> LoadedPageKeys => _pages.Select(page => page.Key).ToArray();
+
+    private readonly List<string> _compactItemKeys = [];
+    internal IReadOnlyList<string> CompactItemKeys => _compactItemKeys.ToArray();
+
+    internal HomeView? HomeViewForTest => _homeView;
 
     private IslandSettings Settings => _runtime.Config.Island;
 
@@ -193,6 +203,7 @@ public partial class IslandWindow : Window
         _monitorView = null;
         _weatherView = null;
         _homeView = null;
+        _mediaView = null;
         BuildPages();
         BuildNav();
 
@@ -207,6 +218,15 @@ public partial class IslandWindow : Window
         var home = new HomeView(_runtime);
         _homeView = home;
         _pages.Add(new IslandPage("home", "\uE80F", "主页", home, 300));
+
+        if (_runtime.FeatureEnabled("media"))
+        {
+            var mediaView = new MediaView(_runtime);
+            _mediaView = mediaView;
+            var media = new IslandPage("media", "\uE8D6", "媒体", mediaView, 320);
+            media.Shown = () => _ = _runtime.Media.RefreshAsync();
+            _pages.Add(media);
+        }
 
         if (_runtime.FeatureEnabled("usage"))
         {
@@ -274,6 +294,7 @@ public partial class IslandWindow : Window
     private void OnUsageUpdated() => Dispatcher.BeginInvoke(() =>
     {
         _usageView?.Update(_runtime.Usage.Snapshots, _runtime.Usage.UpdatedAt);
+        ApplyCompactContent();
         if (_current?.Key == "usage")
         {
             ResizeToContent();
@@ -283,16 +304,20 @@ public partial class IslandWindow : Window
     private void OnMonitorSample(MonitorSample sample) => Dispatcher.BeginInvoke(() =>
     {
         _monitorView?.Update(sample);
+        ApplyCompactContent();
         if (_current?.Key == "monitor")
         {
             ResizeToContent();
         }
     });
 
+    private void OnStocksUpdated() => Dispatcher.BeginInvoke(ApplyCompactContent);
+
     private UsageView? _usageView;
     private MonitorView? _monitorView;
     private WeatherView? _weatherView;
     private HomeView? _homeView;
+    private MediaView? _mediaView;
 
     /// <summary>演示数据：生成 README 示例图时使用，不含真实数据。</summary>
     private bool _demo;
@@ -313,10 +338,14 @@ public partial class IslandWindow : Window
         _demo = true;
         _usageView?.Update(DemoData.Usage(), DateTimeOffset.Now);
         _monitorView?.Update(DemoData.Monitor());
+        _runtime.Monitor.Seed(DemoData.Monitor());
+        _runtime.Usage.Seed(DemoData.Usage());
         _weatherView?.ApplyDemo(DemoData.Weather());
         _homeView?.ApplyDemo(DemoData.Weather());
         _homeView?.ApplyDemoMedia(DemoData.Media());
+        _mediaView?.ApplyDemo(DemoData.Media());
 
+        _runtime.Stocks.Seed(DemoData.Stocks());
         _runtime.Notify.Push("CPU 占用过高", "CPU 已持续 92% 超过 2 分钟，建议检查后台进程。", "warn");
         _runtime.Notify.Push("天气提醒", "半小时后有小雨，出门记得带伞。", "weather");
         _runtime.Notify.Push("持仓提醒", "贵州茅台 +0.07%，宁德时代 -3.73%。", "stock");
@@ -347,7 +376,24 @@ public partial class IslandWindow : Window
         var right = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         right.Children.Add(CreateGlyphButton("\uE713", "设置", OpenSettings));
 
-        host.Children.Add(left);
+        host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        host.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var scroll = new ScrollViewer
+        {
+            Content = left,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            PanningMode = PanningMode.HorizontalOnly,
+            Focusable = false,
+        };
+        scroll.PreviewMouseWheel += (_, e) =>
+        {
+            scroll.ScrollToHorizontalOffset(scroll.HorizontalOffset - e.Delta / 3.0);
+            e.Handled = true;
+        };
+        Grid.SetColumn(scroll, 0);
+        host.Children.Add(scroll);
+        Grid.SetColumn(right, 1);
         host.Children.Add(right);
         NavRow.Children.Add(host);
     }
@@ -374,22 +420,10 @@ public partial class IslandWindow : Window
         }
 
         var order = _runtime.Config.Island.NavOrder ?? new List<string>();
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["usage"] = "usage",
-            ["monitor"] = "monitor",
-            ["stocks"] = "stocks",
-            ["weather"] = "weather",
-            ["clipboard"] = "clip",
-            ["translate"] = "translate",
-            ["messages"] = "msg",
-            ["controls"] = "ctl",
-        };
-
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "home" };
         foreach (var key in order)
         {
-            if (map.TryGetValue(key, out var pageKey) && seen.Add(pageKey))
+            if (FeatureIds.PageKey(key) is { } pageKey && seen.Add(pageKey))
             {
                 var page = _pages.FirstOrDefault(p => p.Key == pageKey);
                 if (page is not null)
@@ -522,6 +556,10 @@ public partial class IslandWindow : Window
         foreach (var (key, pill) in _navPills)
         {
             var active = key.Equals(activeKey, StringComparison.OrdinalIgnoreCase);
+            if (active)
+            {
+                Dispatcher.BeginInvoke(() => pill.BringIntoView());
+            }
             pill.Background = active ? ThemeRuntime.AccentSoft : Brushes.Transparent;
             if (hover && !active)
             {
@@ -575,7 +613,7 @@ public partial class IslandWindow : Window
         }
         else
         {
-            _ = _runtime.Monitor.StopAsync();
+            _ = StopMonitorPageAsync();
         }
 
         if (page.Key == "usage")
@@ -590,7 +628,11 @@ public partial class IslandWindow : Window
     {
         try
         {
-            _runtime.Monitor.AddSubscriber();
+            if (!_monitorPageSubscribed)
+            {
+                _runtime.Monitor.AddSubscriber();
+                _monitorPageSubscribed = true;
+            }
             await _runtime.Monitor.StartAsync();
             var sample = _runtime.Monitor.Last ?? await _runtime.Monitor.SampleOnceAsync();
             if (sample is not null && _current?.Key == "monitor" && _current.View is MonitorView view)
@@ -601,6 +643,15 @@ public partial class IslandWindow : Window
         catch (Exception ex)
         {
             AppLog.Warn("监控页启动失败：" + ex.Message);
+        }
+    }
+
+    private async Task StopMonitorPageAsync()
+    {
+        if (_monitorPageSubscribed)
+        {
+            _monitorPageSubscribed = false;
+            await _runtime.Monitor.StopAsync();
         }
     }
 
@@ -662,7 +713,7 @@ public partial class IslandWindow : Window
         _pinned = false;
         _expanded = false;
         _current?.Hidden?.Invoke();
-        _ = _runtime.Monitor.StopAsync();
+        _ = StopMonitorPageAsync();
 
         // 收起前先淡出内容
         Panel.BeginAnimation(OpacityProperty,
@@ -868,7 +919,11 @@ public partial class IslandWindow : Window
         ApplyCompactContent();
 
         ClockText.Foreground = ThemeRuntime.Text;
+        CompactDateText.Foreground = ThemeRuntime.Text2;
         WeatherText.Foreground = ThemeRuntime.Text;
+        StocksText.Foreground = ThemeRuntime.Text2;
+        UsageText.Foreground = ThemeRuntime.Text2;
+        MonitorText.Foreground = ThemeRuntime.Text2;
         WeatherIcon.Foreground = ThemeRuntime.Text2;
         Compact.Margin = Settings.Shape == IslandShape.Indicator
             ? new Thickness(0)
@@ -883,64 +938,127 @@ public partial class IslandWindow : Window
         UpdateNavVisuals(_current?.Key ?? "home");
     }
 
-    /// <summary>收起态显示什么，由设置里的 CompactContent 决定。</summary>
+    /// <summary>收起态按用户选择的顺序组合内容。</summary>
     private void ApplyCompactContent()
     {
-        var content = Settings.CompactContent ?? "clockWeather";
-
-        var clock = Settings.CompactView == "clock";
-        var weather = Settings.ShowWeather && _runtime.FeatureEnabled("weather");
-        var mediaOn = _runtime.FeatureEnabled("media");
-
-        switch (content)
+        foreach (var element in new FrameworkElement[] { ClockText, CompactDateText, WeatherStack, MediaText, StocksText, UsageText, MonitorText })
         {
-            case "clock":
-                weather = false;
-                break;
-            case "weather":
-                clock = false;
-                break;
-            case "media":
-                clock = false;
-                weather = false;
-                break;
-            case "none":
-                clock = false;
-                weather = false;
-                break;
+            if (element.Parent is Panel parent)
+            {
+                parent.Children.Remove(element);
+            }
+            element.Visibility = Visibility.Collapsed;
+        }
+        Compact.Children.Clear();
+        _compactItemKeys.Clear();
+
+        var host = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        if (Settings.Shape != IslandShape.Indicator)
+        {
+            foreach (var key in CompactLayout.Resolve(Settings))
+            {
+                FrameworkElement? element = null;
+                switch (key)
+                {
+                    case "clock":
+                        element = ClockText;
+                        break;
+                    case "date":
+                        element = CompactDateText;
+                        break;
+                    case "weather" when Settings.ShowWeather && _runtime.FeatureEnabled("weather"):
+                        element = WeatherStack;
+                        break;
+                    case "media" when _runtime.FeatureEnabled("media"):
+                        var media = _runtime.Media.Current;
+                        MediaText.Text = media is null
+                            ? "未在播放"
+                            : (string.IsNullOrWhiteSpace(media.Artist) ? media.Title : media.Title + " · " + media.Artist);
+                        MediaText.MaxWidth = 110;
+                        element = MediaText;
+                        break;
+                    case "stocks" when _runtime.FeatureEnabled("stocks"):
+                        var quote = _runtime.Stocks.Quotes.FirstOrDefault();
+                        StocksText.Text = quote is null ? "股票 --" : $"{quote.Name} {quote.Percent:+0.00;-0.00;0.00}%";
+                        element = StocksText;
+                        break;
+                    case "usage" when _runtime.FeatureEnabled("usage"):
+                        UsageText.Text = UsageSummary();
+                        element = UsageText;
+                        if (_runtime.Usage.UpdatedAt is null)
+                        {
+                            _ = _runtime.Usage.RefreshAsync();
+                        }
+                        break;
+                    case "monitor" when _runtime.FeatureEnabled("monitor"):
+                        MonitorText.Text = _runtime.Monitor.Last is { } sample ? $"CPU {sample.Cpu.Percent:0}%" : "CPU --";
+                        element = MonitorText;
+                        break;
+                }
+
+                if (element is null)
+                {
+                    continue;
+                }
+
+                element.Visibility = Visibility.Visible;
+                element.Margin = new Thickness(0, 0, 10, 0);
+                host.Children.Add(element);
+                _compactItemKeys.Add(key);
+            }
         }
 
-        if (Settings.Shape == IslandShape.Indicator)
+        if (host.Children.Count > 0)
         {
-            clock = false;
-            weather = false;
+            ((FrameworkElement)host.Children[^1]).Margin = new Thickness(0);
         }
-
-        ClockText.Visibility = clock ? Visibility.Visible : Visibility.Collapsed;
-        WeatherStack.Visibility = weather ? Visibility.Visible : Visibility.Collapsed;
-        MediaText.Visibility = mediaOn && content == "media" && Settings.Shape != IslandShape.Indicator
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-
-        if (content == "media")
+        Compact.Children.Add(host);
+        if (_compactItemKeys.Contains("monitor") && _runtime.FeatureEnabled("monitor"))
         {
-            var media = _runtime.Media.Current;
-            MediaText.Text = media is null
-                ? "未在播放"
-                : (string.IsNullOrWhiteSpace(media.Artist) ? media.Title : media.Title + " · " + media.Artist);
+            if (!_compactMonitorSubscribed)
+            {
+                _runtime.Monitor.AddSubscriber();
+                _compactMonitorSubscribed = true;
+                _ = _runtime.Monitor.StartAsync();
+            }
         }
+        else if (_compactMonitorSubscribed)
+        {
+            _compactMonitorSubscribed = false;
+            _ = _runtime.Monitor.StopAsync();
+        }
+    }
+
+    private string UsageSummary()
+    {
+        var quota = _runtime.Usage.Snapshots.Where(snapshot => snapshot.Quotas.Count > 0)
+            .Select(snapshot => (snapshot.Name, Quota: snapshot.Quotas.OrderByDescending(q => q.UsedPercent).First()))
+            .OrderByDescending(row => row.Quota.UsedPercent)
+            .FirstOrDefault();
+        if (quota.Quota is not null)
+        {
+            return $"AI {quota.Quota.UsedPercent:0}%";
+        }
+        var tokens = _runtime.Usage.Snapshots.Sum(snapshot => snapshot.Totals(DateTime.Today).Tokens);
+        return tokens > 0 ? $"AI {UsageFormat.Tokens(tokens)}" : "AI --";
     }
 
     private void UpdateClock()
     {
-        if (Settings.CompactView != "clock" || Settings.Shape == IslandShape.Indicator)
+        if (Settings.Shape == IslandShape.Indicator)
         {
             return;
         }
 
-        var now = DateTime.Now.ToString("HH:mm");
-        ClockText.Text = now;
-        PanelClock.Text = now;
+        var now = DateTime.Now;
+        ClockText.Text = now.ToString("HH:mm");
+        CompactDateText.Text = now.ToString("M/d");
+        PanelClock.Text = now.ToString("HH:mm");
     }
 
     /// <summary>紧凑态右下角天气。</summary>
@@ -954,6 +1072,9 @@ public partial class IslandWindow : Window
         WeatherIcon.Text = info.Glyph;
         WeatherText.Text = info.TemperatureText;
         WeatherText.Foreground = ThemeRuntime.Text;
+        StocksText.Foreground = ThemeRuntime.Text2;
+        UsageText.Foreground = ThemeRuntime.Text2;
+        MonitorText.Foreground = ThemeRuntime.Text2;
         WeatherIcon.Foreground = ThemeRuntime.Text2;
     }
 
@@ -1301,6 +1422,7 @@ public partial class IslandWindow : Window
         ThemeRuntime.Changed -= OnThemeChanged;
         _runtime.Usage.Updated -= OnUsageUpdated;
         _runtime.Monitor.Sample -= OnMonitorSample;
+        _runtime.Stocks.Updated -= OnStocksUpdated;
         _clock.Stop();
         _hover.Stop();
         _outside.Stop();

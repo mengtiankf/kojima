@@ -72,6 +72,7 @@ public partial class App : Application
         AppRuntime.Current = _runtime;
 
         _island = new IslandWindow(_runtime);
+        _runtime.Island = _island;
         _island.Loaded += (_, _) => HookHotkeys();
         _island.Show();
         RebuildExtraIslands();
@@ -186,7 +187,7 @@ public partial class App : Application
         {
             await Task.Delay(TimeSpan.FromSeconds(12));
             var config = _runtime!.Config;
-            if (!config.Update.AutoCheck || !config.Feature("updates").Enabled)
+            if (!config.Update.AutoCheck)
             {
                 return;
             }
@@ -264,6 +265,11 @@ public partial class App : Application
                 if (!string.IsNullOrWhiteSpace(module) && _settings is { } target)
                 {
                     target.SelectModule(module);
+                }
+
+                if (Environment.GetEnvironmentVariable("KOJIMA_SETTINGS_SCROLL") == "end" && _settings is { } scroll)
+                {
+                    scroll.ScrollCurrentPageToEnd();
                 }
 
                 var dropdown = Environment.GetEnvironmentVariable("KOJIMA_SETTINGS_DROPDOWN");
@@ -593,6 +599,21 @@ public partial class App : Application
         {
             app.RebuildExtraIslands();
         }
+    }
+
+    public static void ReloadFeatures()
+    {
+        if (Application.Current is App app)
+        {
+            app._island?.ReloadFeatures();
+            foreach (var extra in app._extraIslands)
+            {
+                extra.ReloadFeatures();
+            }
+            return;
+        }
+
+        AppRuntime.Current?.Island?.ReloadFeatures();
     }
 
     private void RebuildExtraIslands()

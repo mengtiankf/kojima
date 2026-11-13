@@ -6,6 +6,16 @@ namespace Kojima.Island;
 /// <summary>演示数据：用于生成 README 示例图，避免暴露真实用量与桌面。</summary>
 internal static class DemoData
 {
+    public static List<StockQuote> Stocks() =>
+    [
+        new("sh000001", "上证指数", 3245.67, 0.42, 3232.10),
+        new("sz399001", "深证成指", 10582.31, -0.36, 10620.55),
+        new("sh600519", "贵州茅台", 1468.00, 0.07, 1466.97),
+        new("sz300750", "宁德时代", 248.60, -3.73, 258.22),
+        new("sz002594", "比亚迪", 79.99, -0.41, 80.32),
+        new("hk00700", "腾讯控股", 398.80, 1.48, 392.98),
+    ];
+
     public static IReadOnlyList<UsageSnapshot> Usage()
     {
         var now = DateTimeOffset.Now;

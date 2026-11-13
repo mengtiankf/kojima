@@ -34,38 +34,48 @@ public sealed class ControlsView : UserControl
 
         // 音量
         _volumeText = UiKit.T("--", 12, ThemeRuntime.Text2, num: true);
-        _volumeText.MinWidth = 38;
+        _volumeText.MinWidth = 52;
         _volumeText.TextAlignment = TextAlignment.Right;
-        _volume = new Slider { Minimum = 0, Maximum = 100, Width = 360, IsMoveToPointEnabled = true };
+        _volume = new Slider { Minimum = 0, Maximum = 100, IsMoveToPointEnabled = true };
         _volume.ValueChanged += (_, _) => OnVolumeChanged();
         StyleSlider(_volume);
 
-        var volumeRow = new StackPanel { Orientation = Orientation.Horizontal };
+        var volumeRow = new Grid();
+        volumeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        volumeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        volumeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _muteGlyph = UiKit.Glyph("\uE767", 15, ThemeRuntime.Text2);
-        _muteGlyph.Margin = new Thickness(0, 0, 10, 0);
         _muteGlyph.Cursor = System.Windows.Input.Cursors.Hand;
         _muteGlyph.MouseLeftButtonUp += (_, _) => ToggleMute();
+        Grid.SetColumn(_muteGlyph, 0);
         volumeRow.Children.Add(_muteGlyph);
+        _volume.Margin = new Thickness(10, 0, 12, 0);
+        Grid.SetColumn(_volume, 1);
         volumeRow.Children.Add(_volume);
-        _volume.Margin = new Thickness(0, 0, 10, 0);
+        Grid.SetColumn(_volumeText, 2);
         volumeRow.Children.Add(_volumeText);
         root.Children.Add(UiKit.Card(volumeRow));
         root.Children.Add(new Border { Height = 8 });
 
         // 亮度
         _brightnessText = UiKit.T("--", 12, ThemeRuntime.Text2, num: true);
-        _brightnessText.MinWidth = 38;
+        _brightnessText.MinWidth = 52;
         _brightnessText.TextAlignment = TextAlignment.Right;
-        _brightness = new Slider { Minimum = 0, Maximum = 100, Width = 360, IsMoveToPointEnabled = true };
+        _brightness = new Slider { Minimum = 0, Maximum = 100, IsMoveToPointEnabled = true };
         _brightness.ValueChanged += (_, _) => OnBrightnessChanged();
         StyleSlider(_brightness);
 
-        var brightnessRow = new StackPanel { Orientation = Orientation.Horizontal };
+        var brightnessRow = new Grid();
+        brightnessRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        brightnessRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        brightnessRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var sun = UiKit.Glyph("\uE706", 15, ThemeRuntime.Text2);
-        sun.Margin = new Thickness(0, 0, 10, 0);
+        Grid.SetColumn(sun, 0);
         brightnessRow.Children.Add(sun);
+        _brightness.Margin = new Thickness(10, 0, 12, 0);
+        Grid.SetColumn(_brightness, 1);
         brightnessRow.Children.Add(_brightness);
-        _brightness.Margin = new Thickness(0, 0, 10, 0);
+        Grid.SetColumn(_brightnessText, 2);
         brightnessRow.Children.Add(_brightnessText);
         root.Children.Add(UiKit.Card(brightnessRow));
         root.Children.Add(new Border { Height = 8 });

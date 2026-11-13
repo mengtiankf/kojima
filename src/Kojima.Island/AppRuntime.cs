@@ -27,6 +27,7 @@ public sealed class AppRuntime
         Notify = new NotifyCenter(dispatcher);
         Updates = new UpdateCoordinator(Notify, Agents);
         StockAlerts = new StockAlertService(Agents);
+        Stocks = new StockDataService(Agents, dispatcher, Config);
         Clipboard = new ClipboardProxy(Agents, dispatcher);
         Media = new MediaProxy(Agents, dispatcher);
         Spectrum = new SpectrumProxy(Agents);
@@ -58,6 +59,8 @@ public sealed class AppRuntime
     public UpdateCoordinator Updates { get; }
 
     public StockAlertService StockAlerts { get; }
+
+    public StockDataService Stocks { get; }
 
     public ClipboardProxy Clipboard { get; }
 
@@ -113,7 +116,7 @@ public sealed class AppRuntime
             switch (key)
             {
                 case "monitor":
-                    await Monitor.StopAsync().ConfigureAwait(false);
+                    await Monitor.ForceStopAsync().ConfigureAwait(false);
                     break;
                 case "weather":
                     Weather.Stop();
@@ -133,6 +136,7 @@ public sealed class AppRuntime
                     break;
                 case "stocks":
                     StockAlerts.Stop();
+                    Stocks.Stop();
                     break;
             }
 
@@ -147,6 +151,7 @@ public sealed class AppRuntime
                     break;
                 case "stocks":
                     StockAlerts.Start();
+                    Stocks.Start();
                     break;
                 case "clipboard":
                     Clipboard.Start();
@@ -156,10 +161,7 @@ public sealed class AppRuntime
                     break;
                 case "media":
                     Media.Start();
-                    if (Config.Feature("spectrum").Enabled)
-                    {
-                        Spectrum.Start();
-                    }
+                    Spectrum.Start();
                     break;
                 case "spectrum":
                     Spectrum.Start();
@@ -203,10 +205,7 @@ public sealed class AppRuntime
         if (Config.Feature("media").Enabled)
         {
             Media.Start();
-            if (Config.Feature("spectrum").Enabled)
-            {
-                Spectrum.Start();
-            }
+            Spectrum.Start();
         }
 
         if (Config.Feature("messages").Enabled)
@@ -217,6 +216,7 @@ public sealed class AppRuntime
         if (Config.Feature("stocks").Enabled)
         {
             StockAlerts.Start();
+            Stocks.Start();
         }
     }
 
@@ -257,8 +257,9 @@ public sealed class AppRuntime
             Messages.Dispose();
             Controls.Dispose();
             StockAlerts.Dispose();
+            Stocks.Dispose();
             Weather.Dispose();
-            await Monitor.StopAsync().ConfigureAwait(false);
+            await Monitor.ForceStopAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

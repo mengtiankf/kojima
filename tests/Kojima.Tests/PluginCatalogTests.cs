@@ -20,7 +20,7 @@ public sealed class PluginCatalogTests
             {
                 Id = "sample",
                 Name = "Sample",
-                Version = "1.3.2",
+                Version = "1.3.3",
                 Assembly = "Sample.dll",
                 EntryType = "Sample.Feature",
             };

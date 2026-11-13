@@ -37,9 +37,7 @@ public partial class SettingsWindow : Window
     {
         ("usage", "AI 用量", "Claude、Codex、Cursor 等来源的额度与消耗"),
         ("monitor", "系统监控", "CPU、内存、温度与功耗"),
-        ("media", "媒体", "正在播放的封面与播放控制"),
-        ("spectrum", "音频频谱", "媒体卡的实时音频频谱"),
-        ("updates", "应用更新", "GitHub 更新检查、下载与安装"),
+        ("media", "媒体", "正在播放的封面、频谱与播放控制"),
         ("messages", "通知中心", "QQ、微信等应用通知与系统提醒"),
         ("weather", "天气", "当前天气与短期预报"),
         ("stocks", "股票", "自选行情与涨跌"),
@@ -48,6 +46,8 @@ public partial class SettingsWindow : Window
         ("controls", "控制", "音量、亮度与截图等快捷操作"),
     };
 
+
+    internal static IReadOnlyList<string> ConfigurableFeatureKeys => FeatureDefs.Select(def => def.Key).ToArray();
 
     private static readonly (string Title, string Desc)[] PageMeta =
     {
@@ -86,6 +86,11 @@ public partial class SettingsWindow : Window
         };
 
         BrowseMusic.Click += (_, _) => BrowseForMusic();
+        foreach (var radio in new[] { PosCenter, PosLeft, PosRight, ShapeNotch, ShapeCapsule, ShapeIndicator })
+        {
+            radio.Checked += OnVisualSettingChanged;
+        }
+        OpacitySlider.ValueChanged += OnVisualSettingChanged;
         ApplyVersion();
         ApplyThemeResources();
         LoadConfig();
@@ -100,7 +105,7 @@ public partial class SettingsWindow : Window
     {
         var version = typeof(SettingsWindow).Assembly
             .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? "1.3.2";
+            ?? "1.3.3";
         var dash = version.IndexOf('+', StringComparison.Ordinal);
         if (dash > 0)
         {
@@ -177,6 +182,7 @@ public partial class SettingsWindow : Window
     {
         ApplyThemeResources();
         UpdateCurrentThemeText();
+        RefreshPreview();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -213,15 +219,20 @@ public partial class SettingsWindow : Window
         ShapeCapsule.IsChecked = cfg.Island.Shape == IslandShape.Capsule;
         ShapeIndicator.IsChecked = cfg.Island.Shape == IslandShape.Indicator;
 
-        var compact = (cfg.Island.CompactContent ?? "clockWeather").Trim();
+        var compact = cfg.Island.CompactItems is null
+            ? (cfg.Island.CompactContent ?? "clockWeather").Trim()
+            : "custom";
         (compact switch
         {
             "clock" => CompactClock,
             "weather" => CompactWeather,
             "media" => CompactMedia,
             "none" => CompactNone,
+            "custom" => CompactCustom,
             _ => CompactClockWeather,
         }).IsChecked = true;
+        LoadCompactEditor();
+        LoadHomeEditor();
 
         HideFullscreenSwitch.IsChecked = cfg.Island.HideFullscreen;
         HoverSlider.Value = Math.Clamp(cfg.Island.HoverExpandMs, 0, 600);
@@ -247,6 +258,7 @@ public partial class SettingsWindow : Window
         WeatherLocation.Text = cfg.Weather.Location ?? "";
         WeatherRefreshBox.Text = cfg.Weather.RefreshMinutes.ToString(CultureInfo.InvariantCulture);
         MusicPath.Text = cfg.Apps.Music ?? "";
+        LoadLyricsSettings(cfg.Lyrics);
         var engine = (cfg.Translate.Engine ?? "auto").Trim().ToLowerInvariant();
         (engine switch
         {
@@ -299,6 +311,7 @@ public partial class SettingsWindow : Window
         UpdateCurrentThemeText();
         BuildFeatures();
         BuildUsageSources(cfg);
+        RefreshPreview();
 
         NavGeneral.IsChecked = true;
     }
@@ -648,6 +661,11 @@ public partial class SettingsWindow : Window
         PageDescText.Text = PageMeta[index].Desc;
     }
 
+    internal void ScrollCurrentPageToEnd()
+    {
+        _pages.FirstOrDefault(page => page.Visibility == Visibility.Visible)?.ScrollToEnd();
+    }
+
     // ==================================================================
     // 窗口交互
     // ==================================================================
@@ -698,12 +716,6 @@ public partial class SettingsWindow : Window
 
     private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
     {
-        if (!_runtime.FeatureEnabled("updates"))
-        {
-            UpdateStatusText.Text = "应用更新插件已停用，可在「功能」页重新开启。";
-            return;
-        }
-
         CheckUpdateButton.IsEnabled = false;
         UpdateStatusText.Text = "正在检查…";
         try
@@ -872,11 +884,8 @@ public partial class SettingsWindow : Window
             cfg.Island.CollapseDelayMs = (int)Math.Round(CollapseSlider.Value);
             cfg.Island.Opacity = Math.Round(OpacitySlider.Value, 2);
             cfg.Island.AnimationMs = (int)Math.Round(AnimationSlider.Value);
-            cfg.Island.CompactContent = CompactClock.IsChecked == true ? "clock"
-                : CompactWeather.IsChecked == true ? "weather"
-                : CompactMedia.IsChecked == true ? "media"
-                : CompactNone.IsChecked == true ? "none"
-                : "clockWeather";
+            ApplyCompactEditor(cfg.Island);
+            ApplyHomeEditor(cfg.Island);
 
             cfg.Appearance.Mode = ModeSystem.IsChecked == true ? "system"
                 : ModeDaylight.IsChecked == true ? "daylight"
@@ -907,6 +916,7 @@ public partial class SettingsWindow : Window
             cfg.Weather.Location = (WeatherLocation.Text ?? "").Trim();
             cfg.Weather.RefreshMinutes = weatherRefresh;
             cfg.Apps.Music = (MusicPath.Text ?? "").Trim();
+            ApplyLyricsSettings(cfg.Lyrics);
             cfg.Translate.Engine = TranslateTencent.IsChecked == true ? "tencent"
                 : TranslateGoogle.IsChecked == true ? "google"
                 : TranslateMyMemory.IsChecked == true ? "mymemory"
@@ -963,6 +973,11 @@ public partial class SettingsWindow : Window
             _runtime.Themes.Apply();
             App.RefreshIsland();
             App.RefreshStocks();
+            _runtime.Stocks.ApplySettings();
+            if (applyServices)
+            {
+                _ = _runtime.Stocks.RefreshAsync();
+            }
             App.RebuildDecks();
             UpdateCurrentThemeText();
             if (applyServices)
@@ -995,9 +1010,13 @@ public partial class SettingsWindow : Window
 
             _runtime.Weather.ApplySettings();
             _runtime.Usage.ApplySettings();
+            if (applyServices)
+            {
+                _runtime.Media.ReloadLyrics();
+            }
 
             _pending.Clear();
-            _runtime.Island?.ReloadFeatures();
+            App.ReloadFeatures();
 
             foreach (var row in _features)
             {

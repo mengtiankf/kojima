@@ -5,6 +5,7 @@ Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://gi
 界面与调度在主进程，监控、用量、天气、股票、媒体、剪贴板、翻译、通知、频谱、控制与更新的采样、解析、设备和联网工作都放在**按需启动的独立插件进程**里（空闲自动退出）。岛体材质、肩部曲线与主题文件沿用 [BrimDeck](https://github.com/MoFeng2223/BrimDeck) 的设计语言。
 
 ![首页](docs/doc-home.png)
+![媒体](docs/doc-media.png)
 ![AI 用量](docs/doc-usage.png)
 ![系统监控](docs/doc-monitor.png)
 ![天气](docs/doc-weather.png)
@@ -18,8 +19,9 @@ Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://gi
 | 模块 | 说明 |
 | --- | --- |
 | 灵动岛 | 顶部居中 / 上靠左 / 上靠右三档吸附位置，也可直接拖动并吸附屏幕边缘；刘海 / 胶囊 / 指示条三种形态；悬停展开、离开自动收起，动画时长可调；展开宽度可拖动右下角或设置滑杆调整；支持多显示器选择，位置按显示器记忆，并可让其他显示器顶部同时显示副岛 |
-| 收起时显示 | 时钟和天气 / 仅时钟 / 仅天气 / 媒体信息 / 不显示，五档任选 |
-| 首页 | 时钟、日期、天气、媒体卡（封面 / 实时频谱 / 当前歌词 / 上一首 / 播放暂停 / 下一首）与常驻快捷操作（静音 / 截图 / 设置）；歌词来自 LRCLIB 与网易云，失败时静默降级 |
+| 收起时显示 | 时钟、日期、天气、媒体、股票、AI 用量、系统监控可任意勾选、拖拽排序，也可使用预设；支持实时预览 |
+| 首页 | 时钟、日期、天气、媒体卡（封面 / 实时频谱 / 当前歌词 / 播放控制）与常驻快捷操作（静音 / 截图 / 设置）；股票、AI 用量、系统监控也可加入；卡片可拖拽排序，超过四张时滚动显示，默认布局不变 |
+| 媒体 | 独立媒体页采用封面与信息 + 右侧频谱 + 下方居中大号歌词布局，显示曲目、歌手、专辑、进度和播放控制；首页仍保留媒体卡，支持手动刷新与播放器会话切换。在线歌词源可选 LRCLIB / 网易云 / QQ 音乐 / 酷狗；增强模式只读网易云日志或 Apple Music TTML 缓存，不修改播放器文件 |
 | AI 用量 | 13 个来源：Claude、Codex、Cursor、Antigravity（读取会话数据库）、DeepSeek Harness、Kimi、OpenCode、ZCode、DeepSeek、OpenRouter、GLM、NewAPI、Sub2API；今日 / 本周 / 本月 Token、额度与估算成本（额度依赖服务端公开接口，结果缓存 5 分钟并自动退避限流；没有额度接口时给出说明，成本按公开价格表估算）；每个来源可分别关闭“本机记录”与“账户额度”，统计周期会记住 |
 | 系统监控 | CPU（总/每核）、GPU（NVIDIA 走 nvidia-smi，其它显卡走系统 GPU 引擎计数器；显存 / 温度 / 功耗）、内存、网络、磁盘、温度、电池健康与剩余时间、前台程序帧率（ETW，读取失败时自动隐藏）、进程 TOP 7；温度与功耗可接 LibreHardwareMonitor / OpenHardwareMonitor；采样间隔可配置 |
 | 天气 | 当前天气 + 三日预报；可在设置里填写城市（如 上海、Tokyo），留空按 IP 定位；刷新间隔可配置；图标为自绘矢量，不依赖字体码位 |
@@ -29,15 +31,18 @@ Windows 桌面灵动岛（Dynamic Island）。下载：[最新版本](https://gi
 | 翻译 | 中→日 / 中→英，也可反向翻译；引擎可选腾讯翻译君 / MyMemory / Google / 百度 / 微软 / DeepSeek / 自定义 OpenAI 兼容大模型；目标语言与方向会记住 |
 | 消息 | 通知中心独立插件读取 Windows 通知库，并在设置里提供读取频率与清空操作；CPU 占用过高、天气变化、持仓提醒也会进入同一个中心 |
 | 主题 | 内置 11 套 BrimDeck 主题，支持 `%LOCALAPPDATA%\Kojima\themes` 放入自定义主题；主题编辑器用底色 / 文字色 / 强调色派生整套配色；可跟随系统深浅色或按时间段自动切换，系统高对比度开启时自动使用高对比色板 |
-| 设置 | 独立设置窗口：通用 / 外观 / 功能 / 用量 / 关于；每个功能模块的详细配置在二级菜单里；主题即点即生效，其它设置经校验后应用并回读确认 |
+| 设置 | 独立设置窗口：通用 / 外观 / 功能 / 用量 / 关于；每个功能模块的详细配置在二级菜单里；主题即点即生效，其它设置经校验后应用并回读确认；UI 配置提供实时预览，列表支持拖拽排序 |
 | 更新 | 启动后每天检查一次 GitHub Release；安装版静默调用安装包，便携版解压替换后自动重启；构建产物附带 SHA-256 校验文件 |
-| 导航 | 悬停标签即切换页面，不需要点击；标签顺序可在「设置 → 功能」里用 ↑ ↓ 调整，应用后生效，取消不会改动 |
+| 导航 | 悬停标签即切换页面，不需要点击；标签顺序可在「设置 → 功能」里拖拽调整，也可用 ↑ ↓ 辅助操作，应用后生效，取消不会改动 |
 
-## 1.3.2
+## 1.3.3
 
+- 新增独立媒体页、右侧频谱与居中大号歌词；支持 LRCLIB、网易云、QQ 音乐、酷狗和只读本地增强歌词。
+- 首页与收起态支持股票、AI 用量和系统监控摘要，内容可勾选、拖拽排序并实时预览，超过四张主页卡片可滚动查看。
+- 修复功能关闭后 UI 不刷新、媒体订阅中断、播放器会话切换和多处设置不同步问题。
 - 统一现代化导航、卡片、字体层级、按钮、细滚动条与深浅主题，重做通知中心的信息布局。
 - 修复非法输入导致设置按钮锁定、数值静默截断、排序绕过取消、用量周期与翻译方向丢失、自定义音乐程序不生效等同步问题。
-- 11 个后台功能全部拆为独立插件；设置页可以分别启停。
+- 11 个后台功能全部拆为独立插件；有岛体卡片的功能可在设置页分别启停，频谱随媒体控制，更新在关于页控制。
 - 新增核心、插件清单、真实宿主加载和 WPF 设置同步测试；CI 同时运行核心与 UI 测试。
 
 ## 插件架构
@@ -80,7 +85,7 @@ plugins/Kojima.Plugin.Weather/
 
 从 [Releases](https://github.com/mengtiankf/kojima/releases) 下载，或本地构建后从 `dist/` 取用：
 
-- `dist/KojimaSetup-1.3.2.exe`：Inno Setup 安装包（可选开机启动、桌面快捷方式）
+- `dist/KojimaSetup-1.3.3.exe`：Inno Setup 安装包（可选开机启动、桌面快捷方式）
 - `publish/`：绿色版，运行 `Kojima.exe`（Shell 会自动拉起 `Kojima.Island.exe`）
 
 配置与日志在 `%LOCALAPPDATA%\Kojima`：
@@ -113,12 +118,12 @@ dotnet test tests/Kojima.Island.Tests/Kojima.Island.Tests.csproj
 dotnet run --project src/Kojima.Shell
 ```
 
-核心测试包含插件清单校验和 11 个插件的真实宿主加载；UI 测试在 STA 线程中创建真实 WPF 控件，覆盖设置加载、非法输入、应用后回读、取消排序、用量周期、翻译方向与自定义音乐路径。
+核心测试包含插件清单校验和 11 个插件的真实宿主加载；UI 测试在 STA 线程中创建真实 WPF 控件，覆盖设置加载、非法输入、应用后回读、取消排序、拖拽放置、实时预览、功能卡片可见性、股票与用量摘要卡、独立媒体页、收起态自定义顺序、主页卡片布局、歌词来源与增强开关、用量周期、翻译方向与自定义音乐路径。
 
 打安装包与便携版（publish → Inno Setup → zip + SHA-256）：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File build.ps1 -Version 1.3.2
+powershell -ExecutionPolicy Bypass -File build.ps1 -Version 1.3.3
 ```
 
 需要 Inno Setup 6（脚本会自动查找 `%LOCALAPPDATA%` 与 `Program Files` 下的 `ISCC.exe`）。产物在 `dist/`：`KojimaSetup-<版本>.exe` 安装版和 `Kojima-<版本>-portable.zip` 便携版，各带 `.sha256` 校验文件。
@@ -128,9 +133,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1 -Version 1.3.2
 | 环境变量 | 作用 |
 | --- | --- |
 | `KOJIMA_INSTANCE=<name>` | 开发实例使用独立单实例锁，不影响已安装的 Kojima |
-| `KOJIMA_PREVIEW=<page>` | 启动后直接展开并切到指定页（home / usage / monitor / weather / stocks / ctl / clip / translate / msg） |
+| `KOJIMA_PREVIEW=<page>` | 启动后直接展开并切到指定页（home / media / usage / monitor / weather / stocks / ctl / clip / translate / msg） |
 | `KOJIMA_SHOT=<path>` | 启动后把窗口渲染成 PNG（配合 `KOJIMA_SHOT_DELAY=<ms>`）；设置窗口打开时截取设置窗口 |
 | `KOJIMA_DEMO=1` | 用内置演示数据填充页面与通知，用于生成文档截图 |
+| `KOJIMA_SETTINGS_SCROLL=end` | 设置窗口滚动到当前页末尾，便于检查实时预览与高级设置 |
 
 ## 致谢
 

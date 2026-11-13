@@ -88,11 +88,30 @@ public sealed class MonitorService
             return;
         }
 
-        await StopAsync().ConfigureAwait(false);
+        await StopCoreAsync().ConfigureAwait(false);
         await StartAsync().ConfigureAwait(false);
     }
 
     public async Task StopAsync()
+    {
+        if (_subscribers > 0)
+        {
+            _subscribers--;
+            if (_subscribers > 0)
+            {
+                return;
+            }
+        }
+        await StopCoreAsync().ConfigureAwait(false);
+    }
+
+    public async Task ForceStopAsync()
+    {
+        _subscribers = 0;
+        await StopCoreAsync().ConfigureAwait(false);
+    }
+
+    private async Task StopCoreAsync()
     {
         if (_streamId == 0)
         {
@@ -158,6 +177,8 @@ public sealed class MonitorService
         Last = sample;
         _dispatcher.BeginInvoke(() => Sample?.Invoke(sample));
     }
+
+    public void Seed(MonitorSample sample) => Publish(sample);
 
     public void AddSubscriber()
     {

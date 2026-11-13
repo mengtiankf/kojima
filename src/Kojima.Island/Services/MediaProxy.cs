@@ -29,11 +29,18 @@ public sealed class MediaProxy : IDisposable
     private LyricsResult? _lyrics;
     private string _lyricsKey = "";
     private bool _lyricsLoading;
+    private readonly DispatcherTimer _refreshTimer;
+    private int _refreshing;
 
     public MediaProxy(AgentSupervisor agents, Dispatcher dispatcher)
     {
         _agents = agents;
         _dispatcher = dispatcher;
+        _refreshTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher)
+        {
+            Interval = TimeSpan.FromSeconds(5),
+        };
+        _refreshTimer.Tick += async (_, _) => await RefreshAsync();
         _agents.EventReceived += OnEvent;
     }
 
@@ -78,12 +85,40 @@ public sealed class MediaProxy : IDisposable
     /// <summary>媒体信息变化（已切回 UI 线程）。</summary>
     public event Action? Changed;
 
-    public void Start() => _starting ??= StartAsync();
+    public void Start()
+    {
+        _starting ??= StartAsync();
+        _refreshTimer.Start();
+    }
 
     public void Stop()
     {
+        _refreshTimer.Stop();
         _starting = null;
-        _ = _agents.RequestAsync<object>("media", "media.stop", null, 5000);
+        if (_agents.IsRunning("media"))
+        {
+            _ = _agents.RequestAsync<object>("media", "media.stop", null, 5000);
+        }
+        _lyrics = null;
+        _lyricsKey = "";
+        Apply(null);
+    }
+
+    public async Task RefreshAsync()
+    {
+        if (Interlocked.Exchange(ref _refreshing, 1) == 1)
+        {
+            return;
+        }
+
+        try
+        {
+            await CommandAsync("media.state").ConfigureAwait(false);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _refreshing, 0);
+        }
     }
 
     public async Task TogglePlayPauseAsync() => await CommandAsync("media.toggle").ConfigureAwait(false);
@@ -183,6 +218,26 @@ public sealed class MediaProxy : IDisposable
         }
     }
 
+    public void ReloadLyrics()
+    {
+        if (_current is null)
+        {
+            return;
+        }
+        _lyricsKey = "";
+        _lyrics = null;
+        _ = LoadLyricsAsync(new MediaSnapshot(
+            _current.Title,
+            _current.Artist,
+            _current.Album,
+            _current.AppId,
+            _current.IsPlaying,
+            (long)_current.Position.TotalMilliseconds,
+            (long)_current.Duration.TotalMilliseconds,
+            null));
+        Changed?.Invoke();
+    }
+
     private async Task LoadLyricsAsync(MediaSnapshot snapshot)
     {
         if (_lyricsLoading)
@@ -201,6 +256,7 @@ public sealed class MediaProxy : IDisposable
                     title = snapshot.Title ?? "",
                     artist = snapshot.Artist ?? "",
                     durationMs = snapshot.DurationMs,
+                    appId = snapshot.AppId ?? "",
                 },
                 20000).ConfigureAwait(false);
             _ = _dispatcher.BeginInvoke(() =>
@@ -246,9 +302,6 @@ public sealed class MediaProxy : IDisposable
     public void Dispose()
     {
         _agents.EventReceived -= OnEvent;
-        if (_starting is not null)
-        {
-            _ = _agents.RequestAsync<object>("media", "media.stop", null, 3000);
-        }
+        Stop();
     }
 }

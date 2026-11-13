@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Kojima.Core.Config;
 using Kojima.Core.Models;
 using Kojima.Island.Theme;
 
@@ -31,13 +32,152 @@ public partial class HomeView : UserControl
         WeatherCard.MouseEnter += (_, _) => WeatherCard.Background = ThemeRuntime.CardHover;
         WeatherCard.MouseLeave += (_, _) => WeatherCard.Background = ThemeRuntime.Card;
 
-        // 主页卡片跟随功能开关：关掉的功能不在主页留一张空卡。
-        var showWeather = _runtime.FeatureEnabled("weather");
-        var showMedia = _runtime.FeatureEnabled("media");
-        var showControls = _runtime.FeatureEnabled("controls");
-        WeatherCard.Visibility = showWeather ? Visibility.Visible : Visibility.Collapsed;
-        MediaCard.Visibility = showMedia ? Visibility.Visible : Visibility.Collapsed;
-        ActionCard.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
+        BuildHomeLayout();
+    }
+
+    private readonly List<string> _cardOrder = [];
+    internal IReadOnlyList<string> CardOrder => _cardOrder.ToArray();
+
+    private void BuildHomeLayout()
+    {
+        var cards = new Dictionary<string, Border>
+        {
+            ["media"] = MediaCard,
+            ["weather"] = WeatherCard,
+            ["clock"] = ClockCard,
+            ["actions"] = ActionCard,
+            ["stocks"] = MiniCard(new StocksMiniView(_runtime)),
+            ["usage"] = MiniCard(new UsageMiniView(_runtime)),
+            ["monitor"] = MiniCard(new MonitorMiniView(_runtime)),
+        };
+        foreach (var card in cards.Values)
+        {
+            if (card.Parent is Panel parent)
+            {
+                parent.Children.Remove(card);
+            }
+            card.Visibility = Visibility.Collapsed;
+        }
+
+        var root = (Grid)Content;
+        root.Children.Clear();
+        root.ColumnDefinitions.Clear();
+        root.RowDefinitions.Clear();
+        _cardOrder.Clear();
+        var selected = HomeLayout.Resolve(_runtime.Config.Island)
+            .Where(key => key switch
+            {
+                "media" => _runtime.FeatureEnabled("media"),
+                "weather" => _runtime.FeatureEnabled("weather"),
+                "actions" => _runtime.FeatureEnabled("controls"),
+                "stocks" => _runtime.FeatureEnabled("stocks"),
+                "usage" => _runtime.FeatureEnabled("usage"),
+                "monitor" => _runtime.FeatureEnabled("monitor"),
+                _ => true,
+            })
+            .Where(cards.ContainsKey)
+            .ToArray();
+        _cardOrder.AddRange(selected);
+        if (selected.Length == 0)
+        {
+            return;
+        }
+
+        if (selected.Length > 4)
+        {
+            BuildScrollableHome(root, cards, selected);
+            return;
+        }
+
+        if (selected.Length == 1)
+        {
+            AddCard(root, cards[selected[0]], 0, 0);
+            return;
+        }
+
+        if (selected.Length == 2)
+        {
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            AddCard(root, cards[selected[0]], 0, 0);
+            AddCard(root, cards[selected[1]], 0, 2);
+            return;
+        }
+
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.05, GridUnitType.Star) });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(8) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        AddCard(root, cards[selected[0]], 0, 0, rowSpan: 3);
+
+        var right = new Grid();
+        right.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        right.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+        right.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(8) });
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        AddCard(right, cards[selected[1]], 0, 0);
+        if (selected.Length == 3)
+        {
+            AddCard(right, cards[selected[2]], 2, 0, colSpan: 3);
+        }
+        else
+        {
+            AddCard(right, cards[selected[2]], 0, 2);
+            AddCard(right, cards[selected[3]], 2, 0, colSpan: 3);
+        }
+        Grid.SetColumn(right, 2);
+        root.Children.Add(right);
+    }
+
+    private static Border MiniCard(UIElement content) => new()
+    {
+        CornerRadius = new CornerRadius(16),
+        Padding = new Thickness(14),
+        Child = content,
+    };
+
+    private static void BuildScrollableHome(Grid root, Dictionary<string, Border> cards, string[] selected)
+    {
+        var feed = new Grid();
+        feed.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        feed.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+        feed.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (var index = 0; index < selected.Length; index++)
+        {
+            if (index % 2 == 0)
+            {
+                feed.RowDefinitions.Add(new RowDefinition { Height = new GridLength(132) });
+                if (index > 0)
+                {
+                    feed.RowDefinitions.Add(new RowDefinition { Height = new GridLength(8) });
+                }
+            }
+            var row = feed.RowDefinitions.Count - 1;
+            AddCard(feed, cards[selected[index]], row, index % 2 == 0 ? 0 : 2);
+        }
+        var scroll = new ScrollViewer
+        {
+            Content = feed,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            PanningMode = PanningMode.VerticalOnly,
+        };
+        root.Children.Add(scroll);
+    }
+
+    private static void AddCard(Grid host, Border card, int row, int column, int rowSpan = 1, int colSpan = 1)
+    {
+        card.Visibility = Visibility.Visible;
+        Grid.SetRow(card, row);
+        Grid.SetColumn(card, column);
+        Grid.SetRowSpan(card, rowSpan);
+        Grid.SetColumnSpan(card, colSpan);
+        host.Children.Add(card);
     }
 
     private bool _eventsAttached;
@@ -84,6 +224,12 @@ public partial class HomeView : UserControl
         ActMuteGlyph.Text = muted ? "\uE74F" : "\uE767";
         ActMuteGlyph.Foreground = muted ? ThemeRuntime.Danger : ThemeRuntime.Text2;
     }
+
+    internal bool MediaCardVisible => MediaCard.Visibility == Visibility.Visible;
+
+    internal bool WeatherCardVisible => WeatherCard.Visibility == Visibility.Visible;
+
+    internal bool ControlsCardVisible => ActionCard.Visibility == Visibility.Visible;
 
     /// <summary>演示播放信息（截图用）。</summary>
     public void ApplyDemoMedia(Kojima.Island.Services.MediaInfo info) => Media.ApplyDemo(info);

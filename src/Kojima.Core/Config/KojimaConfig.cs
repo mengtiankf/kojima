@@ -72,8 +72,14 @@ public sealed class IslandSettings
     /// <summary>收起时显示：clock / pet。</summary>
     public string CompactView { get; set; } = "clock";
 
-    /// <summary>收起态内容：clock / weather / clockWeather / media / none。</summary>
+    /// <summary>旧版收起态预设：clock / weather / clockWeather / media / none / custom。</summary>
     public string CompactContent { get; set; } = "clockWeather";
+
+    /// <summary>自定义收起态内容及顺序；null 表示读取旧版 CompactContent，空列表表示全部隐藏。</summary>
+    public List<string>? CompactItems { get; set; }
+
+    /// <summary>主页卡片及排列顺序；null 使用默认四卡布局，空列表表示全部隐藏。</summary>
+    public List<string>? HomeCards { get; set; }
 
     public bool ShowWeather { get; set; } = true;
 
@@ -196,6 +202,16 @@ public sealed class TranslateSettings
     public bool Reversed { get; set; }
 }
 
+public sealed class LyricsSettings
+{
+    public bool Enabled { get; set; } = true;
+
+    public List<string> Sources { get; set; } = ["lrclib", "netease", "qq", "kugou"];
+
+    /// <summary>只读本地播放器日志或缓存，不修改播放器安装文件。</summary>
+    public bool EnhancedLocal { get; set; }
+}
+
 public sealed class AppearanceSettings
 {
     /// <summary>manual / system / daylight</summary>
@@ -236,6 +252,8 @@ public sealed class KojimaConfig
     public StockSettings Stocks { get; set; } = new();
 
     public TranslateSettings Translate { get; set; } = new();
+
+    public LyricsSettings Lyrics { get; set; } = new();
 
     /// <summary>消息中心（QQ / 微信 / 邮件通知）。</summary>
     public MessageSettings Messages { get; set; } = new();

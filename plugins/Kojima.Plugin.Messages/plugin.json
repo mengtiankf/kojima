@@ -1,7 +1,7 @@
 {
   "id": "messages",
   "name": "通知中心",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "assembly": "Kojima.Plugin.Messages.dll",
   "entryType": "Kojima.Agents.Features.MessageFeature",
   "description": "Windows 通知读取、历史与清理"
