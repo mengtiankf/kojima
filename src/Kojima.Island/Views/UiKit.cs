@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Kojima.Island.Theme;
@@ -34,12 +35,14 @@ internal static class UiKit
             HorizontalAlignment = HorizontalAlignment.Center,
         };
 
-    public static Border Card(UIElement child, double radius = 14, double padding = 14, Brush? background = null)
+    public static Border Card(UIElement child, double radius = 12, double padding = 14, Brush? background = null)
         => new()
         {
             CornerRadius = new CornerRadius(radius),
             Padding = new Thickness(padding),
             Background = background ?? ThemeRuntime.Card,
+            BorderBrush = ThemeRuntime.Hairline,
+            BorderThickness = new Thickness(1),
             Child = child,
         };
 
@@ -75,23 +78,34 @@ internal static class UiKit
         };
 
     /// <summary>可点击的圆角小按钮（图标或文字）。</summary>
-    public static Border Button(string text, Action onClick, bool glyph = false, double height = 26, Brush? background = null)
+    public static Border Button(string text, Action onClick, bool glyph = false, double height = 30, Brush? background = null)
     {
-        var block = glyph ? Glyph(text, 13, ThemeRuntime.Text) : T(text, 11.5, ThemeRuntime.Text);
+        var block = glyph ? Glyph(text, 14, ThemeRuntime.Text) : T(text, 12, ThemeRuntime.Text, FontWeights.SemiBold);
         block.HorizontalAlignment = HorizontalAlignment.Center;
 
         var border = new Border
         {
-            CornerRadius = new CornerRadius(height / 2),
-            Padding = new Thickness(12, 0, 12, 0),
+            CornerRadius = new CornerRadius(Math.Min(8, height / 2)),
+            Padding = new Thickness(13, 0, 13, 0),
             Height = height,
-            Background = background ?? ThemeRuntime.Hover,
+            Background = background ?? ThemeRuntime.Fill,
+            BorderBrush = ThemeRuntime.Hairline,
+            BorderThickness = new Thickness(1),
             Child = block,
             Cursor = System.Windows.Input.Cursors.Hand,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        border.MouseEnter += (_, _) => border.Opacity = 0.85;
-        border.MouseLeave += (_, _) => border.Opacity = 1;
+        AutomationProperties.SetName(border, text);
+        border.MouseEnter += (_, _) =>
+        {
+            border.Background = background ?? ThemeRuntime.CardHover;
+            border.BorderBrush = ThemeRuntime.Outline;
+        };
+        border.MouseLeave += (_, _) =>
+        {
+            border.Background = background ?? ThemeRuntime.Fill;
+            border.BorderBrush = ThemeRuntime.Hairline;
+        };
         border.MouseLeftButtonUp += (_, _) => onClick();
         return border;
     }

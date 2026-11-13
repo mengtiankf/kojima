@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading;
 using Kojima.Core.Config;
 using Kojima.Core.Ipc;
+using Kojima.Core.Plugins;
 
 namespace Kojima.Island.Services;
 
@@ -14,16 +15,18 @@ public sealed class AgentSupervisor : IAsyncDisposable
     private readonly object _gate = new();
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private readonly int _shellPid = Environment.ProcessId;
-    private readonly string _exePath;
-    private readonly int _idleSeconds;
+    private readonly string _hostPath;
+    private int _idleSeconds;
     private readonly Dictionary<string, int> _startFailures = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> _retryAfter = new(StringComparer.OrdinalIgnoreCase);
 
     public AgentSupervisor(int idleSeconds = 90)
     {
-        _idleSeconds = Math.Clamp(idleSeconds, 20, 3600);
-        _exePath = ResolveAgentPath();
+        _idleSeconds = Math.Clamp(idleSeconds, 0, 3600);
+        _hostPath = ResolveHostPath();
     }
+
+    public void SetIdleSeconds(int seconds) => _idleSeconds = Math.Clamp(seconds, 0, 3600);
 
     /// <summary>子进程事件（feature, eventName, data）。</summary>
     public event Action<string, string, JsonElement>? EventReceived;
@@ -34,7 +37,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
     /// <summary>连续启动/运行失败达到阈值时通知界面（配置了“后台功能异常”提醒）。</summary>
     public event Action<string, string>? Failed;
 
-    public string AgentPath => _exePath;
+    public string AgentPath => _hostPath;
 
     public bool IsRunning(string feature)
     {
@@ -137,12 +140,6 @@ public sealed class AgentSupervisor : IAsyncDisposable
             }
         }
 
-        if (!File.Exists(_exePath))
-        {
-            RecordStartFailure(feature, "找不到子进程可执行文件：" + _exePath);
-            throw new FileNotFoundException("找不到子进程可执行文件：" + _exePath);
-        }
-
         try
         {
             host = await StartCoreAsync(feature, ct).ConfigureAwait(false);
@@ -159,18 +156,23 @@ public sealed class AgentSupervisor : IAsyncDisposable
 
     private async Task<AgentHost> StartCoreAsync(string feature, CancellationToken ct)
     {
-        AgentHost host;
+        if (!File.Exists(_hostPath))
+        {
+            RecordStartFailure(feature, "找不到插件宿主：" + _hostPath);
+            throw new FileNotFoundException("找不到插件宿主", _hostPath);
+        }
 
+        var plugin = ResolvePlugin(feature);
         var pipeName = IpcJson.PipeName(feature, _shellPid);
-        var startInfo = new ProcessStartInfo(_exePath)
+        var startInfo = new ProcessStartInfo(_hostPath)
         {
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardError = true,
-            WorkingDirectory = Path.GetDirectoryName(_exePath) ?? AppContext.BaseDirectory,
+            WorkingDirectory = plugin.Directory,
         };
-        startInfo.ArgumentList.Add("--feature");
-        startInfo.ArgumentList.Add(feature);
+        startInfo.ArgumentList.Add("--plugin");
+        startInfo.ArgumentList.Add(plugin.ManifestPath);
         startInfo.ArgumentList.Add("--pipe");
         startInfo.ArgumentList.Add(pipeName);
         startInfo.ArgumentList.Add("--parent");
@@ -178,24 +180,24 @@ public sealed class AgentSupervisor : IAsyncDisposable
         startInfo.ArgumentList.Add("--idle");
         startInfo.ArgumentList.Add(_idleSeconds.ToString());
 
-        var process = Process.Start(startInfo) ?? throw new InvalidOperationException("子进程启动失败");
+        var process = Process.Start(startInfo) ?? throw new InvalidOperationException("插件进程启动失败");
         process.ErrorDataReceived += (_, e) =>
         {
             if (!string.IsNullOrWhiteSpace(e.Data))
             {
-                AppLog.Warn($"子进程 {feature} stderr: {e.Data}");
+                AppLog.Warn($"插件 {feature} stderr: {e.Data}");
             }
         };
         process.BeginErrorReadLine();
         var client = await AgentPipeClient.ConnectAsync(pipeName, TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
 
-        host = new AgentHost(feature, process, client);
+        var host = new AgentHost(feature, process, client);
         host.Process.EnableRaisingEvents = true;
         host.Process.Exited += (_, _) => OnHostExited(host);
         client.EventReceived += (name, data) => EventReceived?.Invoke(feature, name, data);
         client.Closed += () =>
         {
-            AppLog.Warn($"子进程断开：{feature}");
+            AppLog.Warn($"插件断开：{feature}");
             StateChanged?.Invoke(feature, false);
         };
 
@@ -220,7 +222,7 @@ public sealed class AgentSupervisor : IAsyncDisposable
             _hosts[feature] = host;
         }
 
-        AppLog.Info($"子进程已启动：{feature} pid={process.Id}");
+        AppLog.Info($"插件已启动：{feature} pid={process.Id}");
         StateChanged?.Invoke(feature, true);
         return host;
     }
@@ -403,26 +405,57 @@ public sealed class AgentSupervisor : IAsyncDisposable
         host.Process.Dispose();
     }
 
-    private static string ResolveAgentPath()
+    private static string ResolveHostPath()
     {
         var baseDir = AppContext.BaseDirectory;
         var candidates = new[]
         {
-            Path.Combine(baseDir, "Kojima.Agents.exe"),
-            Path.Combine(baseDir, "agents", "Kojima.Agents.exe"),
-            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "Kojima.Agents", "bin", "Debug", "net10.0-windows10.0.19041.0", "Kojima.Agents.exe")),
-            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "Kojima.Agents", "bin", "Release", "net10.0-windows10.0.19041.0", "Kojima.Agents.exe")),
+            Path.Combine(baseDir, "Kojima.PluginHost.exe"),
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "Kojima.PluginHost", "bin", "Debug", "net10.0-windows10.0.19041.0", "Kojima.PluginHost.exe")),
+            Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "Kojima.PluginHost", "bin", "Release", "net10.0-windows10.0.19041.0", "Kojima.PluginHost.exe")),
+        };
+        return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
+    }
+
+    private static PluginDescriptor ResolvePlugin(string feature)
+    {
+        var project = feature switch
+        {
+            "monitor" => "Kojima.Plugin.Monitor",
+            "usage" => "Kojima.Plugin.Usage",
+            "media" => "Kojima.Plugin.Media",
+            "weather" => "Kojima.Plugin.Weather",
+            "stocks" => "Kojima.Plugin.Stocks",
+            "clipboard" => "Kojima.Plugin.Clipboard",
+            "translate" => "Kojima.Plugin.Translate",
+            "messages" => "Kojima.Plugin.Messages",
+            "spectrum" => "Kojima.Plugin.Spectrum",
+            "updates" => "Kojima.Plugin.Updates",
+            "controls" => "Kojima.Plugin.Controls",
+            _ => throw new InvalidOperationException("未知插件：" + feature),
         };
 
-        foreach (var candidate in candidates)
+        var baseDir = AppContext.BaseDirectory;
+        var repository = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", ".."));
+        var candidates = new List<string>
         {
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
+            Path.Combine(baseDir, "plugins", feature, "plugin.json"),
+        };
+        foreach (var configuration in new[] { "Debug", "Release" })
+        {
+            candidates.Add(Path.Combine(
+                repository,
+                "plugins",
+                project,
+                "bin",
+                configuration,
+                "net10.0-windows10.0.19041.0",
+                "plugin.json"));
         }
 
-        return candidates[0];
+        var manifest = candidates.FirstOrDefault(File.Exists)
+            ?? throw new FileNotFoundException($"找不到 {feature} 插件；请重新安装或单独构建 {project}");
+        return PluginCatalog.Load(manifest);
     }
 
     public async ValueTask DisposeAsync()

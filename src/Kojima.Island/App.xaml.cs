@@ -19,7 +19,10 @@ namespace Kojima.Island;
 /// <summary>灵动岛 UI 进程：单实例、配置、主题、灵动岛窗口与功能子进程。</summary>
 public partial class App : Application
 {
-    private const string MutexName = @"Local\Kojima.Island.SingleInstance";
+    private static readonly string MutexName = @"Local\Kojima.Island.SingleInstance" +
+        (Environment.GetEnvironmentVariable("KOJIMA_INSTANCE") is { Length: > 0 } suffix
+            ? "." + new string(suffix.Where(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_').Take(40).ToArray())
+            : "");
 
     private Mutex? _mutex;
     private AppRuntime? _runtime;
@@ -182,8 +185,8 @@ public partial class App : Application
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(12));
-            var config = ConfigStore.Load();
-            if (!config.Update.AutoCheck)
+            var config = _runtime!.Config;
+            if (!config.Update.AutoCheck || !config.Feature("updates").Enabled)
             {
                 return;
             }
@@ -195,7 +198,7 @@ public partial class App : Application
             }
 
             config.Update.LastCheck = today;
-            ConfigStore.Save(config);
+            _runtime.SaveConfig();
             await _runtime!.Updates.CheckAsync(manual: false);
         }
         catch (Exception ex)
@@ -394,11 +397,12 @@ public partial class App : Application
             timer.Stop();
             try
             {
-                _island.UpdateLayout();
-                var w = Math.Max(1, (int)Math.Ceiling(_island.ActualWidth));
-                var h = Math.Max(1, (int)Math.Ceiling(_island.ActualHeight));
+                FrameworkElement target = _settings is { IsVisible: true } settings ? settings : _island;
+                target.UpdateLayout();
+                var w = Math.Max(1, (int)Math.Ceiling(target.ActualWidth));
+                var h = Math.Max(1, (int)Math.Ceiling(target.ActualHeight));
                 var bitmap = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
-                bitmap.Render(_island);
+                bitmap.Render(target);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(bitmap));
                 using var stream = File.Create(shot);

@@ -9,11 +9,13 @@ public sealed class WeatherService : IDisposable
 {
     private readonly DispatcherTimer _timer;
     private readonly AgentSupervisor _agents;
+    private readonly KojimaConfig? _config;
     private bool _busy;
 
-    public WeatherService(Dispatcher dispatcher, AgentSupervisor agents)
+    public WeatherService(Dispatcher dispatcher, AgentSupervisor agents, KojimaConfig? config = null)
     {
         _agents = agents;
+        _config = config;
         _timer = new DispatcherTimer(DispatcherPriority.Background, dispatcher)
         {
             Interval = TimeSpan.FromMinutes(20),
@@ -26,14 +28,17 @@ public sealed class WeatherService : IDisposable
     /// <summary>当前地区名（来自配置；空串表示自动定位）。</summary>
     public string Location { get; private set; } = "";
 
+    public int RefreshMinutes { get; private set; } = 20;
+
     public event Action<WeatherInfo>? Updated;
 
     /// <summary>按配置刷新：地区与间隔都从 ConfigStore 读取。</summary>
     public void ApplySettings()
     {
-        var config = ConfigStore.Load();
+        var config = _config ?? ConfigStore.Load();
         Location = (config.Weather.Location ?? "").Trim();
         var minutes = Math.Clamp(config.Weather.RefreshMinutes, 5, 180);
+        RefreshMinutes = minutes;
         if (Math.Abs(_timer.Interval.TotalMinutes - minutes) > 0.5)
         {
             _timer.Interval = TimeSpan.FromMinutes(minutes);
@@ -60,7 +65,7 @@ public sealed class WeatherService : IDisposable
         _busy = true;
         try
         {
-            Location = (ConfigStore.Load().Weather.Location ?? "").Trim();
+            Location = ((_config ?? ConfigStore.Load()).Weather.Location ?? "").Trim();
             var info = await _agents.RequestAsync<WeatherInfo>("weather", "weather.read",
                 new { location = Location }, 20000).ConfigureAwait(false);
             if (info is null)

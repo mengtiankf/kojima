@@ -77,11 +77,11 @@ public sealed class ClipboardView : UserControl
 
         foreach (var item in items.Take(40))
         {
-            var row = new Grid { Height = 34 };
+            var row = new Grid { Height = 38 };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var text = UiKit.T(item.Preview, 11.5, ThemeRuntime.Text2);
+            var text = UiKit.T(item.Preview, 12, ThemeRuntime.Text);
             Grid.SetColumn(text, 0);
             row.Children.Add(text);
 
@@ -98,8 +98,17 @@ public sealed class ClipboardView : UserControl
                 Child = row,
                 Cursor = System.Windows.Input.Cursors.Hand,
             };
-            border.MouseEnter += (_, _) => border.Background = ThemeRuntime.Hover;
-            border.MouseLeave += (_, _) => border.Background = Brushes.Transparent;
+            border.MouseEnter += (_, _) =>
+            {
+                border.Background = ThemeRuntime.CardHover;
+                border.BorderBrush = ThemeRuntime.Hairline;
+                border.BorderThickness = new Thickness(1);
+            };
+            border.MouseLeave += (_, _) =>
+            {
+                border.Background = Brushes.Transparent;
+                border.BorderThickness = new Thickness(0);
+            };
             border.MouseLeftButtonUp += (_, _) =>
             {
                 _runtime.Clipboard?.Copy(item.Text);

@@ -1,11 +1,25 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Kojima.Agents/Kojima.Agents.csproj" />
     <Project Path="src/Kojima.Core/Kojima.Core.csproj" />
+    <Project Path="src/Kojima.PluginHost/Kojima.PluginHost.csproj" />
     <Project Path="src/Kojima.Island/Kojima.Island.csproj" />
     <Project Path="src/Kojima.Shell/Kojima.Shell.csproj" />
   </Folder>
+  <Folder Name="/plugins/">
+    <Project Path="plugins/Kojima.Plugin.Monitor/Kojima.Plugin.Monitor.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Usage/Kojima.Plugin.Usage.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Media/Kojima.Plugin.Media.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Weather/Kojima.Plugin.Weather.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Stocks/Kojima.Plugin.Stocks.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Clipboard/Kojima.Plugin.Clipboard.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Translate/Kojima.Plugin.Translate.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Messages/Kojima.Plugin.Messages.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Spectrum/Kojima.Plugin.Spectrum.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Updates/Kojima.Plugin.Updates.csproj" />
+    <Project Path="plugins/Kojima.Plugin.Controls/Kojima.Plugin.Controls.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Kojima.Tests/Kojima.Tests.csproj" />
+    <Project Path="tests/Kojima.Island.Tests/Kojima.Island.Tests.csproj" />
   </Folder>
 </Solution>

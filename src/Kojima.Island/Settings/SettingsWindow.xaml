@@ -23,7 +23,7 @@
     </Window.Resources>
 
     <!-- 无阴影：14px 圆角 + 1px 发丝描边 -->
-    <Border x:Name="Shell" CornerRadius="14" BorderThickness="1"
+    <Border x:Name="Shell" CornerRadius="16" BorderThickness="1"
             Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource HairlineBrush}">
         <Grid>
             <Grid.ColumnDefinitions>
@@ -32,7 +32,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- ==================== 侧栏 ==================== -->
-            <Border Grid.Column="0" CornerRadius="13,0,0,13" BorderThickness="0,0,1,0"
+            <Border Grid.Column="0" CornerRadius="15,0,0,15" BorderThickness="0,0,1,0"
                     Background="{DynamicResource NavBrush}" BorderBrush="{DynamicResource HairlineBrush}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -121,7 +121,7 @@
 
                     <StackPanel Grid.Row="2" Margin="20,0,20,18">
                         <Border Height="1" Background="{DynamicResource HairlineBrush}" Margin="0,0,0,14" Opacity="0.8"/>
-                        <TextBlock x:Name="VersionLabel" Text="1.2.1" FontSize="10.5" Foreground="{DynamicResource Text3Brush}"/>
+                        <TextBlock x:Name="VersionLabel" Text="1.3.2" FontSize="10.5" Foreground="{DynamicResource Text3Brush}"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -344,6 +344,24 @@
                                             <TextBlock Width="62" Margin="14,0,0,0" TextAlignment="Right" FontSize="11.5"
                                                        VerticalAlignment="Center" Foreground="{DynamicResource Text2Brush}"
                                                        Text="{Binding Value, ElementName=OpacitySlider, StringFormat='{}{0:P0}'}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Border Style="{StaticResource RowDivider}"/>
+                                    <Grid Style="{StaticResource SettingRow}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                            <TextBlock Text="动画时长" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="展开与收起的过渡速度" Style="{StaticResource RowDesc}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
+                                            <Slider x:Name="AnimationSlider" Style="{StaticResource SlimSlider}" Width="186"
+                                                    Minimum="80" Maximum="600" SmallChange="20" LargeChange="100"/>
+                                            <TextBlock Width="62" Margin="14,0,0,0" TextAlignment="Right" FontSize="11.5"
+                                                       VerticalAlignment="Center" Foreground="{DynamicResource Text2Brush}"
+                                                       Text="{Binding Value, ElementName=AnimationSlider, StringFormat='{}{0:0} ms'}"/>
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
@@ -698,6 +716,19 @@
 
                                         <TextBlock x:Name="DetectedSourcesText" Style="{StaticResource Hint}" Margin="2,12,0,0"
                                                    Text="未检测到外部监控软件"/>
+                                        <Grid Margin="0,14,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="采样间隔" Style="{StaticResource RowTitle}" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="MonitorIntervalBox" Grid.Column="2" Style="{StaticResource Field}" Width="100"
+                                                     TextAlignment="Right"/>
+                                            <TextBlock Grid.Column="4" Text="毫秒（400 - 10000）" Style="{StaticResource Hint}" VerticalAlignment="Center"/>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -711,6 +742,19 @@
                                                    Style="{StaticResource RowDesc}" Margin="0,3,0,10"/>
                                         <TextBox x:Name="WeatherLocation" Style="{StaticResource Field}" Width="260"
                                                  HorizontalAlignment="Left" Text=""/>
+                                        <Grid Margin="0,14,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="刷新间隔" Style="{StaticResource RowTitle}" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="WeatherRefreshBox" Grid.Column="2" Style="{StaticResource Field}" Width="90"
+                                                     TextAlignment="Right"/>
+                                            <TextBlock Grid.Column="4" Text="分钟（5 - 180）" Style="{StaticResource Hint}" VerticalAlignment="Center"/>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -1015,7 +1059,7 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="Kojima" FontSize="20" FontWeight="SemiBold"/>
                                                 <Border Style="{StaticResource Badge}" Margin="10,0,0,0">
-                                                    <TextBlock x:Name="AboutVersionBadge" Text="1.2.1" FontSize="11" Foreground="{DynamicResource Text2Brush}"/>
+                                                    <TextBlock x:Name="AboutVersionBadge" Text="1.3.2" FontSize="11" Foreground="{DynamicResource Text2Brush}"/>
                                                 </Border>
                                             </StackPanel>
                                             <TextBlock Text="一个把 AI 用量和系统状态放在屏幕边缘的 Windows 小工具"
@@ -1084,7 +1128,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <TextBlock x:Name="AboutVersionLine" Text="Kojima 1.2.1 · Windows · .NET 10 · WPF" Style="{StaticResource Hint}"
+                            <TextBlock x:Name="AboutVersionLine" Text="Kojima 1.3.2 · Windows · .NET 10 · WPF" Style="{StaticResource Hint}"
                                        Margin="2,0,0,0"/>
                         </StackPanel>
                     </ScrollViewer>

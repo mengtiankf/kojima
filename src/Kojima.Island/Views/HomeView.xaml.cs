@@ -18,24 +18,18 @@ public partial class HomeView : UserControl
     {
         _runtime = runtime;
         InitializeComponent();
-        Loaded += (_, _) =>
-        {
-            ApplyTheme();
-            UpdateClock();
-            _timer.Start();
-        };
-        Unloaded += (_, _) => _timer.Stop();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
 
         _timer.Interval = TimeSpan.FromSeconds(10);
         _timer.Tick += (_, _) => UpdateClock();
-        ThemeRuntime.Changed += OnThemeChanged;
-        _runtime.Weather.Updated += info => Dispatcher.BeginInvoke(() => ApplyWeather(info));
-        Dispatcher.BeginInvoke(() => ApplyWeather(_runtime.Weather.Current));
 
         ActSettings.MouseLeftButtonUp += (_, _) => OpenSettings();
         ActMute.MouseLeftButtonUp += (_, _) => ToggleMute();
         ActSnip.MouseLeftButtonUp += (_, _) => Run("ms-screenclip:");
         WeatherCard.MouseLeftButtonUp += (_, _) => OpenSettings();
+        WeatherCard.MouseEnter += (_, _) => WeatherCard.Background = ThemeRuntime.CardHover;
+        WeatherCard.MouseLeave += (_, _) => WeatherCard.Background = ThemeRuntime.Card;
 
         // 主页卡片跟随功能开关：关掉的功能不在主页留一张空卡。
         var showWeather = _runtime.FeatureEnabled("weather");
@@ -46,8 +40,50 @@ public partial class HomeView : UserControl
         ActionCard.Visibility = showControls ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>天气卡：城市 / 温度 / 描述。</summary>
+    private bool _eventsAttached;
     private bool _demo;
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (!_eventsAttached)
+        {
+            ThemeRuntime.Changed += OnThemeChanged;
+            _runtime.Weather.Updated += OnWeatherUpdated;
+            _runtime.Controls.Changed += OnControlsChanged;
+            _eventsAttached = true;
+        }
+
+        ApplyTheme();
+        ApplyWeather(_runtime.Weather.Current);
+        UpdateClock();
+        UpdateMuteState();
+        _timer.Start();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (_eventsAttached)
+        {
+            ThemeRuntime.Changed -= OnThemeChanged;
+            _runtime.Weather.Updated -= OnWeatherUpdated;
+            _runtime.Controls.Changed -= OnControlsChanged;
+            _eventsAttached = false;
+        }
+
+        _timer.Stop();
+    }
+
+    private void OnWeatherUpdated(Kojima.Core.Models.WeatherInfo info) => Dispatcher.BeginInvoke(() => ApplyWeather(info));
+
+    private void OnControlsChanged() => Dispatcher.BeginInvoke(UpdateMuteState);
+
+    private void UpdateMuteState()
+    {
+        var muted = _runtime.Controls.Muted;
+        ActMuteText.Text = muted ? "已静音" : "静音";
+        ActMuteGlyph.Text = muted ? "\uE74F" : "\uE767";
+        ActMuteGlyph.Foreground = muted ? ThemeRuntime.Danger : ThemeRuntime.Text2;
+    }
 
     /// <summary>演示播放信息（截图用）。</summary>
     public void ApplyDemoMedia(Kojima.Island.Services.MediaInfo info) => Media.ApplyDemo(info);
@@ -95,6 +131,8 @@ public partial class HomeView : UserControl
         foreach (var card in new[] { MediaCard, WeatherCard, ClockCard, ActionCard })
         {
             card.Background = ThemeRuntime.Card;
+            card.BorderBrush = ThemeRuntime.Hairline;
+            card.BorderThickness = new Thickness(1);
         }
 
         WeatherCity.Foreground = ThemeRuntime.Text3;
@@ -142,8 +180,7 @@ public partial class HomeView : UserControl
             return;
         }
 
-        ActMuteText.Text = muted.Value ? "已静音" : "静音";
-        ActMuteGlyph.Text = muted.Value ? "\uE74F" : "\uE767";
+        UpdateMuteState();
     }
 
     private static void Run(string target)

@@ -66,8 +66,15 @@ public static class ThemeRuntime
 
     /// <summary>半透明卡片底（面板内的分组）。</summary>
     public static Brush Card => new SolidColorBrush(Color.FromArgb(
-        _palette.Dark ? (byte)0x3C : (byte)0x22,
+        _palette.Dark ? (byte)0x16 : (byte)0x0A,
         _palette.Text.R, _palette.Text.G, _palette.Text.B));
+
+    public static Brush CardHover => new SolidColorBrush(Color.FromArgb(
+        _palette.Dark ? (byte)0x26 : (byte)0x16,
+        _palette.Text.R, _palette.Text.G, _palette.Text.B));
+
+    public static Brush AccentSoft => new SolidColorBrush(Color.FromArgb(
+        0x28, _palette.Accent.R, _palette.Accent.G, _palette.Accent.B));
 
     public static Color ColorOf(string hex)
     {

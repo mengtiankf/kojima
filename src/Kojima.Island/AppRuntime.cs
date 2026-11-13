@@ -23,7 +23,7 @@ public sealed class AppRuntime
         Translate = new TranslateProxy(Agents, Config);
         Monitor = new MonitorService(Agents, dispatcher, Config);
         Usage = new UsageService(Agents, dispatcher, Config);
-        Weather = new WeatherService(dispatcher, Agents);
+        Weather = new WeatherService(dispatcher, Agents, Config);
         Notify = new NotifyCenter(dispatcher);
         Updates = new UpdateCoordinator(Notify, Agents);
         StockAlerts = new StockAlertService(Agents);
@@ -126,6 +126,7 @@ public sealed class AppRuntime
                     break;
                 case "media":
                     Media.Stop();
+                    Spectrum.Stop();
                     break;
                 case "spectrum":
                     Spectrum.Stop();
@@ -155,6 +156,10 @@ public sealed class AppRuntime
                     break;
                 case "media":
                     Media.Start();
+                    if (Config.Feature("spectrum").Enabled)
+                    {
+                        Spectrum.Start();
+                    }
                     break;
                 case "spectrum":
                     Spectrum.Start();
@@ -198,7 +203,10 @@ public sealed class AppRuntime
         if (Config.Feature("media").Enabled)
         {
             Media.Start();
-            Spectrum.Start();
+            if (Config.Feature("spectrum").Enabled)
+            {
+                Spectrum.Start();
+            }
         }
 
         if (Config.Feature("messages").Enabled)

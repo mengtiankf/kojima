@@ -12,7 +12,7 @@ namespace Kojima.Shell;
 /// <summary>托盘 + 单实例 + 灵动岛子进程的监督器；本身不创建任何 WPF 窗口。</summary>
 internal sealed class ShellHost : ApplicationContext
 {
-    private const string PipeName = "kojima-shell";
+    private readonly string PipeName = Program.PipeName;
 
     private readonly NotifyIcon _tray;
     private readonly System.Windows.Forms.Timer _watch;
@@ -154,7 +154,7 @@ internal sealed class ShellHost : ApplicationContext
         {
             try
             {
-                using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+                using var pipe = new NamedPipeClientStream(".", Program.PipeName, PipeDirection.Out);
                 pipe.Connect(500);
                 using var writer = new StreamWriter(pipe, new UTF8Encoding(false)) { AutoFlush = true };
                 writer.WriteLine(JsonSerializer.Serialize(new { cmd = "settings" }));

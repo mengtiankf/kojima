@@ -11,7 +11,7 @@ public sealed class UsageService
     private readonly Dispatcher _dispatcher;
     private readonly KojimaConfig _config;
     private readonly DispatcherTimer _timer = new();
-    private string _period = "today";
+    private string _period;
     private int _busy;
 
     public UsageService(AgentSupervisor agents, Dispatcher dispatcher, KojimaConfig config)
@@ -19,22 +19,31 @@ public sealed class UsageService
         _agents = agents;
         _dispatcher = dispatcher;
         _config = config;
+        _period = NormalizePeriod(config.Usage.Period);
         _timer.Tick += (_, _) =>
         {
             if (_config.Feature("usage").Enabled)
             {
-                _ = RefreshAsync(_period);
+                _ = RefreshAsync();
             }
         };
         ApplySettings();
     }
 
-    /// <summary>按设置里的刷新间隔重启周期刷新；保存设置后调用。</summary>
+    public string Period => _period;
+
+    public void SetPeriod(string? period)
+    {
+        _period = NormalizePeriod(period);
+        _config.Usage.Period = _period;
+    }
+
     public void ApplySettings()
     {
         var seconds = Math.Clamp(_config.Usage.RefreshSeconds, 30, 3600);
         _timer.Interval = TimeSpan.FromSeconds(seconds);
         _timer.Start();
+        SetPeriod(_config.Usage.Period);
     }
 
     public IReadOnlyList<UsageSnapshot> Snapshots { get; private set; } = [];
@@ -45,21 +54,25 @@ public sealed class UsageService
 
     public event Action? Updated;
 
-    public async Task RefreshAsync(string period = "today")
+    public async Task RefreshAsync(string? period = null)
     {
         if (Interlocked.Exchange(ref _busy, 1) == 1)
         {
             return;
         }
 
-        _period = period;
+        if (period is not null)
+        {
+            SetPeriod(period);
+        }
+
         try
         {
             var sources = _config.Usage.Sources.Count > 0
                 ? _config.Usage.Sources
                 : ["dsh", "claude", "codex"];
 
-            var tasks = sources.Select(source => ReadOneAsync(source, period)).ToArray();
+            var tasks = sources.Select(source => ReadOneAsync(source, _period)).ToArray();
             var results = await Task.WhenAll(tasks).ConfigureAwait(false);
             var snapshots = results.Where(r => r is not null).Select(r => r!).ToList();
 
@@ -79,6 +92,9 @@ public sealed class UsageService
             Interlocked.Exchange(ref _busy, 0);
         }
     }
+
+    internal static string NormalizePeriod(string? period) =>
+        period?.Trim().ToLowerInvariant() is "week" or "month" ? period.Trim().ToLowerInvariant() : "today";
 
     private async Task<UsageSnapshot?> ReadOneAsync(string source, string period)
     {

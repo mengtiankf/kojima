@@ -1,0 +1,8 @@
+{
+  "id": "translate",
+  "name": "翻译",
+  "version": "1.3.2",
+  "assembly": "Kojima.Plugin.Translate.dll",
+  "entryType": "Kojima.Agents.Features.TranslateFeature",
+  "description": "多引擎文本翻译与 OpenAI 兼容接口"
+}

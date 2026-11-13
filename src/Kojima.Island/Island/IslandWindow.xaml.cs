@@ -91,6 +91,8 @@ public partial class IslandWindow : Window
         SizeChanged += (_, _) => Surface.Refresh();
         _runtime.Weather.Updated += info => Dispatcher.BeginInvoke(() => ApplyWeather(info));
         _runtime.Media.Changed += () => Dispatcher.BeginInvoke(ApplyCompactContent);
+        _runtime.Usage.Updated += OnUsageUpdated;
+        _runtime.Monitor.Sample += OnMonitorSample;
         Dispatcher.BeginInvoke(() => ApplyWeather(_runtime.Weather.Current));
     }
 
@@ -187,6 +189,10 @@ public partial class IslandWindow : Window
     {
         var currentKey = _current?.Key ?? "home";
         _pages.Clear();
+        _usageView = null;
+        _monitorView = null;
+        _weatherView = null;
+        _homeView = null;
         BuildPages();
         BuildNav();
 
@@ -206,19 +212,15 @@ public partial class IslandWindow : Window
         {
             var usage = new UsageView();
             _usageView = usage;
+            usage.Period = _runtime.Usage.Period;
+            usage.Update(_runtime.Usage.Snapshots, _runtime.Usage.UpdatedAt);
             usage.PeriodChanged += period =>
             {
-                _ = _runtime.Usage.RefreshAsync(period);
+                _runtime.Usage.SetPeriod(period);
+                _runtime.SaveConfig();
+                _ = RefreshUsageAsync();
             };
             usage.RefreshRequested += () => _ = RefreshUsageAsync();
-            _runtime.Usage.Updated += () => Dispatcher.BeginInvoke(() =>
-            {
-                usage.Update(_runtime.Usage.Snapshots, _runtime.Usage.UpdatedAt);
-                if (_current?.Key == "usage")
-                {
-                    ResizeToContent();
-                }
-            });
             _pages.Add(new IslandPage("usage", "\uE9D9", "AI 用量", usage, 300));
         }
 
@@ -261,17 +263,31 @@ public partial class IslandWindow : Window
         {
             var monitor = new MonitorView();
             _monitorView = monitor;
-            _runtime.Monitor.Sample += sample => Dispatcher.BeginInvoke(() =>
+            if (_runtime.Monitor.Last is { } last)
             {
-                monitor.Update(sample);
-                if (_current?.Key == "monitor")
-                {
-                    ResizeToContent();
-                }
-            });
+                monitor.Update(last);
+            }
             _pages.Add(new IslandPage("monitor", "\uEC4A", "监控", monitor, 372));
         }
     }
+
+    private void OnUsageUpdated() => Dispatcher.BeginInvoke(() =>
+    {
+        _usageView?.Update(_runtime.Usage.Snapshots, _runtime.Usage.UpdatedAt);
+        if (_current?.Key == "usage")
+        {
+            ResizeToContent();
+        }
+    });
+
+    private void OnMonitorSample(MonitorSample sample) => Dispatcher.BeginInvoke(() =>
+    {
+        _monitorView?.Update(sample);
+        if (_current?.Key == "monitor")
+        {
+            ResizeToContent();
+        }
+    });
 
     private UsageView? _usageView;
     private MonitorView? _monitorView;
@@ -317,6 +333,9 @@ public partial class IslandWindow : Window
     private void BuildNav()
     {
         NavRow.Children.Clear();
+        _navPills.Clear();
+        _navLabels.Clear();
+        _navGlyphs.Clear();
         var host = new Grid();
 
         var left = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left };
@@ -399,9 +418,9 @@ public partial class IslandWindow : Window
         var label = new TextBlock
         {
             Text = page.Title,
-            FontSize = 12.5,
+            FontSize = 12,
             FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(6, 0, 2, 0),
+            Margin = new Thickness(6, 0, 1, 0),
             VerticalAlignment = VerticalAlignment.Center,
             Visibility = Visibility.Collapsed,
         };
@@ -411,7 +430,7 @@ public partial class IslandWindow : Window
         {
             Text = page.Glyph,
             FontFamily = ThemeRuntime.IconFont,
-            FontSize = 14,
+            FontSize = 15,
             VerticalAlignment = VerticalAlignment.Center,
         };
         glyph.Foreground = ThemeRuntime.Text2;
@@ -422,9 +441,10 @@ public partial class IslandWindow : Window
 
         var pill = new Border
         {
-            CornerRadius = new CornerRadius(14),
-            Padding = new Thickness(10, 6, 12, 6),
-            Margin = new Thickness(0, 2, 2, 2),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(10, 5, 11, 5),
+            Margin = new Thickness(0, 1, 3, 1),
+            Height = 32,
             Background = Brushes.Transparent,
             Child = content,
             Cursor = Cursors.Hand,
@@ -473,9 +493,9 @@ public partial class IslandWindow : Window
 
         var button = new Border
         {
-            Width = 30,
-            Height = 28,
-            CornerRadius = new CornerRadius(14),
+            Width = 32,
+            Height = 32,
+            CornerRadius = new CornerRadius(8),
             Background = Brushes.Transparent,
             Child = text,
             Cursor = Cursors.Hand,
@@ -502,7 +522,7 @@ public partial class IslandWindow : Window
         foreach (var (key, pill) in _navPills)
         {
             var active = key.Equals(activeKey, StringComparison.OrdinalIgnoreCase);
-            pill.Background = active ? ThemeRuntime.Fill : Brushes.Transparent;
+            pill.Background = active ? ThemeRuntime.AccentSoft : Brushes.Transparent;
             if (hover && !active)
             {
                 pill.Background = ThemeRuntime.Hover;
@@ -511,11 +531,12 @@ public partial class IslandWindow : Window
             if (_navLabels.TryGetValue(key, out var label))
             {
                 label.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+                label.Foreground = active ? ThemeRuntime.Accent : ThemeRuntime.Text2;
             }
 
             if (_navGlyphs.TryGetValue(key, out var glyph))
             {
-                glyph.Foreground = active ? ThemeRuntime.Text : ThemeRuntime.Text2;
+                glyph.Foreground = active ? ThemeRuntime.Accent : ThemeRuntime.Text2;
             }
         }
     }
@@ -619,7 +640,7 @@ public partial class IslandWindow : Window
             contentHeight = _current.HeightHint;
         }
 
-        var height = 12 + 38 + contentHeight + 12;
+        var height = 12 + 40 + contentHeight + 14;
         AnimateTo(width, Math.Clamp(height, 160, 720), expanded: true);
     }
 
@@ -699,7 +720,7 @@ public partial class IslandWindow : Window
     private (double Width, double Height) ExpandedSize()
     {
         var width = Math.Max(320, Settings.PanelWidth);
-        var height = 12 + 38 + (_current?.HeightHint ?? 300) + 12;
+        var height = 12 + 40 + (_current?.HeightHint ?? 300) + 14;
         return (width, Math.Clamp(height, 160, 720));
     }
 
@@ -817,6 +838,16 @@ public partial class IslandWindow : Window
     private void ApplyAppearance()
     {
         Background = Brushes.Transparent;
+        FontFamily = ThemeRuntime.UiFont;
+        Resources["SurfaceBrush"] = ThemeRuntime.SurfaceBrush;
+        Resources["TextBrush"] = ThemeRuntime.Text;
+        Resources["Text2Brush"] = ThemeRuntime.Text2;
+        Resources["Text3Brush"] = ThemeRuntime.Text3;
+        Resources["AccentBrush"] = ThemeRuntime.Accent;
+        Resources["CardBrush"] = ThemeRuntime.Card;
+        Resources["HairlineBrush"] = ThemeRuntime.Hairline;
+        Resources["ScrollThumbBrush"] = ThemeRuntime.Text3;
+        Resources["ScrollThumbHoverBrush"] = ThemeRuntime.Text2;
         Opacity = Math.Clamp(Settings.Opacity, 0.6, 1.0);
         Surface.Shape = Settings.Shape;
         Surface.NotchWidth = Settings.NotchWidth;
@@ -1077,6 +1108,7 @@ public partial class IslandWindow : Window
         {
             ApplyAppearance();
             Surface.Refresh();
+            BuildNav();
             UpdateNavVisuals(_current?.Key ?? "home");
         });
     }
@@ -1267,6 +1299,8 @@ public partial class IslandWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         ThemeRuntime.Changed -= OnThemeChanged;
+        _runtime.Usage.Updated -= OnUsageUpdated;
+        _runtime.Monitor.Sample -= OnMonitorSample;
         _clock.Stop();
         _hover.Stop();
         _outside.Stop();

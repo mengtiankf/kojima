@@ -5,33 +5,33 @@
          排版
          ============================================================ -->
     <Style x:Key="PageTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="22"/>
+        <Setter Property="FontSize" Value="24"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
 
     <Style x:Key="PageDesc" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="Foreground" Value="{DynamicResource Text2Brush}"/>
-        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
     <Style x:Key="GroupLabel" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{DynamicResource Text3Brush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Text2Brush}"/>
         <Setter Property="Margin" Value="2,0,0,8"/>
     </Style>
 
     <Style x:Key="RowTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontSize" Value="13.5"/>
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
 
     <Style x:Key="RowDesc" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontSize" Value="11.5"/>
         <Setter Property="Foreground" Value="{DynamicResource Text2Brush}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
         <Setter Property="Margin" Value="0,3,0,0"/>
@@ -78,12 +78,12 @@
         <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="18,4"/>
-        <Setter Property="Margin" Value="0,0,0,20"/>
+        <Setter Property="Padding" Value="18,6"/>
+        <Setter Property="Margin" Value="0,0,0,14"/>
     </Style>
 
     <Style x:Key="SettingRow" TargetType="Grid">
-        <Setter Property="MinHeight" Value="56"/>
+        <Setter Property="MinHeight" Value="58"/>
     </Style>
 
     <Style x:Key="RowDivider" TargetType="Border">
@@ -478,7 +478,7 @@
     <Style x:Key="NavItem" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{DynamicResource Text2Brush}"/>
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Height" Value="38"/>
+        <Setter Property="Height" Value="40"/>
         <Setter Property="Margin" Value="0,1,0,1"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
@@ -500,7 +500,7 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Hl" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
                             <Setter TargetName="Bar" Property="Opacity" Value="1"/>
-                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -591,9 +591,9 @@
     </Style>
 
     <Style x:Key="SlimScrollBar" TargetType="ScrollBar">
-        <Setter Property="Width" Value="12"/>
-        <Setter Property="MinWidth" Value="12"/>
-        <Setter Property="Opacity" Value="0.25"/>
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="MinWidth" Value="10"/>
+        <Setter Property="Opacity" Value="0.45"/>
         <Setter Property="Focusable" Value="False"/>
         <Setter Property="IsTabStop" Value="False"/>
         <Setter Property="Template">

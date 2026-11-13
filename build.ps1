@@ -1,8 +1,8 @@
 # Build Kojima: publish -> Inno Setup exe
-# Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.2.1]
+# Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.3.2]
 
 param(
-    [string]$Version = "1.3.1"
+    [string]$Version = "1.3.2"
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,10 +28,24 @@ dotnet publish "src/Kojima.Shell/Kojima.Shell.csproj" -c Release -r win-x64 --se
     -p:PublishReadyToRun=true -p:DebugType=None -o $publish
 if ($LASTEXITCODE -ne 0) { throw "publish shell failed" }
 
-Write-Host "== publish agents =="
-dotnet publish "src/Kojima.Agents/Kojima.Agents.csproj" -c Release -r win-x64 --self-contained true `
+Write-Host "== publish plugin host =="
+dotnet publish "src/Kojima.PluginHost/Kojima.PluginHost.csproj" -c Release -r win-x64 --self-contained true `
     -p:PublishReadyToRun=true -p:DebugType=None -o $publish
-if ($LASTEXITCODE -ne 0) { throw "publish agents failed" }
+if ($LASTEXITCODE -ne 0) { throw "publish plugin host failed" }
+
+Write-Host "== publish independent plugins =="
+$plugins = @(
+    @("Monitor", "monitor"), @("Usage", "usage"), @("Media", "media"),
+    @("Weather", "weather"), @("Stocks", "stocks"), @("Clipboard", "clipboard"),
+    @("Translate", "translate"), @("Messages", "messages"), @("Spectrum", "spectrum"),
+    @("Updates", "updates"), @("Controls", "controls")
+)
+foreach ($plugin in $plugins) {
+    $project = "plugins/Kojima.Plugin.$($plugin[0])/Kojima.Plugin.$($plugin[0]).csproj"
+    $output = Join-Path $publish "plugins/$($plugin[1])"
+    dotnet publish $project -c Release --self-contained false -p:DebugType=None -o $output
+    if ($LASTEXITCODE -ne 0) { throw "publish plugin failed: $($plugin[0])" }
+}
 
 Write-Host "== copy assets =="
 if (Test-Path $publish\assets) { Remove-Item $publish\assets -Recurse -Force }

@@ -140,7 +140,7 @@ public static class ConfigStore
         config.Island.Corner = Math.Clamp(config.Island.Corner, 0, 40);
         config.Island.PanelWidth = Math.Clamp(config.Island.PanelWidth, 420, 1200);
         config.Island.Opacity = Math.Clamp(config.Island.Opacity, 0.3, 1.0);
-        config.Monitor.IntervalMs = Math.Clamp(config.Monitor.IntervalMs, 500, 10000);
+        config.Monitor.IntervalMs = Math.Clamp(config.Monitor.IntervalMs, 400, 10000);
         // 兼容旧配置：只允许三种位置
         if (!Enum.IsDefined(config.Island.Position))
         {

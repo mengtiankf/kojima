@@ -247,6 +247,8 @@ public sealed class KojimaConfig
         ["usage"] = new FeatureSettings(),
         ["monitor"] = new FeatureSettings(),
         ["media"] = new FeatureSettings(),
+        ["spectrum"] = new FeatureSettings(),
+        ["updates"] = new FeatureSettings(),
         ["weather"] = new FeatureSettings(),
         ["stocks"] = new FeatureSettings(),
         ["clipboard"] = new FeatureSettings { Enabled = false },

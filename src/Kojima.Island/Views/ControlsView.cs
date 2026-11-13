@@ -73,7 +73,7 @@ public sealed class ControlsView : UserControl
         // 快捷动作
         var actions = new UniformGrid { Rows = 1, Columns = 3 };
         actions.Children.Add(ActionTile("\uE924", "截图", () => Shell("ms-screenclip:")));
-        actions.Children.Add(ActionTile("\uE8D6", "音乐", () => Shell("ms-music:")));
+        actions.Children.Add(ActionTile("\uE8D6", "音乐", OpenMusic));
         actions.Children.Add(ActionTile("\uE7E8", "锁屏", Lock));
         root.Children.Add(UiKit.Card(actions, padding: 8));
 
@@ -236,23 +236,12 @@ public sealed class ControlsView : UserControl
     }
 
     /// <summary>「音乐」按钮：优先打开用户自定义的程序，否则退回系统音乐应用。</summary>
-    private void OpenMusic()
-    {
-        var custom = (_runtime?.Config.Apps.Music ?? "").Trim();
-        if (custom.Length > 0 && System.IO.File.Exists(custom))
-        {
-            try
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(custom) { UseShellExecute = true });
-                return;
-            }
-            catch (Exception ex)
-            {
-                AppLog.Warn("打开自定义音乐程序失败：" + ex.Message);
-            }
-        }
+    private void OpenMusic() => Shell(ResolveMusicTarget(_runtime?.Config.Apps.Music));
 
-        Shell("ms-music:");
+    internal static string ResolveMusicTarget(string? custom)
+    {
+        var path = (custom ?? "").Trim();
+        return path.Length > 0 && System.IO.File.Exists(path) ? path : "ms-music:";
     }
 
     private static void Shell(string target)

@@ -38,10 +38,12 @@ public partial class SettingsWindow : Window
         ("usage", "AI 用量", "Claude、Codex、Cursor 等来源的额度与消耗"),
         ("monitor", "系统监控", "CPU、内存、温度与功耗"),
         ("media", "媒体", "正在播放的封面与播放控制"),
+        ("spectrum", "音频频谱", "媒体卡的实时音频频谱"),
+        ("updates", "应用更新", "GitHub 更新检查、下载与安装"),
         ("messages", "通知中心", "QQ、微信等应用通知与系统提醒"),
         ("weather", "天气", "当前天气与短期预报"),
         ("stocks", "股票", "自选行情与涨跌"),
-        ("clipboard", "剪贴板", "最近复制的文本与图片"),
+        ("clipboard", "剪贴板", "最近复制的文本"),
         ("translate", "翻译", "选中文本的快速翻译"),
         ("controls", "控制", "音量、亮度与截图等快捷操作"),
     };
@@ -98,7 +100,7 @@ public partial class SettingsWindow : Window
     {
         var version = typeof(SettingsWindow).Assembly
             .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? "1.2.1";
+            ?? "1.3.2";
         var dash = version.IndexOf('+', StringComparison.Ordinal);
         if (dash > 0)
         {
@@ -225,6 +227,8 @@ public partial class SettingsWindow : Window
         HoverSlider.Value = Math.Clamp(cfg.Island.HoverExpandMs, 0, 600);
         CollapseSlider.Value = Math.Clamp(cfg.Island.CollapseDelayMs, 0, 1000);
         OpacitySlider.Value = Math.Clamp(cfg.Island.Opacity, 0.6, 1.0);
+        AnimationSlider.Value = Math.Clamp(cfg.Island.AnimationMs, 80, 600);
+        MonitorIntervalBox.Text = cfg.Monitor.IntervalMs.ToString(CultureInfo.InvariantCulture);
 
         var monitorSource = (cfg.Monitor.Source ?? "auto").Trim().ToLowerInvariant();
         (monitorSource switch
@@ -241,6 +245,7 @@ public partial class SettingsWindow : Window
         LoadStockSettings(cfg.Stocks);
         MessagePoll.Text = cfg.Messages.PollMs.ToString(CultureInfo.InvariantCulture);
         WeatherLocation.Text = cfg.Weather.Location ?? "";
+        WeatherRefreshBox.Text = cfg.Weather.RefreshMinutes.ToString(CultureInfo.InvariantCulture);
         MusicPath.Text = cfg.Apps.Music ?? "";
         var engine = (cfg.Translate.Engine ?? "auto").Trim().ToLowerInvariant();
         (engine switch
@@ -693,6 +698,12 @@ public partial class SettingsWindow : Window
 
     private async void OnCheckUpdateClick(object sender, RoutedEventArgs e)
     {
+        if (!_runtime.FeatureEnabled("updates"))
+        {
+            UpdateStatusText.Text = "应用更新插件已停用，可在「功能」页重新开启。";
+            return;
+        }
+
         CheckUpdateButton.IsEnabled = false;
         UpdateStatusText.Text = "正在检查…";
         try
@@ -779,7 +790,7 @@ public partial class SettingsWindow : Window
 
     private async void OnApplyClick(object sender, RoutedEventArgs e) => await ApplyAsync(close: false);
 
-    private async Task ApplyAsync(bool close)
+    private async Task ApplyAsync(bool close, bool applyServices = true)
     {
         if (_saving)
         {
@@ -796,6 +807,7 @@ public partial class SettingsWindow : Window
             var cfg = _runtime.Config;
             var previousPollMs = cfg.Messages.PollMs;
             var previousMonitorSource = cfg.Monitor.Source;
+            var previousMonitorInterval = cfg.Monitor.IntervalMs;
             var previousIdle = cfg.Feature("monitor").IdleExitSeconds;
             var previousHotkeys = HotkeySignature(cfg.Hotkeys);
             var hotkeyToggle = (HotkeyToggle.Text ?? "").Trim();
@@ -803,12 +815,22 @@ public partial class SettingsWindow : Window
             var hotkeyMonitor = (HotkeyMonitor.Text ?? "").Trim();
             if (!ValidHotkey(hotkeyToggle) || !ValidHotkey(hotkeySettings) || !ValidHotkey(hotkeyMonitor))
             {
-                AppDialog.Notify(
-                    this,
-                    "快捷键格式不对",
-                    "请使用 Ctrl+Alt+K 这样的组合；留空表示不注册。",
-                    "知道了",
-                    DialogTone.Warning);
+                StatusText.Text = "快捷键格式不正确：请使用 Ctrl+Alt+K 这样的组合，留空表示不注册。";
+                var invalid = !ValidHotkey(hotkeyToggle) ? HotkeyToggle
+                    : !ValidHotkey(hotkeySettings) ? HotkeySettings
+                    : HotkeyMonitor;
+                invalid.Focus();
+                invalid.SelectAll();
+                return;
+            }
+
+            if (!TryReadRange(MessagePoll, 500, 10000, "通知读取频率", out var pollMs) ||
+                !TryReadRange(StockRefresh, 5, 600, "股票刷新间隔", out var stockRefresh) ||
+                !TryReadRange(RefreshBox, 30, 3600, "用量刷新间隔", out var usageRefresh) ||
+                !TryReadRange(IdleExitBox, 0, 600, "插件空闲退出秒数", out var idle) ||
+                !TryReadRange(WeatherRefreshBox, 5, 180, "天气刷新间隔", out var weatherRefresh) ||
+                !TryReadRange(MonitorIntervalBox, 400, 10000, "监控采样间隔", out var monitorInterval))
+            {
                 return;
             }
 
@@ -816,7 +838,6 @@ public partial class SettingsWindow : Window
             cfg.Hotkeys.Settings = hotkeySettings;
             cfg.Hotkeys.Monitor = hotkeyMonitor;
             cfg.StartWithWindows = StartSwitch.IsChecked == true;
-            StartupRegistration.Apply(cfg.StartWithWindows);
 
             cfg.Island.Position = PosLeft.IsChecked == true ? IslandPosition.TopLeft
                 : PosRight.IsChecked == true ? IslandPosition.TopRight
@@ -850,6 +871,7 @@ public partial class SettingsWindow : Window
             cfg.Island.HoverExpandMs = (int)Math.Round(HoverSlider.Value);
             cfg.Island.CollapseDelayMs = (int)Math.Round(CollapseSlider.Value);
             cfg.Island.Opacity = Math.Round(OpacitySlider.Value, 2);
+            cfg.Island.AnimationMs = (int)Math.Round(AnimationSlider.Value);
             cfg.Island.CompactContent = CompactClock.IsChecked == true ? "clock"
                 : CompactWeather.IsChecked == true ? "weather"
                 : CompactMedia.IsChecked == true ? "media"
@@ -876,15 +898,14 @@ public partial class SettingsWindow : Window
                 : MonitorLhm.IsChecked == true ? "lhm"
                 : MonitorOhm.IsChecked == true ? "ohm"
                 : "auto";
+            cfg.Monitor.IntervalMs = monitorInterval;
 
             ApplyStockSettings(cfg.Stocks);
 
-            if (int.TryParse(MessagePoll.Text, out var pollMs))
-            {
-                cfg.Messages.PollMs = Math.Clamp(pollMs, 500, 10000);
-            }
+            cfg.Messages.PollMs = pollMs;
 
             cfg.Weather.Location = (WeatherLocation.Text ?? "").Trim();
+            cfg.Weather.RefreshMinutes = weatherRefresh;
             cfg.Apps.Music = (MusicPath.Text ?? "").Trim();
             cfg.Translate.Engine = TranslateTencent.IsChecked == true ? "tencent"
                 : TranslateGoogle.IsChecked == true ? "google"
@@ -908,9 +929,8 @@ public partial class SettingsWindow : Window
             cfg.Island.NavOrder = _order.ToList();
 
             ApplyUsageSettings(cfg, secretUpdates);
-            cfg.Usage.RefreshSeconds = Math.Clamp(ParseInt(RefreshBox.Text, cfg.Usage.RefreshSeconds), 30, 3600);
+            cfg.Usage.RefreshSeconds = usageRefresh;
 
-            var idle = Math.Clamp(ParseInt(IdleExitBox.Text, cfg.Feature("monitor").IdleExitSeconds), 0, 600);
             foreach (var feature in cfg.Features.Values)
             {
                 feature.IdleExitSeconds = idle;
@@ -933,38 +953,48 @@ public partial class SettingsWindow : Window
                 }
             }
 
+            cfg.Stocks.RefreshSeconds = stockRefresh;
+            _runtime.Agents.SetIdleSeconds(idle);
+            if (applyServices)
+            {
+                StartupRegistration.Apply(cfg.StartWithWindows);
+            }
             _runtime.SaveConfig();
             _runtime.Themes.Apply();
             App.RefreshIsland();
             App.RefreshStocks();
             App.RebuildDecks();
             UpdateCurrentThemeText();
-            foreach (var (key, enabled) in changed)
+            if (applyServices)
             {
-                try
+                foreach (var (key, enabled) in changed)
                 {
-                    await _runtime.SetFeatureAsync(key, enabled);
+                    try
+                    {
+                        await _runtime.SetFeatureAsync(key, enabled);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Warn($"切换功能 {key} 失败：{ex.Message}");
+                    }
                 }
-                catch (Exception ex)
+
+                _ = _runtime.Weather.RefreshAsync();
+                _ = _runtime.Usage.RefreshAsync();
+                if (cfg.Messages.PollMs != previousPollMs)
                 {
-                    AppLog.Warn($"切换功能 {key} 失败：{ex.Message}");
+                    await _runtime.Messages.RestartAsync();
+                }
+
+                if (!string.Equals(cfg.Monitor.Source, previousMonitorSource, StringComparison.OrdinalIgnoreCase) ||
+                    cfg.Monitor.IntervalMs != previousMonitorInterval)
+                {
+                    await _runtime.Monitor.ApplySettingsAsync();
                 }
             }
 
             _runtime.Weather.ApplySettings();
-            _ = _runtime.Weather.RefreshAsync();
             _runtime.Usage.ApplySettings();
-            _ = _runtime.Usage.RefreshAsync();
-
-            if (cfg.Messages.PollMs != previousPollMs)
-            {
-                await _runtime.Messages.RestartAsync();
-            }
-
-            if (!string.Equals(cfg.Monitor.Source, previousMonitorSource, StringComparison.OrdinalIgnoreCase))
-            {
-                await _runtime.Monitor.ApplySettingsAsync();
-            }
 
             _pending.Clear();
             _runtime.Island?.ReloadFeatures();
@@ -983,12 +1013,12 @@ public partial class SettingsWindow : Window
                 restartReasons.Add("子进程空闲回收时长已保存，已启动的子进程仍按旧设置运行。");
             }
 
-            if (HotkeySignature(cfg.Hotkeys) != previousHotkeys)
+            if (applyServices && HotkeySignature(cfg.Hotkeys) != previousHotkeys)
             {
                 App.RehookHotkeys();
             }
 
-            if (restartReasons.Count > 0)
+            if (applyServices && restartReasons.Count > 0)
             {
                 var restart = AppDialog.Confirm(
                     this,
@@ -1006,23 +1036,21 @@ public partial class SettingsWindow : Window
             {
                 Close();
             }
-            else
-            {
-                _saving = false;
-                ApplyButton.IsEnabled = true;
-                SaveButton.IsEnabled = true;
-                CancelButton.IsEnabled = true;
-            }
         }
         catch (Exception ex)
         {
             StatusText.Text = "保存失败：" + ex.Message;
+        }
+        finally
+        {
             _saving = false;
             ApplyButton.IsEnabled = true;
             SaveButton.IsEnabled = true;
             CancelButton.IsEnabled = true;
         }
     }
+
+    internal Task ApplyForTestAsync() => ApplyAsync(close: false, applyServices: false);
 
     /// <summary>重启：交给 Shell 重新拉起灵动岛子进程。</summary>
     private void RestartApp()
@@ -1051,8 +1079,19 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private static int ParseInt(string? text, int fallback) =>
-        int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+    private bool TryReadRange(TextBox box, int minimum, int maximum, string label, out int value)
+    {
+        if (int.TryParse(box.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) &&
+            value >= minimum && value <= maximum)
+        {
+            return true;
+        }
+
+        StatusText.Text = $"{label}请输入 {minimum} - {maximum} 之间的整数。";
+        box.Focus();
+        box.SelectAll();
+        return false;
+    }
 
     private static string HotkeySignature(HotkeySettings keys) =>
         $"{keys.Toggle}|{keys.Settings}|{keys.Monitor}";

@@ -1,0 +1,8 @@
+{
+  "id": "spectrum",
+  "name": "音频频谱",
+  "version": "1.3.2",
+  "assembly": "Kojima.Plugin.Spectrum.dll",
+  "entryType": "Kojima.Agents.Features.SpectrumFeature",
+  "description": "WASAPI 环回音频采样与频谱分析"
+}

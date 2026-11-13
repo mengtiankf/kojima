@@ -6,7 +6,14 @@ namespace Kojima.Shell;
 
 internal static class Program
 {
-    private const string MutexName = @"Local\Kojima.Shell.SingleInstance";
+    internal static readonly string InstanceSuffix =
+        Environment.GetEnvironmentVariable("KOJIMA_INSTANCE") is { Length: > 0 } suffix
+            ? "." + new string(suffix.Where(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_').Take(40).ToArray())
+            : "";
+
+    private static readonly string MutexName = @"Local\Kojima.Shell.SingleInstance" + InstanceSuffix;
+
+    internal static string PipeName => "kojima-shell" + InstanceSuffix;
 
     [STAThread]
     private static void Main(string[] args)

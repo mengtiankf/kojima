@@ -36,8 +36,12 @@ public sealed class MessageProxy : IDisposable
 
     public void Stop()
     {
+        var wasActive = _starting is not null || _agents.IsRunning("messages");
         _starting = null;
-        _ = _agents.RequestAsync<object>("messages", "messages.stop", null, 5000);
+        if (wasActive)
+        {
+            _ = _agents.RequestAsync<object>("messages", "messages.stop", null, 5000);
+        }
     }
 
     /// <summary>轮询间隔改动后让子进程按新间隔重启计时器。</summary>

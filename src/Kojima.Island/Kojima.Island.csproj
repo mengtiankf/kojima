@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
-    <Version>1.3.1</Version>
+    <Version>1.3.2</Version>
     <RootNamespace>Kojima.Island</RootNamespace>
     <AssemblyName>Kojima.Island</AssemblyName>
     <ApplicationIcon>..\..\assets\kojima.ico</ApplicationIcon>
@@ -25,11 +25,5 @@
     <None Update="..\..\assets\kojima.ico" Link="assets\kojima.ico" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="System.Management" Version="10.0.0" />
-  </ItemGroup>
 
 </Project>

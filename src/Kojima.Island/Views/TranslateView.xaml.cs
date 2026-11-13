@@ -144,11 +144,7 @@ public partial class TranslateView : UserControl
         _swapButton.Child = _swapGlyph;
         _swapButton.MouseEnter += (_, _) => _swapButton.Background = ThemeRuntime.Hover;
         _swapButton.MouseLeave += (_, _) => _swapButton.Background = ThemeRuntime.Fill;
-        _swapButton.MouseLeftButtonUp += (_, _) =>
-        {
-            _reversed = !_reversed;
-            UpdateSegments();
-        };
+        _swapButton.MouseLeftButtonUp += (_, _) => ToggleDirection();
 
         _translateButton.Width = 76;
         _translateButton.Height = 30;
@@ -287,7 +283,19 @@ public partial class TranslateView : UserControl
 
     private bool IsSelected(int index) => _target == (index == 0 ? "日" : "英");
 
-    private void SelectLanguage(int index)
+    internal string Target => _target;
+
+    internal bool Reversed => _reversed;
+
+    internal void ToggleDirection()
+    {
+        _reversed = !_reversed;
+        _runtime.Config.Translate.Reversed = _reversed;
+        _runtime.SaveConfig();
+        UpdateSegments();
+    }
+
+    internal void SelectLanguage(int index)
     {
         _target = index == 0 ? "日" : "英";
         _runtime.Config.Translate.Target = _target == "日" ? "ja" : "en";
@@ -379,6 +387,7 @@ public partial class TranslateView : UserControl
         {
             ThemeRuntime.Changed += OnThemeChanged;
             _target = (_runtime.Config.Translate.Target ?? "ja").StartsWith("en", StringComparison.OrdinalIgnoreCase) ? "英" : "日";
+            _reversed = _runtime.Config.Translate.Reversed;
             UpdateSegments();
             if (ApiKey().Length == 0 && _runtime.Config.Translate.Engine == "deepseek") { SetResult(FreeHint, ResultKind.Hint); }
         }

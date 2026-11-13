@@ -130,8 +130,8 @@ public partial class SettingsWindow
                 Margin = new Thickness(16, 0, 0, 0),
             };
 
-            // 媒体没有独立的灵动岛标签，顺序对它没有意义，避免出现无效按钮。
-            var reorderable = !def.Key.Equals("media", StringComparison.OrdinalIgnoreCase);
+            // 后台插件没有独立标签，顺序对它们没有意义。
+            var reorderable = def.Key is not ("media" or "spectrum" or "updates");
             var up = MakeOrderButton("\uE74A", "上移", reorderable && index > 0, () => MoveKey(def.Key, -1));
             var down = MakeOrderButton("\uE74B", "下移", reorderable && index < _order.Count - 1, () => MoveKey(def.Key, 1));
             actions.Children.Add(up);
@@ -242,11 +242,7 @@ public partial class SettingsWindow
         (_order[index], _order[target]) = (_order[target], _order[index]);
         AppLog.Info($"排序：移动 {_order[target]} index={index}->{target}，当前顺序 {string.Join(",", _order)}");
 
-        // 立刻写回配置：避免后续任何一次重建（主题切换、页面切换）又把顺序读回默认值
-        _runtime.Config.Island.NavOrder = _order.ToList();
-        _runtime.SaveConfig();
-
-        // 延迟到本次点击处理结束再重建：直接在 Click 里清空按钮所在的视觉树会崩
+        // 排序暂留在设置窗口，应用时才写入配置；取消不会改动运行中的导航。
         Dispatcher.BeginInvoke(new Action(RebuildFeatureList), System.Windows.Threading.DispatcherPriority.Background);
     }
 

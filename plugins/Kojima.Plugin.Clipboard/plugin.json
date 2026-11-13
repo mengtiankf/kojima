@@ -1,0 +1,8 @@
+{
+  "id": "clipboard",
+  "name": "剪贴板",
+  "version": "1.3.2",
+  "assembly": "Kojima.Plugin.Clipboard.dll",
+  "entryType": "Kojima.Agents.Features.ClipboardFeature",
+  "description": "最近复制的文本历史与快速回填"
+}
