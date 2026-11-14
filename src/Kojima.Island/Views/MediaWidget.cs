@@ -3,13 +3,14 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Kojima.Core.Config;
 using Kojima.Island.Services;
 using Kojima.Island.Theme;
 
 namespace Kojima.Island.Views;
 
 /// <summary>首页媒体卡：封面、曲目信息、进度与播放控制。</summary>
-public sealed class MediaWidget : UserControl
+public sealed class MediaWidget : UserControl, ISizedHomeCard
 {
     private readonly MediaProxy? _service;
 
@@ -26,7 +27,7 @@ public sealed class MediaWidget : UserControl
     private readonly Border _playButton = new();
     private readonly TextBlock _prevGlyph;
     private readonly TextBlock _nextGlyph;
-    private readonly double _coverSize;
+    private double _coverSize;
     private readonly bool _large;
     private bool _eventsAttached;
 
@@ -156,6 +157,47 @@ public sealed class MediaWidget : UserControl
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         Render();
+        ApplyCardSize();
+    }
+
+    public HomeCardSize CardSize
+    {
+        get => _cardSize;
+        set { _cardSize = value; ApplyCardSize(); }
+    }
+    private HomeCardSize _cardSize = HomeCardSize.Large;
+
+    private void ApplyCardSize()
+    {
+        if (_large)
+        {
+            return;
+        }
+        _coverSize = _cardSize switch
+        {
+            HomeCardSize.Small => 0,
+            HomeCardSize.Medium => 64,
+            HomeCardSize.XLarge => 128,
+            _ => 96,
+        };
+        _cover.Width = _coverSize;
+        _cover.Height = _coverSize;
+        _cover.Visibility = _cardSize == HomeCardSize.Small ? Visibility.Collapsed : Visibility.Visible;
+        _spectrum.Visibility = _cardSize is HomeCardSize.Large or HomeCardSize.XLarge ? Visibility.Visible : Visibility.Collapsed;
+        _artist.Visibility = _cardSize == HomeCardSize.Small ? Visibility.Collapsed : Visibility.Visible;
+        _album.Visibility = _cardSize == HomeCardSize.XLarge ? Visibility.Visible : Visibility.Collapsed;
+        _position.Visibility = _cardSize == HomeCardSize.Small ? Visibility.Collapsed : Visibility.Visible;
+        _duration.Visibility = _cardSize == HomeCardSize.Small ? Visibility.Collapsed : Visibility.Visible;
+        _lyric.Visibility = _cardSize == HomeCardSize.XLarge && _lyric.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        _title.FontSize = _cardSize switch { HomeCardSize.Small => 12, HomeCardSize.Medium => 14, HomeCardSize.XLarge => 18, _ => 15 };
+        _artist.FontSize = _cardSize == HomeCardSize.XLarge ? 14 : 12;
+        Height = _cardSize switch
+        {
+            HomeCardSize.Small => 48,
+            HomeCardSize.Medium => 96,
+            HomeCardSize.XLarge => 246,
+            _ => 186,
+        };
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)

@@ -122,7 +122,7 @@
 
                     <StackPanel Grid.Row="2" Margin="20,0,20,18">
                         <Border Height="1" Background="{DynamicResource HairlineBrush}" Margin="0,0,0,14" Opacity="0.8"/>
-                        <TextBlock x:Name="VersionLabel" Text="1.3.3" FontSize="10.5" Foreground="{DynamicResource Text3Brush}"/>
+                        <TextBlock x:Name="VersionLabel" Text="1.3.4-beta.1" FontSize="10.5" Foreground="{DynamicResource Text3Brush}"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -279,15 +279,8 @@
                                         <TextBlock Text="显示内容与顺序" Style="{StaticResource RowDesc}" Margin="2,12,0,6"/>
                                         <StackPanel x:Name="CompactItemsPanel"/>
                                         <TextBlock Text="勾选要显示的项目，用 ↑ ↓ 调整顺序；应用后立即生效。" Style="{StaticResource Hint}" Margin="2,6,0,0"/>
-                                    </StackPanel>
-                                    <StackPanel Margin="0,4,0,14">
-                                        <TextBlock Text="主页显示内容与顺序" Style="{StaticResource RowTitle}"/>
-                                        <TextBlock Text="默认顺序为媒体、天气、时钟、快捷操作；取消勾选可隐藏卡片。" Style="{StaticResource RowDesc}" Margin="0,3,0,6"/>
-                                        <StackPanel x:Name="HomeItemsPanel"/>
-                                        <TextBlock Text="实时预览" Style="{StaticResource RowDesc}" Margin="2,10,0,6"/>
+                                        <TextBlock Text="收起态实时预览" Style="{StaticResource RowDesc}" Margin="2,10,0,6"/>
                                         <local:SettingsPreview x:Name="UiPreview"/>
-                                        <Button Content="恢复默认主页" Click="OnHomeResetClick" Style="{StaticResource GhostButton}"
-                                                HorizontalAlignment="Left" Height="28" Padding="12,0" Margin="0,6,0,0"/>
                                     </StackPanel>
                                     <Border Style="{StaticResource RowDivider}"/>
                                     <Grid Style="{StaticResource SettingRow}">
@@ -341,24 +334,6 @@
                                             <TextBlock Width="62" Margin="14,0,0,0" TextAlignment="Right" FontSize="11.5"
                                                        VerticalAlignment="Center" Foreground="{DynamicResource Text2Brush}"
                                                        Text="{Binding Value, ElementName=CollapseSlider, StringFormat='{}{0:0} ms'}"/>
-                                        </StackPanel>
-                                    </Grid>
-                                    <Border Style="{StaticResource RowDivider}"/>
-                                    <Grid Style="{StaticResource SettingRow}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
-                                            <TextBlock Text="不透明度" Style="{StaticResource RowTitle}"/>
-                                            <TextBlock Text="展开面板的透明度" Style="{StaticResource RowDesc}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
-                                            <Slider x:Name="OpacitySlider" Style="{StaticResource SlimSlider}" Width="186"
-                                                    Minimum="0.6" Maximum="1.0" SmallChange="0.02" LargeChange="0.1"/>
-                                            <TextBlock Width="62" Margin="14,0,0,0" TextAlignment="Right" FontSize="11.5"
-                                                       VerticalAlignment="Center" Foreground="{DynamicResource Text2Brush}"
-                                                       Text="{Binding Value, ElementName=OpacitySlider, StringFormat='{}{0:P0}'}"/>
                                         </StackPanel>
                                     </Grid>
                                     <Border Style="{StaticResource RowDivider}"/>
@@ -491,18 +466,17 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
-                                            <TextBlock Text="展开宽度" Style="{StaticResource RowTitle}"/>
-                                            <TextBlock Text="也可以用展开面板右下角拖拽调整"
+                                            <TextBlock Text="面板密度" Style="{StaticResource RowTitle}"/>
+                                            <TextBlock Text="宽高由程序根据内容和显示器空间动态调整"
                                                        Style="{StaticResource RowDesc}"/>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                                    VerticalAlignment="Center" Margin="24,0,0,0">
-                                            <Slider x:Name="PanelWidthSlider" Style="{StaticResource SlimSlider}"
-                                                    Width="180" Minimum="420" Maximum="900"
-                                                    ValueChanged="OnPanelWidthChanged"/>
-                                            <TextBlock x:Name="PanelWidthValue" Style="{StaticResource Hint}"
-                                                       Width="54" TextAlignment="Right" VerticalAlignment="Center"/>
-                                        </StackPanel>
+                                        <Border Grid.Column="1" Style="{StaticResource SegmentGroup}" Margin="24,0,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton x:Name="DensityCompact" GroupName="Density" Style="{StaticResource Segment}" Content="紧凑"/>
+                                                <RadioButton x:Name="DensityMedium" GroupName="Density" Style="{StaticResource Segment}" Content="适中"/>
+                                                <RadioButton x:Name="DensityLoose" GroupName="Density" Style="{StaticResource Segment}" Content="宽松"/>
+                                            </StackPanel>
+                                        </Border>
                                     </Grid>
                                     <Border Style="{StaticResource RowDivider}"/>
                                     <Grid Style="{StaticResource SettingRow}">
@@ -526,6 +500,27 @@
                                         <WrapPanel x:Name="ExtraMonitorsPanel" Margin="0,8,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="面板显示" Style="{StaticResource GroupLabel}"/>
+                            <Border Style="{StaticResource Card}">
+                                <Grid Style="{StaticResource SettingRow}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,10,0,10">
+                                        <TextBlock Text="不透明度" Style="{StaticResource RowTitle}"/>
+                                        <TextBlock Text="展开面板的透明度" Style="{StaticResource RowDesc}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,0,0">
+                                        <Slider x:Name="OpacitySlider" Style="{StaticResource SlimSlider}" Width="186"
+                                                Minimum="0.6" Maximum="1.0" SmallChange="0.02" LargeChange="0.1"/>
+                                        <TextBlock Width="62" Margin="14,0,0,0" TextAlignment="Right" FontSize="11.5"
+                                                   VerticalAlignment="Center" Foreground="{DynamicResource Text2Brush}"
+                                                   Text="{Binding Value, ElementName=OpacitySlider, StringFormat='{}{0:P0}'}"/>
+                                    </StackPanel>
+                                </Grid>
                             </Border>
 
                             <TextBlock Text="自动切换" Style="{StaticResource GroupLabel}"/>
@@ -1111,7 +1106,7 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="Kojima" FontSize="20" FontWeight="SemiBold"/>
                                                 <Border Style="{StaticResource Badge}" Margin="10,0,0,0">
-                                                    <TextBlock x:Name="AboutVersionBadge" Text="1.3.3" FontSize="11" Foreground="{DynamicResource Text2Brush}"/>
+                                                    <TextBlock x:Name="AboutVersionBadge" Text="1.3.4-beta.1" FontSize="11" Foreground="{DynamicResource Text2Brush}"/>
                                                 </Border>
                                             </StackPanel>
                                             <TextBlock Text="一个把 AI 用量和系统状态放在屏幕边缘的 Windows 小工具"
@@ -1180,7 +1175,7 @@
                                 </StackPanel>
                             </Border>
 
-                            <TextBlock x:Name="AboutVersionLine" Text="Kojima 1.3.3 · Windows · .NET 10 · WPF" Style="{StaticResource Hint}"
+                            <TextBlock x:Name="AboutVersionLine" Text="Kojima 1.3.4-beta.1 · Windows · .NET 10 · WPF" Style="{StaticResource Hint}"
                                        Margin="2,0,0,0"/>
                         </StackPanel>
                     </ScrollViewer>

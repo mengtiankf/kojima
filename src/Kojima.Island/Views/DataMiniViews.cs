@@ -1,17 +1,25 @@
 using System.Windows;
 using System.Windows.Controls;
+using Kojima.Core.Config;
 using Kojima.Core.Models;
 using Kojima.Island.Theme;
 
 namespace Kojima.Island.Views;
 
-public sealed class StocksMiniView : UserControl
+public sealed class StocksMiniView : UserControl, ISizedHomeCard
 {
     private readonly AppRuntime _runtime;
     private readonly TextBlock _title = UiKit.T("股票", 10.5, ThemeRuntime.Text3);
     private readonly TextBlock _main = UiKit.T("等待行情", 17, ThemeRuntime.Text, FontWeights.SemiBold);
     private readonly TextBlock _detail = UiKit.T("", 11, ThemeRuntime.Text2);
     private bool _attached;
+
+    public HomeCardSize CardSize
+    {
+        get => _cardSize;
+        set { _cardSize = value; ApplySize(); }
+    }
+    private HomeCardSize _cardSize = HomeCardSize.Medium;
 
     public StocksMiniView(AppRuntime runtime)
     {
@@ -60,15 +68,35 @@ public sealed class StocksMiniView : UserControl
         }
         if (Dispatcher.CheckAccess()) Update(); else Dispatcher.BeginInvoke(Update);
     }
+
+    private void ApplySize()
+    {
+        _main.FontSize = _cardSize switch
+        {
+            HomeCardSize.Small => 13,
+            HomeCardSize.Large => 20,
+            HomeCardSize.XLarge => 23,
+            _ => 17,
+        };
+        _detail.Visibility = _cardSize == HomeCardSize.Small ? Visibility.Collapsed : Visibility.Visible;
+        Render();
+    }
 }
 
-public sealed class UsageMiniView : UserControl
+public sealed class UsageMiniView : UserControl, ISizedHomeCard
 {
     private readonly AppRuntime _runtime;
     private readonly TextBlock _title = UiKit.T("AI 用量", 10.5, ThemeRuntime.Text3);
     private readonly TextBlock _main = UiKit.T("等待用量", 17, ThemeRuntime.Text, FontWeights.SemiBold);
     private readonly TextBlock _detail = UiKit.T("", 11, ThemeRuntime.Text2);
     private bool _attached;
+
+    public HomeCardSize CardSize
+    {
+        get => _cardSize;
+        set { _cardSize = value; ApplySize(); }
+    }
+    private HomeCardSize _cardSize = HomeCardSize.Medium;
 
     public UsageMiniView(AppRuntime runtime)
     {
@@ -119,15 +147,35 @@ public sealed class UsageMiniView : UserControl
         }
         if (Dispatcher.CheckAccess()) Update(); else Dispatcher.BeginInvoke(Update);
     }
+
+    private void ApplySize()
+    {
+        _main.FontSize = _cardSize switch
+        {
+            HomeCardSize.Small => 13,
+            HomeCardSize.Large => 20,
+            HomeCardSize.XLarge => 23,
+            _ => 17,
+        };
+        _detail.Visibility = _cardSize == HomeCardSize.Small ? Visibility.Collapsed : Visibility.Visible;
+        Render();
+    }
 }
 
-public sealed class MonitorMiniView : UserControl
+public sealed class MonitorMiniView : UserControl, ISizedHomeCard
 {
     private readonly AppRuntime _runtime;
     private readonly TextBlock _title = UiKit.T("系统监控", 10.5, ThemeRuntime.Text3);
     private readonly TextBlock _main = UiKit.T("等待采样", 17, ThemeRuntime.Text, FontWeights.SemiBold);
     private readonly TextBlock _detail = UiKit.T("", 11, ThemeRuntime.Text2);
     private bool _attached;
+
+    public HomeCardSize CardSize
+    {
+        get => _cardSize;
+        set { _cardSize = value; ApplySize(); }
+    }
+    private HomeCardSize _cardSize = HomeCardSize.Medium;
 
     public MonitorMiniView(AppRuntime runtime)
     {
@@ -171,5 +219,22 @@ public sealed class MonitorMiniView : UserControl
         _detail.Text = gpu is null
             ? $"内存 {sample.Mem.Percent:0}%"
             : $"内存 {sample.Mem.Percent:0}% · GPU {gpu.Util:0}%";
+        if (_cardSize == HomeCardSize.XLarge)
+        {
+            _detail.Text += $" · ↓{sample.Net.DownBps / 1024:0}KB/s";
+        }
+    }
+
+    private void ApplySize()
+    {
+        _main.FontSize = _cardSize switch
+        {
+            HomeCardSize.Small => 13,
+            HomeCardSize.Large => 20,
+            HomeCardSize.XLarge => 23,
+            _ => 17,
+        };
+        _detail.Visibility = _cardSize == HomeCardSize.Small ? Visibility.Collapsed : Visibility.Visible;
+        Render(_runtime.Monitor.Last);
     }
 }

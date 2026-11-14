@@ -105,7 +105,7 @@ public partial class SettingsWindow : Window
     {
         var version = typeof(SettingsWindow).Assembly
             .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? "1.3.3";
+            ?? "1.3.4-beta.1";
         var dash = version.IndexOf('+', StringComparison.Ordinal);
         if (dash > 0)
         {
@@ -232,7 +232,6 @@ public partial class SettingsWindow : Window
             _ => CompactClockWeather,
         }).IsChecked = true;
         LoadCompactEditor();
-        LoadHomeEditor();
 
         HideFullscreenSwitch.IsChecked = cfg.Island.HideFullscreen;
         HoverSlider.Value = Math.Clamp(cfg.Island.HoverExpandMs, 0, 600);
@@ -292,8 +291,12 @@ public partial class SettingsWindow : Window
                                      string.Equals(d.DeviceName, cfg.Island.Monitor, StringComparison.OrdinalIgnoreCase))
                                  ?? displays.FirstOrDefault(d => d.Primary)
                                  ?? displays.FirstOrDefault();
-        PanelWidthSlider.Value = Math.Clamp(cfg.Island.PanelWidth, 420, 900);
-        PanelWidthValue.Text = ((int)Math.Round(PanelWidthSlider.Value)) + " px";
+        (cfg.Island.Density switch
+        {
+            "compact" => DensityCompact,
+            "loose" => DensityLoose,
+            _ => DensityMedium,
+        }).IsChecked = true;
         BuildExtraMonitors(cfg, displays);
 
         var appearance = cfg.Appearance ??= new AppearanceSettings();
@@ -402,14 +405,6 @@ public partial class SettingsWindow : Window
         catch (Exception ex)
         {
             StatusText.Text = "保存主题失败：" + ex.Message;
-        }
-    }
-
-    private void OnPanelWidthChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (PanelWidthValue is not null)
-        {
-            PanelWidthValue.Text = ((int)Math.Round(e.NewValue)) + " px";
         }
     }
 
@@ -868,7 +863,9 @@ public partial class SettingsWindow : Window
                 cfg.Island.DragY = null;
             }
 
-            cfg.Island.PanelWidth = Math.Round(PanelWidthSlider.Value);
+            cfg.Island.Density = DensityCompact.IsChecked == true ? "compact"
+                : DensityLoose.IsChecked == true ? "loose"
+                : "medium";
             cfg.Island.ExtraMonitors = ExtraMonitorsPanel.Children.OfType<CheckBox>()
                 .Where(box => box.IsChecked == true)
                 .Select(box => box.Tag as string)
@@ -885,7 +882,6 @@ public partial class SettingsWindow : Window
             cfg.Island.Opacity = Math.Round(OpacitySlider.Value, 2);
             cfg.Island.AnimationMs = (int)Math.Round(AnimationSlider.Value);
             ApplyCompactEditor(cfg.Island);
-            ApplyHomeEditor(cfg.Island);
 
             cfg.Appearance.Mode = ModeSystem.IsChecked == true ? "system"
                 : ModeDaylight.IsChecked == true ? "daylight"

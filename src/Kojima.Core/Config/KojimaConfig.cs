@@ -14,6 +14,14 @@ public enum IslandPosition
     TopRight,
 }
 
+public enum HomeCardSize
+{
+    Small,
+    Medium,
+    Large,
+    XLarge,
+}
+
 public sealed class IslandSettings
 {
     public IslandShape Shape { get; set; } = IslandShape.Notch;
@@ -41,6 +49,10 @@ public sealed class IslandSettings
     public double PanelRadius { get; set; } = 20;
 
     public double PanelWidth { get; set; } = 640;
+
+    public string Density { get; set; } = "medium";
+
+    public Dictionary<string, HomeCardSize> HomeCardSizes { get; set; } = new();
 
     /// <summary>岛体所在显示器（设备名，空 = 主显示器）。</summary>
     public string Monitor { get; set; } = "";

@@ -1,8 +1,8 @@
 # Build Kojima: publish -> Inno Setup exe
-# Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.3.3]
+# Usage: powershell -ExecutionPolicy Bypass -File build.ps1 [-Version 1.3.4-beta.1]
 
 param(
-    [string]$Version = "1.3.3"
+    [string]$Version = "1.3.4-beta.1"
 )
 
 $ErrorActionPreference = "Stop"

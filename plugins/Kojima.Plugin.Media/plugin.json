@@ -1,7 +1,7 @@
 {
   "id": "media",
   "name": "媒体控制",
-  "version": "1.3.3",
+  "version": "1.3.4-beta.1",
   "assembly": "Kojima.Plugin.Media.dll",
   "entryType": "Kojima.Agents.Features.MediaFeature",
   "description": "系统媒体会话、封面、播放控制与歌词"

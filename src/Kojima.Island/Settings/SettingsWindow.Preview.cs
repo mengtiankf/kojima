@@ -23,8 +23,7 @@ public partial class SettingsWindow
         };
         UiPreview.Update(
             settings,
-            _compactOrder.Where(key => _compactEnabled.Contains(key)).ToArray(),
-            _homeOrder.Where(key => _homeEnabled.Contains(key)).ToArray());
+            _compactOrder.Where(key => _compactEnabled.Contains(key)).ToArray());
     }
 
     private void OnVisualSettingChanged(object sender, System.Windows.RoutedEventArgs e) => RefreshPreview();

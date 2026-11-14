@@ -22,7 +22,8 @@ public sealed class CustomizationTests : IslandTestBase
             {
                 window.DropFeatureForTest("weather", 0);
                 window.DropCompactForTest("media", 0);
-                window.DropHomeForTest("clock", 0);
+                var editor = new Views.HomeEditorView(runtime, () => { }, () => { });
+                editor.DropHomeForTest("clock", 0);
                 window.ApplyForTestAsync().GetAwaiter().GetResult();
 
                 Assert.Equal("weather", runtime.Config.Island.NavOrder[0]);
@@ -95,7 +96,7 @@ public sealed class CustomizationTests : IslandTestBase
         WithRuntime(null, runtime =>
         {
             var preview = new SettingsPreview();
-            preview.Update(new IslandSettings(), CompactLayout.Available, HomeLayout.Available);
+            preview.Update(new IslandSettings(), CompactLayout.Available);
 
             Assert.NotNull(preview.Content);
             Assert.Contains("stocks", HomeLayout.Available);

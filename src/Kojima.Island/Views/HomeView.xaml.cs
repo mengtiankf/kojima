@@ -35,23 +35,57 @@ public partial class HomeView : UserControl
         BuildHomeLayout();
     }
 
+    private const double CardGap = 6;
+    private readonly HashSet<string> _dragAttached = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _cardOrder = [];
     internal IReadOnlyList<string> CardOrder => _cardOrder.ToArray();
 
+    internal void ReorderCard(string source, string target, bool after)
+    {
+        var items = HomeLayout.Resolve(_runtime.Config.Island).ToList();
+        var sourceIndex = items.IndexOf(source);
+        var targetIndex = items.IndexOf(target);
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex == targetIndex)
+        {
+            return;
+        }
+        items.RemoveAt(sourceIndex);
+        if (sourceIndex < targetIndex)
+        {
+            targetIndex--;
+        }
+        items.Insert(Math.Clamp(targetIndex + (after ? 1 : 0), 0, items.Count), source);
+        _runtime.Config.Island.HomeCards = items;
+        _runtime.SaveConfig();
+        BuildHomeLayout();
+    }
+
+    private bool _editing;
+    internal bool Editing => _editing;
+
     private void BuildHomeLayout()
     {
+        if (_editing)
+        {
+            return;
+        }
+        Media.CardSize = _runtime.Config.Island.HomeCardSizes.GetValueOrDefault("media", HomeCardSize.Large);
         var cards = new Dictionary<string, Border>
         {
             ["media"] = MediaCard,
             ["weather"] = WeatherCard,
             ["clock"] = ClockCard,
             ["actions"] = ActionCard,
-            ["stocks"] = MiniCard(new StocksMiniView(_runtime)),
-            ["usage"] = MiniCard(new UsageMiniView(_runtime)),
-            ["monitor"] = MiniCard(new MonitorMiniView(_runtime)),
+            ["stocks"] = MiniCard("stocks", new StocksMiniView(_runtime)),
+            ["usage"] = MiniCard("usage", new UsageMiniView(_runtime)),
+            ["monitor"] = MiniCard("monitor", new MonitorMiniView(_runtime)),
         };
-        foreach (var card in cards.Values)
+        foreach (var (key, card) in cards)
         {
+            if (_dragAttached.Add(key))
+            {
+                HomeCardDrag.Attach(this, card, key);
+            }
             if (card.Parent is Panel parent)
             {
                 parent.Children.Remove(card);
@@ -80,45 +114,49 @@ public partial class HomeView : UserControl
         _cardOrder.AddRange(selected);
         if (selected.Length == 0)
         {
+            CompleteLayout(root);
             return;
         }
 
         if (selected.Length > 4)
         {
             BuildScrollableHome(root, cards, selected);
+            CompleteLayout(root);
             return;
         }
 
         if (selected.Length == 1)
         {
             AddCard(root, cards[selected[0]], 0, 0);
+            CompleteLayout(root);
             return;
         }
 
         if (selected.Length == 2)
         {
             root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CardGap) });
             root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             AddCard(root, cards[selected[0]], 0, 0);
             AddCard(root, cards[selected[1]], 0, 2);
+            CompleteLayout(root);
             return;
         }
 
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.05, GridUnitType.Star) });
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CardGap) });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(8) });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(CardGap) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         AddCard(root, cards[selected[0]], 0, 0, rowSpan: 3);
 
         var right = new Grid();
         right.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        right.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+        right.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CardGap) });
         right.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(8) });
+        right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(CardGap) });
         right.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         AddCard(right, cards[selected[1]], 0, 0);
         if (selected.Length == 3)
@@ -132,29 +170,81 @@ public partial class HomeView : UserControl
         }
         Grid.SetColumn(right, 2);
         root.Children.Add(right);
+        CompleteLayout(root);
     }
 
-    private static Border MiniCard(UIElement content) => new()
+    private void CompleteLayout(Grid root)
     {
-        CornerRadius = new CornerRadius(16),
-        Padding = new Thickness(14),
-        Child = content,
-    };
+        var edit = UiKit.Button("编辑", ToggleHomeEditor, height: 26);
+        edit.HorizontalAlignment = HorizontalAlignment.Right;
+        edit.VerticalAlignment = VerticalAlignment.Top;
+        edit.Margin = new Thickness(0, 6, 6, 0);
+        Panel.SetZIndex(edit, 1000);
+        root.Children.Add(edit);
+    }
 
-    private static void BuildScrollableHome(Grid root, Dictionary<string, Border> cards, string[] selected)
+    private void ToggleHomeEditor()
+    {
+        if (_editing)
+        {
+            return;
+        }
+        _editing = true;
+        Content = new HomeEditorView(_runtime, FinishHomeEditor, () => { });
+    }
+
+    private void FinishHomeEditor()
+    {
+        _editing = false;
+        Content = new Grid();
+        BuildHomeLayout();
+    }
+
+    private double CardHeight(string key)
+    {
+        var size = _runtime.Config.Island.HomeCardSizes.GetValueOrDefault(
+            key,
+            key == "media" ? HomeCardSize.Large : HomeCardSize.Medium);
+        return size switch
+        {
+            HomeCardSize.Small => 72,
+            HomeCardSize.Large => 210,
+            HomeCardSize.XLarge => 270,
+            _ => 126,
+        };
+    }
+
+    private Border MiniCard(string key, UIElement content)
+    {
+        if (content is ISizedHomeCard sized)
+        {
+            sized.CardSize = _runtime.Config.Island.HomeCardSizes.GetValueOrDefault(key, HomeCardSize.Medium);
+        }
+        return new Border
+        {
+            CornerRadius = new CornerRadius(16),
+            Padding = new Thickness(12),
+            Child = content,
+        };
+    }
+
+    private void BuildScrollableHome(Grid root, Dictionary<string, Border> cards, string[] selected)
     {
         var feed = new Grid();
         feed.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        feed.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+        feed.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(CardGap) });
         feed.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         for (var index = 0; index < selected.Length; index++)
         {
             if (index % 2 == 0)
             {
-                feed.RowDefinitions.Add(new RowDefinition { Height = new GridLength(132) });
+                var height = Math.Max(
+                    CardHeight(selected[index]),
+                    index + 1 < selected.Length ? CardHeight(selected[index + 1]) : 0);
+                feed.RowDefinitions.Add(new RowDefinition { Height = new GridLength(height) });
                 if (index > 0)
                 {
-                    feed.RowDefinitions.Add(new RowDefinition { Height = new GridLength(8) });
+                    feed.RowDefinitions.Add(new RowDefinition { Height = new GridLength(CardGap) });
                 }
             }
             var row = feed.RowDefinitions.Count - 1;

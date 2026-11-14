@@ -96,7 +96,7 @@ internal static partial class LyricsProvider
     private static async Task<JsonElement?> GetJsonAsync(string url, string? referer, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Kojima/1.3.3");
+        request.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Kojima/1.3.4-beta.1");
         if (!string.IsNullOrWhiteSpace(referer))
         {
             request.Headers.Referrer = new Uri(referer);

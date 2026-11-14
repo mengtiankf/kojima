@@ -23,8 +23,9 @@ public partial class IslandWindow : Window
     private readonly DispatcherTimer _hover = new(DispatcherPriority.Background);
     private readonly DispatcherTimer _outside = new(DispatcherPriority.Background);
     private readonly DispatcherTimer _fullscreen = new(DispatcherPriority.Background);
-    private readonly DispatcherTimer _tabHover = new(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(90) };
+    private readonly DispatcherTimer _tabHover = new(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(220) };
     private string? _tabHoverKey;
+    private Point _tabHoverPoint;
     private readonly Dictionary<string, Border> _navPills = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TextBlock> _navLabels = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TextBlock> _navGlyphs = new(StringComparer.OrdinalIgnoreCase);
@@ -85,7 +86,11 @@ public partial class IslandWindow : Window
             _tabHover.Stop();
             if (_tabHoverKey is { } key && _navPills.TryGetValue(key, out var pill) && pill.IsMouseOver)
             {
-                ShowPage(key);
+                var point = Mouse.GetPosition(pill);
+                if (Math.Abs(point.X - _tabHoverPoint.X) <= 8 && Math.Abs(point.Y - _tabHoverPoint.Y) <= 8)
+                {
+                    ShowPage(key);
+                }
             }
         };
 
@@ -484,8 +489,9 @@ public partial class IslandWindow : Window
             Cursor = Cursors.Hand,
         };
 
-        pill.MouseEnter += (_, _) =>
+        pill.MouseEnter += (_, e) =>
         {
+            _tabHoverPoint = e.GetPosition(pill);
             UpdateNavVisuals(page.Key, hover: true);
             if (_current is { } current && current.Key.Equals(page.Key, StringComparison.OrdinalIgnoreCase))
             {
@@ -682,7 +688,7 @@ public partial class IslandWindow : Window
             return;
         }
 
-        var width = Math.Max(320, Settings.PanelWidth);
+        var width = ExpandedWidth();
         var available = new Size(width - 24, 2000);
         _current.View.Measure(available);
         var contentHeight = _current.View.DesiredSize.Height;
@@ -758,19 +764,43 @@ public partial class IslandWindow : Window
         AnimateTo(w, h, expanded: true);
     }
 
+    private double _compactContentWidth;
+
+    internal double CurrentCompactWidth => CollapsedSize().Width;
+
+    internal double CurrentExpandedWidth => ExpandedWidth();
+
     private (double Width, double Height) CollapsedSize()
     {
-        return Settings.Shape switch
+        if (Settings.Shape == IslandShape.Indicator)
         {
-            IslandShape.Capsule => (Settings.CapsuleWidth, Settings.Height),
-            IslandShape.Indicator => (Settings.IndicatorWidth, Settings.IndicatorThickness),
-            _ => (Settings.NotchWidth, Settings.Height),
+            return (Settings.IndicatorWidth, Settings.IndicatorThickness);
+        }
+
+        var minimum = Settings.Shape == IslandShape.Capsule ? Settings.CapsuleWidth : Settings.NotchWidth;
+        var available = CurrentDisplay()?.Work.Width ?? SystemParameters.WorkArea.Width;
+        var maximum = Math.Max(minimum, available * 0.9);
+        var desired = _compactContentWidth > 0 ? _compactContentWidth + 36 : minimum;
+        return (Math.Clamp(desired, minimum, maximum), Settings.Height);
+    }
+
+    private double ExpandedWidth()
+    {
+        var available = CurrentDisplay()?.Work.Width ?? SystemParameters.WorkArea.Width;
+        var maximum = Math.Max(320, available * 0.9);
+        var minimum = Math.Min(420, maximum);
+        var baseWidth = (Settings.Density ?? "medium") switch
+        {
+            "compact" => 480.0,
+            "loose" => 820.0,
+            _ => 640.0,
         };
+        return Math.Clamp(baseWidth, minimum, maximum);
     }
 
     private (double Width, double Height) ExpandedSize()
     {
-        var width = Math.Max(320, Settings.PanelWidth);
+        var width = ExpandedWidth();
         var height = 12 + 40 + (_current?.HeightHint ?? 300) + 14;
         return (width, Math.Clamp(height, 160, 720));
     }
@@ -1018,6 +1048,17 @@ public partial class IslandWindow : Window
             ((FrameworkElement)host.Children[^1]).Margin = new Thickness(0);
         }
         Compact.Children.Add(host);
+        host.Measure(new Size(double.PositiveInfinity, Settings.Height));
+        _compactContentWidth = host.DesiredSize.Width;
+        if (!_expanded && IsLoaded)
+        {
+            var (width, height) = CollapsedSize();
+            if (Math.Abs(Width - width) > 0.5 || Math.Abs(Height - height) > 0.5)
+            {
+                AnimateTo(width, height, expanded: false);
+            }
+        }
+
         if (_compactItemKeys.Contains("monitor") && _runtime.FeatureEnabled("monitor"))
         {
             if (!_compactMonitorSubscribed)
@@ -1324,7 +1365,7 @@ public partial class IslandWindow : Window
         if (_resizing)
         {
             _resizing = false;
-            Settings.PanelWidth = Math.Round(Width);
+            Settings.Density = Width < 560 ? "compact" : Width < 730 ? "medium" : "loose";
             _runtime.SaveConfig();
             ReleaseMouseCapture();
             e.Handled = true;

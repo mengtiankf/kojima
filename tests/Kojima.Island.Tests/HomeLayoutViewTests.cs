@@ -26,15 +26,15 @@ public sealed class HomeLayoutViewTests : IslandTestBase
             var island = new IslandWindow(runtime);
             runtime.Island = island;
             island.Show();
-            var settings = new SettingsWindow(runtime);
+            var editor = new HomeEditorView(runtime, () => { }, () => { });
             try
             {
                 var initialHome = island.HomeViewForTest;
                 Assert.NotNull(initialHome);
                 Assert.Equal(["clock", "media", "weather"], initialHome.CardOrder);
 
-                settings.SetHomeItemsForTest(["weather", "clock"]);
-                settings.ApplyForTestAsync().GetAwaiter().GetResult();
+                editor.SetHomeItemsForTest(["weather", "clock"]);
+                island.ReloadFeatures();
 
                 Assert.Equal(["weather", "clock"], runtime.Config.Island.HomeCards);
                 var updatedHome = island.HomeViewForTest;
@@ -44,7 +44,6 @@ public sealed class HomeLayoutViewTests : IslandTestBase
             }
             finally
             {
-                settings.Close();
                 island.Close();
             }
         });
